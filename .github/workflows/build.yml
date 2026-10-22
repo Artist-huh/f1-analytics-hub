@@ -1,0 +1,96 @@
+name: Build Windows Executable
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Test and build (build.bat: tests -> data snapshot -> flet pack)
+      shell: cmd
+      run: build.bat
+
+    - name: List build output
+      run: |
+        dir dist
+
+    - name: Create release package
+      run: |
+        mkdir release
+        copy dist\F1AnalyticsHub.exe release\
+        copy README.md release\
+        copy QUICKSTART.md release\
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: F1AnalyticsHub-Windows
+        path: release/
+
+    - name: Create ZIP archive
+      if: github.event_name == 'release'
+      run: |
+        Compress-Archive -Path release\* -DestinationPath F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip
+
+    - name: Upload release asset
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip
+        asset_name: F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip
+        asset_content_type: application/zip
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build with Flet
+      run: |
+        flet build macos --product "F1 Analytics Hub" --org "F1Hub"
+
+    - name: Create DMG (placeholder)
+      run: |
+        mkdir -p release
+        cp -r build/macos/*.app release/ || echo "Build output not found"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: F1AnalyticsHub-macOS
+        path: release/
