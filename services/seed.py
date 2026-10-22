@@ -82,6 +82,15 @@ def import_if_empty(path=None):
         return False
 
 
+def _say(text):
+    """print, который не падает на консоли без кириллицы (например, cp1252 на английской Windows)."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(text.encode(enc, "backslashreplace").decode(enc))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="python -m services.seed", description=__doc__.split("\n")[0])
     parser.add_argument("action", choices=["export", "import"])
@@ -92,12 +101,12 @@ def main(argv=None):
         if args.refresh:
             from . import f1_api
             if not f1_api.refresh_all(force=True, manual=True):
-                print("Не удалось скачать данные — проверь подключение к интернету.")
+                _say("Не удалось скачать данные — проверь подключение к интернету.")
                 return 1
         out = export_snapshot(args.path)
-        print(f"Снимок записан: {out}" if out else "В базе нет данных — сначала запусти с --refresh.")
+        _say(f"Снимок записан: {out}" if out else "В базе нет данных — сначала запусти с --refresh.")
         return 0 if out else 1
-    print("Импортировано." if import_if_empty(args.path) else "Ничего не импортировано (БД не пуста или снимка нет).")
+    _say("Импортировано." if import_if_empty(args.path) else "Ничего не импортировано (БД не пуста или снимка нет).")
     return 0
 
 

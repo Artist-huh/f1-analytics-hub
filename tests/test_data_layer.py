@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import tempfile
@@ -363,6 +364,15 @@ class DataLayerTest(unittest.TestCase):
         write('{"version": 1, "exported_at": 1, "season": "2026"}')   # нет standings
         self.assertFalse(seed.import_if_empty(bad))
         self.assertEqual(f1_api.get_cached_standings(), [])
+
+    def test_seed_cli_survives_console_without_cyrillic(self):
+        """Английская Windows (cp1252): раньше print() с русским текстом ронял python -m services.seed."""
+        raw = io.BytesIO()
+        out = io.TextIOWrapper(raw, encoding="cp1252")
+        with mock.patch("sys.stdout", out):
+            self.assertEqual(seed.main(["import", os.path.join(self.tmp.name, "none.json")]), 0)
+        out.flush()
+        self.assertIn(b"\\u", raw.getvalue())
 
     def test_seed_export_requires_data_and_cli(self):
         self.assertIsNone(seed.export_snapshot(os.path.join(self.tmp.name, "x.json")))
