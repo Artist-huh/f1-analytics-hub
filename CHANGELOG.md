@@ -1,5 +1,16 @@
 # F1 Analytics Hub — Итоги переработки
 
+## 2026-10-23 — обновление зависимостей и CI
+
+- Flet 0.86.5 → 1.0.5. Рамки полей ввода и списков переведены на `border=OutlineInputBorder(...)`
+  (`border_color`/`focused_border_color` устарели и удаляются во Flet 1.3). Проверено в настоящем окне:
+  все экраны и 112 обработчиков, включая кнопки диалогов, без ошибок и предупреждений.
+- GitHub Actions: `checkout`, `setup-python`, `upload-artifact` → v7 (Node.js 24); заархивированный
+  `upload-release-asset` заменён на `gh release upload`; macOS-сборка через `flet pack`.
+- Горячие клавиши: F5, Ctrl+F, Ctrl+K, Esc.
+- `python -m services.seed` больше не падает на консоли без кириллицы (cp1252).
+- Тесты интерфейса дожидаются фоновых потоков вместо `sleep` — убрано редкое падение WinError 32.
+
 ## 2026-10-22 — тестирование и исправления
 
 - Новые экраны переведены на API Flet 0.80+ (`ft.Alignment`, `ft.Padding`, `ft.Border`, `page.show_dialog`

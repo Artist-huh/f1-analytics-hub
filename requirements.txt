@@ -1,2 +1,2 @@
-flet[all]>=0.86.5,<0.90  # the UI uses the Flet 0.80+ API; some old names are removed in 0.90
-requests>=2.31.0
+flet[all]>=1.0.5,<2  # Flet 1.x API (field borders via border=OutlineInputBorder)
+requests>=2.34.2

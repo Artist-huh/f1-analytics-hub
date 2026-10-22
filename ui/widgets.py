@@ -40,9 +40,17 @@ def button(label, on_click, primary=True, icon=None):
     )
 
 
+def field_border(color, focused):
+    """Рамка поля ввода / списка: тонкая линия color, при фокусе — focused в 2 px (Flet 1.0+)."""
+    return {
+        ft.ControlState.DEFAULT: ft.OutlineInputBorder(side=ft.BorderSide(1, color)),
+        ft.ControlState.FOCUSED: ft.OutlineInputBorder(side=ft.BorderSide(2, focused)),
+    }
+
+
 def dropdown(**kw):
     """Выпадающий список на всю ширину (через Row + expand, без жёсткой ширины)."""
-    return ft.Row([ft.Dropdown(expand=True, bgcolor=RAISED, border_color=LINE, focused_border_color=ACCENT, color=TEXT, **kw)])
+    return ft.Row([ft.Dropdown(expand=True, bgcolor=RAISED, border=field_border(LINE, ACCENT), color=TEXT, **kw)])
 
 
 def chip(label, bg=RAISED, fg=TEXT):

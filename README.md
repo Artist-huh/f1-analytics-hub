@@ -5,7 +5,7 @@
 **Современное десктопное приложение для анализа Формулы-1**
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
-[![Flet](https://img.shields.io/badge/Flet-0.86+-purple.svg)](https://flet.dev)
+[![Flet](https://img.shields.io/badge/Flet-1.0+-purple.svg)](https://flet.dev)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 Полная статистика чемпионата • Сравнение пилотов • Live-данные гонок • Интерактивные графики

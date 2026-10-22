@@ -2,7 +2,7 @@
 import flet as ft
 from design_system import *
 from ui.components import *
-from ui.widgets import empty_state, screen
+from ui.widgets import empty_state, field_border, screen
 
 
 def build(state):
@@ -50,8 +50,7 @@ def _build_search_and_filters(state, drivers, on_search):
         value=state.ui["drv_q"],
         hint_text="Имя, код или команда",
         prefix_icon=ft.Icons.SEARCH,
-        border_color=LINE_STRONG,
-        focused_border_color=ACCENT_PRIMARY,
+        border=field_border(LINE_STRONG, ACCENT_PRIMARY),
         bgcolor=SURFACE,
         color=TEXT_PRIMARY,
         hint_style=ft.TextStyle(color=TEXT_MUTED),

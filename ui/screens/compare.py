@@ -3,7 +3,7 @@ import flet as ft
 from design_system import *
 from ui.components import *
 from ui.fmt import to_int
-from ui.widgets import empty_state, screen
+from ui.widgets import empty_state, field_border, screen
 
 
 def build(state):
@@ -49,8 +49,7 @@ def _build_driver_selector(state, drivers, d1, d2, is_mobile):
             value=value,
             options=[ft.DropdownOption(key=d["driver_id"], text=f"{d['position']}. {d['name']}") for d in drivers],
             on_select=handler,
-            border_color=LINE_STRONG,
-            focused_border_color=ACCENT_PRIMARY,
+            border=field_border(LINE_STRONG, ACCENT_PRIMARY),
             bgcolor=SURFACE,
             color=TEXT_PRIMARY,
             text_size=FONT_BODY,
