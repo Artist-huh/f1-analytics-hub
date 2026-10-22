@@ -431,6 +431,26 @@ class UiSmokeTest(unittest.TestCase):
         self.state.close_sub()
         self.assertIsNone(self.state.sub)                        # смена вкладки сбрасывает историю
 
+    def test_hotkeys(self):
+        fill_db()
+        self.state.load()
+        with mock.patch.object(AppState, "refresh_now") as refresh:
+            self.assertTrue(self.state.on_key("F5"))
+            refresh.assert_called_once()
+        self.state.open_sub("settings")
+        self.assertTrue(self.state.on_key("F", ctrl=True))
+        self.assertEqual((self.state.tab, self.state.sub), (3, None))
+        field = next(n for n in walk(self.build("tab3")) if type(n).__name__ == "TextField")
+        self.assertTrue(field.autofocus)                          # Ctrl+F ставит курсор в поиск
+        field = next(n for n in walk(self.build("tab3")) if type(n).__name__ == "TextField")
+        self.assertFalse(field.autofocus)                         # только один раз, не при каждой перерисовке
+        self.assertTrue(self.state.on_key("K", ctrl=True))
+        self.assertEqual(self.state.sub, "compare")
+        self.assertTrue(self.state.on_key("Escape"))
+        self.assertEqual((self.state.tab, self.state.sub), (3, None))
+        self.assertFalse(self.state.on_key("Escape"))             # на вкладке «назад» некуда
+        self.assertFalse(self.state.on_key("F"))                  # без Ctrl — обычный ввод
+
     def test_navigation_and_favorite_toggle(self):
         fill_db()
         self.state.load()

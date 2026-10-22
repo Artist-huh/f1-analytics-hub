@@ -144,6 +144,24 @@ class AppState:
         self.ui["driver_id"] = driver_id
         self.open_sub("driver_detail")
 
+    # ---------- клавиатура ----------
+    def on_key(self, key, ctrl=False):
+        """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Esc — назад.
+        Возвращает True, если клавиша обработана."""
+        key = (key or "").upper()
+        if key == "F5":
+            self.refresh_now()
+        elif ctrl and key == "F":
+            self.ui["drv_focus"] = True     # экран «Пилоты» поставит курсор в поле поиска
+            self.open_tab(3)
+        elif ctrl and key == "K":
+            self.open_sub("compare")
+        elif key == "ESCAPE" and self.sub:
+            self.close_sub()
+        else:
+            return False
+        return True
+
     # ---------- фон ----------
     def refresh_minutes(self):
         try:

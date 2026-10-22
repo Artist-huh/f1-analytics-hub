@@ -10,7 +10,7 @@
 
 Полная статистика чемпионата • Сравнение пилотов • Live-данные гонок • Интерактивные графики
 
-[Скачать](https://github.com/yourusername/f1-analytics-hub/releases) • [Документация](docs/) • [Сообщить об ошибке](https://github.com/yourusername/f1-analytics-hub/issues)
+[Скачать](https://github.com/Artist-huh/f1-analytics-hub/releases) • [Документация](docs/) • [Сообщить об ошибке](https://github.com/Artist-huh/f1-analytics-hub/issues)
 
 </div>
 
@@ -92,7 +92,7 @@
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/yourusername/f1-analytics-hub.git
+git clone https://github.com/Artist-huh/f1-analytics-hub.git
 cd f1-analytics-hub
 
 # Установить зависимости
@@ -107,7 +107,7 @@ flet run --web main.py
 
 ### Скачать .exe (Windows)
 
-1. Перейти в [Releases](https://github.com/yourusername/f1-analytics-hub/releases)
+1. Перейти в [Releases](https://github.com/Artist-huh/f1-analytics-hub/releases)
 2. Скачать `F1AnalyticsHub.exe`
 3. Запустить (Python не требуется!)
 
@@ -164,11 +164,11 @@ f1-analytics-hub/
 │   └── log.py                 # Логирование
 ├── ui/
 │   ├── components.py          # Переиспользуемые UI-компоненты
-│   ├── charts.py              # Графики и диаграммы
-│   ├── state.py               # Состояние приложения
+│   ├── widgets.py             # Каркас экрана, кнопки, графики-столбики
+│   ├── state.py               # Состояние приложения, горячие клавиши
 │   ├── fmt.py                 # Форматирование данных
 │   └── screens/               # Экраны приложения
-│       ├── home_new.py        # Главная
+│       ├── home.py            # Главная
 │       ├── drivers.py         # Список пилотов
 │       ├── driver_detail.py   # Страница пилота
 │       ├── compare.py         # Сравнение
@@ -176,10 +176,22 @@ f1-analytics-hub/
 │       ├── favorites.py       # Избранное
 │       ├── season.py          # Чемпионат
 │       └── more.py            # Настройки и прочее
-├── data/                      # SQLite БД + seed данные
+├── data/seed.json             # Снимок данных для первого запуска без сети
+├── tests/                     # Автотесты
 └── docs/                      # Документация
 
 ```
+
+---
+
+## ⌨️ Горячие клавиши
+
+| Клавиша | Действие |
+|---------|----------|
+| `F5` | Обновить данные |
+| `Ctrl+F` | Поиск пилота |
+| `Ctrl+K` | Сравнение пилотов |
+| `Esc` | Назад |
 
 ---
 
@@ -222,9 +234,7 @@ MIT License — свободно используйте в личных и ко�
 
 ## 📞 Контакты
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/f1-analytics-hub/issues)
-- **Email**: your.email@example.com
-- **Twitter**: [@yourusername](https://twitter.com/yourusername)
+- **Issues**: [GitHub Issues](https://github.com/Artist-huh/f1-analytics-hub/issues)
 
 ---
 

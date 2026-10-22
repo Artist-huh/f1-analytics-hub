@@ -190,6 +190,7 @@ def main(page: ft.Page):
     fit_width()
     page.update()
     page.on_resize = on_resize
+    page.on_keyboard_event = lambda e: state.on_key(e.key, e.ctrl or e.meta)
 
     # Запуск фонового обновления; закрытая сессия отписывается от него
     state.start_refresher()

@@ -58,6 +58,7 @@ def _build_search_and_filters(state, drivers, on_search):
         text_size=FONT_BODY,
         dense=True,
         expand=True,
+        autofocus=state.ui.pop("drv_focus", False),   # Ctrl+F
         on_change=on_search,
     )
 
