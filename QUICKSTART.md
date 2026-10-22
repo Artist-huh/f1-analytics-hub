@@ -47,7 +47,7 @@ build.bat
 
 ## Вариант 3: Скачать готовый .exe
 
-1. Перейти в [Releases](https://github.com/yourusername/f1-analytics-hub/releases)
+1. Перейти в [Releases](https://github.com/Artist-huh/f1-analytics-hub/releases)
 2. Скачать `F1AnalyticsHub.exe`
 3. Запустить (Python не нужен!)
 
@@ -56,11 +56,11 @@ build.bat
 ## Первый запуск
 
 При первом запуске приложение:
-1. Создаст базу данных `data/f1.db`
-2. Загрузит актуальные данные Ф1 (нужен интернет)
-3. Откроет главный экран
+1. Создаст базу данных `%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.db`
+2. Заполнит её встроенным снимком `data/seed.json`, чтобы экраны сразу были с данными
+3. Откроет главный экран и в фоне загрузит свежие данные Ф1 (нужен интернет)
 
-**Без интернета**: приложение покажет demo-данные
+**Без интернета**: приложение работает на встроенном снимке или последних сохранённых данных
 
 ---
 
@@ -109,7 +109,8 @@ pip install flet requests
 
 - Проверьте интернет-соединение
 - API может быть недоступен — подождите 5 минут
-- Приложение работает с кешем в `data/f1.db`
+- Приложение работает с кешем в `%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.db`
+- Подробности ошибок — в журнале `%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.log`
 
 ---
 
@@ -138,4 +139,4 @@ pip install flet requests
 
 ---
 
-Нужна помощь? [Создайте issue](https://github.com/yourusername/f1-analytics-hub/issues)
+Нужна помощь? [Создайте issue](https://github.com/Artist-huh/f1-analytics-hub/issues)

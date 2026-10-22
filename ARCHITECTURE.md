@@ -135,18 +135,17 @@ services/
 ### 5. Data Layer — `data/`
 
 ```
-data/
-├── f1.db                 # SQLite база данных
-│   ├── drivers           # Пилоты
-│   ├── constructors      # Команды
-│   ├── standings         # Турнирные таблицы
-│   ├── races             # Гонки
-│   └── results           # Результаты
-│
-└── seed/                 # JSON с начальными данными
-    ├── drivers.json
-    ├── teams.json
-    └── circuits.json
+%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.db   # SQLite (путь меняется переменной F1_HUB_DB)
+├── meta                    # Сезон, этап, время последней загрузки
+├── standings               # Личный зачёт
+├── constructor_standings   # Кубок конструкторов
+├── race_results            # Результаты гонок по пилотам
+├── schedule                # Календарь
+├── favorites               # Избранные пилоты
+└── settings                # Настройки пользователя
+
+data/seed.json              # Снимок данных для первого запуска без сети
+                            # (python -m services.seed export --refresh)
 ```
 
 ## 🔄 Поток данных

@@ -6,7 +6,7 @@
 
 ### 🐛 Сообщить об ошибке
 
-1. Проверьте, что похожая ошибка еще не была [создана](https://github.com/yourusername/f1-analytics-hub/issues)
+1. Проверьте, что похожая ошибка еще не была [создана](https://github.com/Artist-huh/f1-analytics-hub/issues)
 2. Используйте шаблон "Bug Report"
 3. Опишите шаги для воспроизведения
 4. Приложите скриншоты, если возможно
@@ -14,7 +14,7 @@
 
 ### 💡 Предложить улучшение
 
-1. Откройте [Discussion](https://github.com/yourusername/f1-analytics-hub/discussions)
+1. Откройте [Issue](https://github.com/Artist-huh/f1-analytics-hub/issues)
 2. Опишите идею и зачем она нужна
 3. Приложите mockup-ы, если есть
 
@@ -101,12 +101,16 @@ f1-analytics-hub/
 ├── services/               # Логика работы с данными
 │   ├── f1_api.py           # Фасад API
 │   ├── jolpica.py          # HTTP-клиент
-│   └── db.py               # База данных
+│   ├── db.py               # База данных
+│   ├── seed.py             # Снимок данных для первого запуска
+│   └── log.py              # Журнал
 ├── ui/
 │   ├── components.py       # Переиспользуемые компоненты
-│   ├── charts.py           # Графики
+│   ├── widgets.py          # Каркас экрана, кнопки, графики-столбики
+│   ├── state.py            # Состояние, навигация, горячие клавиши
 │   └── screens/            # Экраны приложения
-├── data/                   # SQLite БД
+├── data/seed.json          # Снимок данных (без сети при первом запуске)
+├── tests/                  # Автотесты
 └── docs/                   # Документация
 ```
 
@@ -146,17 +150,17 @@ f1-analytics-hub/
    - Пустая база данных
    - Разные разрешения экрана
 
-### Автоматическое (в разработке)
+### Автоматическое
 
 ```bash
-pytest tests/
+python -m unittest discover -s tests -t .
 ```
+
+Тесты не ходят в сеть и не трогают вашу базу (`F1_HUB_LOG=off` отключает запись журнала в файл).
 
 ## Вопросы?
 
-- 💬 [Discussions](https://github.com/yourusername/f1-analytics-hub/discussions)
-- 📧 Email: your.email@example.com
-- 🐦 Twitter: [@yourusername](https://twitter.com/yourusername)
+- 💬 [Issues](https://github.com/Artist-huh/f1-analytics-hub/issues)
 
 ---
 

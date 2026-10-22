@@ -24,7 +24,7 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
 
-    - name: Test and build (build.bat: tests -> data snapshot -> flet pack)
+    - name: "Test and build (build.bat: tests -> data snapshot -> flet pack)"
       shell: cmd
       run: build.bat
 
@@ -80,14 +80,20 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Build with Flet
-      run: |
-        flet build macos --product "F1 Analytics Hub" --org "F1Hub"
+    - name: Run tests
+      env:
+        F1_HUB_LOG: "off"
+      run: python -m unittest discover -s tests -t .
 
-    - name: Create DMG (placeholder)
+    - name: Build with flet pack
+      run: |
+        pip install pillow   # PyInstaller converts icon.png to .icns with it
+        flet pack main.py -y --name F1AnalyticsHub --icon assets/icon.png --add-data "assets:assets" "data:data" --product-name "F1 Analytics Hub" --product-version "1.0.0" --bundle-id com.f1hub.analytics
+
+    - name: Create release package
       run: |
         mkdir -p release
-        cp -r build/macos/*.app release/ || echo "Build output not found"
+        ditto -c -k --keepParent dist/F1AnalyticsHub.app release/F1AnalyticsHub-macOS.zip
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
