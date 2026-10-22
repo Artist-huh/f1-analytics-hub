@@ -10,16 +10,19 @@ on:
         required: true
         default: 'v1.0.0'
 
+permissions:
+  contents: write   # gh release upload
+
 jobs:
   build-windows:
     runs-on: windows-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
         cache: 'pip'
@@ -40,7 +43,7 @@ jobs:
         copy QUICKSTART.md release\
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: F1AnalyticsHub-Windows
         path: release/
@@ -52,24 +55,19 @@ jobs:
 
     - name: Upload release asset
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip
-        asset_name: F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip
-        asset_content_type: application/zip
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip" --clobber
 
   build-macos:
     runs-on: macos-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
         cache: 'pip'
@@ -96,7 +94,15 @@ jobs:
         ditto -c -k --keepParent dist/F1AnalyticsHub.app release/F1AnalyticsHub-macOS.zip
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: F1AnalyticsHub-macOS
         path: release/
+
+    - name: Upload release asset
+      if: github.event_name == 'release'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mv release/F1AnalyticsHub-macOS.zip "F1AnalyticsHub-${{ github.event.release.tag_name }}-macOS.zip"
+        gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-macOS.zip" --clobber
