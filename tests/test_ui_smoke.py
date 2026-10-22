@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import time
 import types
 import unittest
@@ -148,6 +149,14 @@ def click_all(node, state):
     return n
 
 
+def join_workers(timeout=5.0):
+    """Дождаться фоновых потоков экранов (ручное обновление, загрузка результатов):
+    иначе поток может открыть временную БД, пока тест её удаляет (WinError 32)."""
+    for t in threading.enumerate():
+        if t is not threading.current_thread() and t.name.startswith(("f1-manual-refresh", "f1-results-")):
+            t.join(timeout)
+
+
 def clickable(tree, label):
     """Элементы с обработчиком on_click, внутри которых есть текст label (или это кнопка с такой подписью)."""
     return [n for n in walk(tree) if callable(getattr(n, "on_click", None))
@@ -169,6 +178,7 @@ class UiSmokeTest(unittest.TestCase):
         self.addCleanup(os.environ.pop, "F1_HUB_DB", None)
         self.addCleanup(api.shutdown)
         self.addCleanup(net.stop)
+        self.addCleanup(join_workers)   # раньше остальных cleanup: потоки ещё под моками
 
     def all_screens(self):
         yield from ((f"tab{i}", b) for i, b in enumerate(app.TABS))
@@ -410,7 +420,7 @@ class UiSmokeTest(unittest.TestCase):
                     n = click_all(build(self.state), self.state)
                     self.assertGreater(n, 0, name)
                     self.page.dialogs.clear()
-            time.sleep(0.2)  # дать отработать потокам ручного обновления
+            join_workers()   # потоки ручного обновления должны закончить под моками
         self.assertTrue(self.renders)
 
     def test_navigation_back_stack(self):
