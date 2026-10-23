@@ -188,6 +188,10 @@ class UiSmokeTest(unittest.TestCase):
         offline = mock.patch.object(archive, "get", lambda key, fetch, ttl=None, on_done=None: db.load_archive(key)[0])
         offline.start()    # история и трассы: только кэш, без фоновых запросов в сеть
         self.addCleanup(offline.stop)
+        from services import live
+        self.live_refresh = mock.patch.object(live, "refresh").start()   # live-тайминг: без запросов к OpenF1
+        self.addCleanup(mock.patch.stopall)
+        live._state.update(data=None, error=None, loading=False)
         api._state.update(error=None, fail_until=0.0)
         media.clear_memory()
         self.page = FakePage()
@@ -547,6 +551,66 @@ class UiSmokeTest(unittest.TestCase):
             self.assertIn(expected, t)
         track = [str(n.src) for n in walk(tree) if type(n).__name__ == "Image"]
         self.assertTrue(any("2026trackmonzawhiteoutline.webp" in src for src in track))
+
+    def test_live_timing(self):
+        from services import live
+        session = {"session_name": "Race", "session_type": "Race"}
+        drivers = [{"driver_number": 16, "name_acronym": "LEC", "full_name": "Charles LECLERC", "team_name": "Ferrari",
+                    "team_colour": "ED1131"},
+                   {"driver_number": 12, "name_acronym": "ANT", "full_name": "Kimi ANTONELLI", "team_name": "Mercedes",
+                    "team_colour": "00D7B6"}]
+        positions = [{"date": "2026-10-11T12:00:00", "driver_number": 16, "position": 2},
+                     {"date": "2026-10-11T12:00:00", "driver_number": 12, "position": 1},
+                     {"date": "2026-10-11T13:00:00", "driver_number": 16, "position": 1},      # обгон
+                     {"date": "2026-10-11T13:00:00", "driver_number": 12, "position": 2}]
+        intervals = [{"date": "2026-10-11T13:40:00", "driver_number": 12, "gap_to_leader": 2.5, "interval": 2.5},
+                     {"date": "2026-10-11T13:40:00", "driver_number": 16, "gap_to_leader": 0.0, "interval": 0.0}]
+        stints = [{"driver_number": 16, "stint_number": 1, "lap_start": 1, "lap_end": 20, "compound": "MEDIUM",
+                   "tyre_age_at_start": 0},
+                  {"driver_number": 16, "stint_number": 2, "lap_start": 21, "lap_end": 62, "compound": "HARD",
+                   "tyre_age_at_start": 3},
+                  {"driver_number": 12, "stint_number": 1, "lap_start": 1, "lap_end": 62, "compound": "HARD",
+                   "tyre_age_at_start": 0}]
+        pits = [{"driver_number": 16, "lap_number": 20}]
+        table = live.build_table(session, drivers, positions, intervals, stints, pits)
+        self.assertEqual([r["code"] for r in table["rows"]], ["LEC", "ANT"])
+        lec, ant = table["rows"]
+        self.assertEqual((lec["tyre"], lec["tyre_age"], lec["pits"], ant["gap"]), ("H", 44, 1, "+2.500"))
+        self.assertEqual(live.fmt_gap("+1 LAP"), "+1 кр.")
+        fill_db()
+        self.state.load()
+        t = texts(self.build("live"))
+        self.assertIn("Загружаем данные сессии…", t)
+        self.live_refresh.assert_called()                          # экран сам запросил данные
+        live._state["data"] = {"session": {"name": "Race", "type": "Race", "country": "Italy", "location": "Monza",
+                                           "circuit": "Monza", "start": 0, "end": 0, "year": 2026},
+                               "live": True, "racing": True, "rows": table["rows"], "lap": 62,
+                               "messages": [{"time": 0, "text": "CHEQUERED FLAG", "flag": "CHEQUERED", "lap": 62}],
+                               "updated": time.time()}
+        tree = self.build("live")
+        t = texts(tree)
+        for expected in ("LIVE", "Гонка · Monza 2026", "Сессия идёт · Круг 62 из 53", "+2.500", "лидер", "CHEQUERED FLAG", "44"):
+            self.assertIn(expected, t)
+        clickable(tree, "Интервал")[0].on_click(Ctl())
+        self.assertEqual(self.state.ui["live_gap"], "interval")
+        clickable(self.build("live"), "LEC")[0].on_click(Ctl())     # строка -> страница пилота
+        self.assertEqual(self.state.ui["driver_id"], "leclerc")
+        self.state.sub = None                                       # поток наблюдения завершится сам
+
+    def test_live_banner_when_session_runs(self):
+        from services import live
+        fill_db()
+        self.state.load()
+        race = self.state.schedule[3]
+        quali = next(s for s in race["sessions"] if s["key"] == "Qualifying")
+        self.assertEqual(live.session_is_live(self.state.schedule, now=quali["ts"] + 600), (race, "Qualifying"))
+        self.assertIsNone(live.session_is_live(self.state.schedule, now=quali["ts"] - 600))
+        with mock.patch.object(live, "session_is_live", return_value=(race, "Qualifying")):
+            tree = self.build("tab0")
+            self.assertIn("Сейчас: Квалификация", texts(tree))
+            clickable(tree, "Сейчас: Квалификация")[0].on_click(Ctl())
+        self.assertEqual(self.state.sub, "live")
+        self.state.sub = None
 
     def test_title_fight_screen(self):
         fill_db()

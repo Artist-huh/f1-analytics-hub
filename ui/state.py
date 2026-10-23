@@ -7,7 +7,7 @@ import threading
 import time
 
 import design_system as ds
-from services import f1_api as api, log, media, stats
+from services import f1_api as api, live, log, media, stats
 
 logger = log.get("ui")
 
@@ -35,6 +35,7 @@ class AppState:
         self._stop = None
         self._back = []                 # стек подэкранов для кнопки «назад»
         self._by_driver = {}
+        self._live_watch = None         # поток обновления live-тайминга, пока открыт его экран
 
     # ---------- данные ----------
     def load(self):
@@ -243,6 +244,28 @@ class AppState:
         detail = {"driver_detail": "driver_id", "team": "team", "circuit": "circuit"}.get(self.sub)
         value = self.ui.get(detail) if detail else None
         return (self.tab, self.sub, value.get("round") if isinstance(value, dict) else value)
+
+    # ---------- live-тайминг ----------
+    def watch_live(self, period=3.0):
+        """Пока открыт экран live-тайминга — обновлять снимок (во время сессии раз в 10 с).
+        Поток сам завершается, когда пользователь уходит с экрана."""
+        if live.stale() and not live.snapshot()[2]:
+            live.refresh(on_done=self.render)
+        if self._live_watch and self._live_watch.is_alive():
+            return
+
+        def loop():
+            while self.sub == "live":
+                time.sleep(period)
+                if self.sub == "live" and live.stale():
+                    live.refresh(on_done=self.render)
+
+        self._live_watch = threading.Thread(target=loop, name="f1-live-watch", daemon=True)
+        self._live_watch.start()
+
+    def live_now(self):
+        """Идёт ли сейчас сессия по календарю: (этап, ключ сессии) или None."""
+        return live.session_is_live(self.schedule)
 
     # ---------- оформление ----------
     def set_theme(self, name, team=None):

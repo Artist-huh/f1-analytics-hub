@@ -12,7 +12,7 @@ from ui import theming
 from ui.components import ResponsiveContainer
 from ui.fmt import fmt_countdown
 from ui.screens import (home, season, calendar, circuit, drivers, driver_detail, compare, more, favorites, history,
-                        team, title)
+                        live, team, title)
 from ui.state import AppState
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -39,6 +39,7 @@ def refresh_screens():
         "team": team.build,
         "history": history.build,
         "circuit": circuit.build,
+        "live": live.build,
         "title": title.build,
         "strategy": more.build_strategy,
         "settings": more.build_settings,

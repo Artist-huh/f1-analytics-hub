@@ -25,6 +25,8 @@ def build_menu(state):
     body = [
         _tile(ft.Icons.COMPARE_ARROWS, "Сравнение пилотов", "2–4 пилота: очки, победы, поулы, личные встречи",
               lambda e: state.open_sub("compare")),
+        _tile(ft.Icons.SENSORS, "Live-тайминг", "Позиции, отрывы, шины и пит-стопы — сейчас или итог сессии",
+              lambda e: state.open_sub("live")),
         _tile(ft.Icons.EMOJI_EVENTS, "Борьба за титул", "Кто ещё может стать чемпионом и что нужно лидеру",
               lambda e: state.open_sub("title")),
         _tile(ft.Icons.HISTORY_EDU, "История сезонов", "Чемпионы, зачёты и победители с 1950 года",

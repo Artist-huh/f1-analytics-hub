@@ -13,6 +13,9 @@ def render(state):
     standings, constructors = state.standings, state.constructors
 
     sections = []
+    now_live = state.live_now()
+    if now_live:
+        sections.append(_build_live_banner(state, *now_live))
     race = state.next_race()
     if race:
         sections.append(_build_next_race_hero(race, state, is_mobile))
@@ -110,6 +113,21 @@ def _build_next_race_hero(race, state, is_mobile):
         on_click=lambda e: state.open_tab(2),
         ink=True,
     )
+
+
+def _build_live_banner(state, race, session_key):
+    """Сессия идёт прямо сейчас -> live-тайминг."""
+    from ui.fmt import SESSION_NAMES
+    name = SESSION_NAMES.get(session_key, session_key)
+    return AnimatedCard(ft.Row([
+        ft.Container(ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC), bgcolor=DANGER,
+                     border_radius=RADIUS_FULL, padding=ft.Padding.symmetric(horizontal=10, vertical=4)),
+        ft.Column([ft.Text(f"Сейчас: {name}", size=FONT_BODY, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
+                   ft.Text(f"{race['race_name']} · позиции, отрывы, шины", size=FONT_CAPTION, color=TEXT_MUTED)],
+                  spacing=0, expand=True),
+        ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM),
+    ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=SPACE_SM, accent=DANGER, on_click=lambda e: state.open_sub("live"))
 
 
 def _build_last_podium(state, race, podium, compact):
