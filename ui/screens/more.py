@@ -27,6 +27,8 @@ def build_menu(state):
               lambda e: state.open_sub("compare")),
         _tile(ft.Icons.EMOJI_EVENTS, "Борьба за титул", "Кто ещё может стать чемпионом и что нужно лидеру",
               lambda e: state.open_sub("title")),
+        _tile(ft.Icons.HISTORY_EDU, "История сезонов", "Чемпионы, зачёты и победители с 1950 года",
+              lambda e: state.open_sub("history")),
         _tile(ft.Icons.STAR_ROUNDED, "Избранное", "Мои пилоты и их результаты",
               lambda e: state.open_sub("favorites")),
         _tile(ft.Icons.TIMELINE, "Стратегия", "Какие шины и сколько остановок на трассе",

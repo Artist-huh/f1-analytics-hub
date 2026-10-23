@@ -10,7 +10,7 @@ from unittest import mock
 
 import requests
 
-from services import db, f1_api, jolpica, media, seed, stats
+from services import archive, db, f1_api, jolpica, media, seed, stats
 
 
 def standings_json(points_lec="126", season="2026", rnd="10", empty=False):
@@ -627,6 +627,90 @@ class MediaTest(unittest.TestCase):
         with mock.patch.object(media._session, "get", fail):
             media.prefetch([("https://flagcdn.com/w80/it.png", None)]).join(10)
         self.assertEqual(media.flag("it"), "https://flagcdn.com/w80/it.png")
+
+
+class ArchiveTest(unittest.TestCase):
+    """История сезонов и трассы: загрузка в фоне, кэш, ошибки сети, разбор ответа, рекорды."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["F1_HUB_DB"] = os.path.join(self.tmp.name, "a.db")
+        seed_env = mock.patch.dict(os.environ, {"F1_HUB_SEED": os.path.join(self.tmp.name, "seed.json")})
+        seed_env.start()
+        self.addCleanup(seed_env.stop)
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(os.environ.pop, "F1_HUB_DB", None)
+
+    def _wait(self, key):
+        for _ in range(200):
+            if not archive.loading(key):
+                return
+            time.sleep(0.01)
+
+    def test_get_caches_and_respects_ttl(self):
+        calls = []
+        done = threading.Event()
+        fetch = lambda: calls.append(1) or {"n": len(calls)}   # noqa: E731
+        self.assertIsNone(archive.get("k", fetch, ttl=None, on_done=done.set))   # сначала — пусто, загрузка в фоне
+        self.assertTrue(done.wait(3))
+        self._wait("k")
+        self.assertEqual(archive.get("k", fetch, ttl=None), {"n": 1})            # прошлый сезон — бессрочно
+        self.assertEqual(len(calls), 1)
+        with mock.patch.object(time, "time", return_value=time.time() + 10):
+            self.assertEqual(archive.get("k", fetch, ttl=5), {"n": 1})          # устарело: старое + перезагрузка
+        self._wait("k")
+        self.assertEqual(len(calls), 2)
+
+    def test_error_is_reported_and_old_copy_kept(self):
+        def boom():
+            raise jolpica.ApiError("offline")
+        archive.get("e", boom)
+        self._wait("e")
+        self.assertIn("offline", archive.error("e"))
+        self.assertIsNone(db.load_archive("e")[0])
+
+    def test_season_archive_parsing(self):
+        winners = {"MRData": {"total": "2", "RaceTable": {"season": "2010", "Races": [
+            _race("1", "Bahrain GP", "Results", [{"Driver": {"driverId": "alonso", "code": "ALO", "givenName": "Fernando",
+                                                            "familyName": "Alonso", "nationality": "Spanish"},
+                                                 "Constructor": {"name": "Ferrari"}, "grid": "3"}]),
+        ]}}}
+
+        def fake_get(url, params=None, timeout=None):
+            if "driverStandings" in url:
+                return FakeResponse(standings_json(season="2010", rnd="19"))
+            if "constructorStandings" in url:
+                return FakeResponse(constructors_json())
+            return FakeResponse(winners)
+
+        with mock.patch.object(jolpica._session, "get", fake_get), mock.patch.object(jolpica, "MIN_INTERVAL", 0):
+            data = jolpica.fetch_season_archive(2010)
+        self.assertEqual((data["rounds"], len(data["standings"]), data["constructors"][0]["name"]),
+                         ("19", 3, "Ferrari"))
+        self.assertEqual((data["winners"][0]["name"], data["winners"][0]["team"]), ("Fernando Alonso", "Ferrari"))
+        with mock.patch.object(jolpica._session, "get", fake_get), mock.patch.object(jolpica, "MIN_INTERVAL", 0):
+            self.assertEqual(jolpica.fetch_season_archive(1955)["constructors"], [])   # Кубок — с 1958 года
+
+    def test_champions_and_records(self):
+        rows = [{"season": "2021", "name": "Max Verstappen", "nationality": "Dutch", "constructor": "Mercedes", "wins": "10"},
+                {"season": "2020", "name": "Lewis Hamilton", "nationality": "British", "constructor": "Mercedes", "wins": "11"},
+                {"season": "2019", "name": "Lewis Hamilton", "nationality": "British", "constructor": "Mercedes", "wins": "11"}]
+        Path(os.environ["F1_HUB_SEED"]).parent.joinpath("champions.json").write_text(
+            json.dumps({"version": 1, "champions": list(reversed(rows))}), encoding="utf-8")
+        self.assertEqual([r["season"] for r in archive.champions()], ["2021", "2020", "2019"])   # новые сверху
+        rec = archive.records(archive.champions())
+        self.assertEqual(rec["drivers"][0], ("Lewis Hamilton", 2))
+        self.assertEqual(rec["teams"][0], ("Mercedes", 3))
+        self.assertEqual(rec["best_wins"]["wins"], "11")
+
+    def test_bundled_champions_file_is_complete(self):
+        """Встроенный список: каждый сезон с 1950 года, у каждого — чемпион."""
+        path = Path(__file__).resolve().parent.parent / "data" / "champions.json"
+        rows = json.loads(path.read_text(encoding="utf-8"))["champions"]
+        seasons = [int(r["season"]) for r in rows]
+        self.assertEqual(seasons, list(range(1950, seasons[-1] + 1)))
+        self.assertTrue(all(r["name"] and r["team"] for r in rows))
+        self.assertEqual(next(r for r in rows if r["season"] == "1950")["name"], "Nino Farina")
 
 
 class StatsTest(unittest.TestCase):

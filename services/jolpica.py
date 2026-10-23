@@ -57,9 +57,9 @@ def _get(path, params=None):
         raise ApiError(f"{path}: {exc}") from exc
 
 
-def fetch_standings():
+def fetch_standings(season="current"):
     """-> (season, round, rows). rows пустой, если сезон ещё не начался."""
-    mr = _get("current/driverStandings.json")
+    mr = _get(f"{season}/driverStandings.json", params={"limit": 100})
     try:
         table = mr["StandingsTable"]
         season = str(table.get("season", ""))
@@ -167,9 +167,9 @@ def fetch_sprints():
         raise ApiError(f"sprint: неожиданный формат ответа ({exc!r})") from exc
 
 
-def fetch_constructor_standings():
-    """-> (season, round, rows) — Кубок конструкторов."""
-    mr = _get("current/constructorStandings.json")
+def fetch_constructor_standings(season="current"):
+    """-> (season, round, rows) — Кубок конструкторов (с 1958 года)."""
+    mr = _get(f"{season}/constructorStandings.json", params={"limit": 100})
     try:
         table = mr["StandingsTable"]
         season = str(table.get("season", ""))
@@ -226,6 +226,7 @@ def fetch_schedule():
                 "round": str(race["round"]),
                 "race_name": race.get("raceName", ""),
                 "circuit": circuit.get("circuitName", "—"),
+                "circuit_id": circuit.get("circuitId", ""),
                 "locality": loc.get("locality", ""),
                 "country": loc.get("country", ""),
                 "date": race["date"],
@@ -235,3 +236,61 @@ def fetch_schedule():
         return season, rows
     except (KeyError, TypeError, ValueError) as exc:
         raise ApiError(f"schedule: неожиданный формат ответа ({exc!r})") from exc
+
+
+# ---------------------------------------------------------------- архив
+def _person(drv):
+    return {"driver_id": drv.get("driverId", ""), "code": drv.get("code", ""),
+            "name": f"{drv.get('givenName', '')} {drv.get('familyName', '')}".strip(),
+            "nationality": drv.get("nationality", "")}
+
+
+def _winner_rows(races):
+    rows = []
+    for race in races:
+        res = (race.get("Results") or [{}])[0]
+        rows.append({**_race_info(race), "season": str(race.get("season", "")),
+                     "circuit_id": race.get("Circuit", {}).get("circuitId", ""),
+                     **_person(res.get("Driver", {})),
+                     "team": (res.get("Constructor") or {}).get("name", ""),
+                     "grid": str(res.get("grid", ""))})
+    return rows
+
+
+def fetch_season_archive(year):
+    """Сезон year целиком: личный зачёт, Кубок конструкторов (с 1958), победители гонок."""
+    _, rounds, standings = fetch_standings(str(year))
+    constructors = fetch_constructor_standings(str(year))[2] if int(year) >= 1958 else []
+    _, races = _get_all(f"{year}/results/1.json")
+    try:
+        winners = _winner_rows(races)
+    except (KeyError, TypeError) as exc:
+        raise ApiError(f"archive {year}: неожиданный формат ответа ({exc!r})") from exc
+    return {"season": str(year), "rounds": rounds, "standings": standings, "constructors": constructors,
+            "winners": winners}
+
+
+def fetch_circuit_stats(circuit_id):
+    """Трасса за все годы: победители, обладатели поула, авторы быстрых кругов (данные о кругах — с 2004)."""
+    _, wins = _get_all(f"circuits/{circuit_id}/results/1.json")
+    _, poles = _get_all(f"circuits/{circuit_id}/qualifying/1.json")
+    _, fastest = _get_all(f"circuits/{circuit_id}/fastest/1/results.json")
+    try:
+        pole_rows = []
+        for race in poles:
+            q = (race.get("QualifyingResults") or [{}])[0]
+            pole_rows.append({"season": str(race.get("season", "")), **_person(q.get("Driver", {})),
+                              "team": (q.get("Constructor") or {}).get("name", ""),
+                              "time": q.get("Q3") or q.get("Q2") or q.get("Q1") or ""})
+        fastest_rows = []
+        for race in fastest:
+            for res in race.get("Results") or []:
+                lap = res.get("FastestLap") or {}
+                if str(lap.get("rank")) != "1":
+                    continue
+                fastest_rows.append({"season": str(race.get("season", "")), **_person(res.get("Driver", {})),
+                                     "team": (res.get("Constructor") or {}).get("name", ""),
+                                     "time": (lap.get("Time") or {}).get("time", "")})
+        return {"circuit_id": circuit_id, "winners": _winner_rows(wins), "poles": pole_rows, "fastest": fastest_rows}
+    except (KeyError, TypeError) as exc:
+        raise ApiError(f"circuit {circuit_id}: неожиданный формат ответа ({exc!r})") from exc

@@ -15,12 +15,12 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4   # v4: schedule.circuit_id, таблица archive
 APP_DIR = ".f1_analytics_hub"
 LEGACY_DIRS = (".ferrari_leclerc_hub",)   # старое имя папки — база переносится при первом запуске
 
 CACHE_TABLES = ("standings", "constructor_standings", "race_results", "qualifying", "sprint_results",
-                "schedule", "driver_media", "meta")
+                "schedule", "driver_media", "archive", "meta")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -92,7 +92,13 @@ CREATE TABLE IF NOT EXISTS schedule (
     date      TEXT,
     start_ts  REAL    NOT NULL,
     sessions  TEXT    NOT NULL,
+    circuit_id TEXT,
     PRIMARY KEY (season, round)
+);
+CREATE TABLE IF NOT EXISTS archive (
+    key     TEXT PRIMARY KEY,
+    json    TEXT NOT NULL,
+    fetched REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS driver_media (
     code     TEXT PRIMARY KEY,
@@ -392,12 +398,12 @@ def load_constructors():
 def save_schedule(season, rows, fetched=None):
     data = [
         (season, int(r["round"]), r["race_name"], r["circuit"], r["locality"], r["country"],
-         r["date"], float(r["start_ts"]), json.dumps(r["sessions"]))
+         r["date"], float(r["start_ts"]), json.dumps(r["sessions"]), r.get("circuit_id", ""))
         for r in rows
     ]
     with _connect() as con:
         con.execute("DELETE FROM schedule WHERE season=?", (season,))
-        con.executemany("INSERT INTO schedule VALUES (?,?,?,?,?,?,?,?,?)", data)
+        con.executemany("INSERT INTO schedule VALUES (?,?,?,?,?,?,?,?,?,?)", data)
         _meta_set(con, "schedule_season", season)
         _meta_set(con, "schedule_fetched_at", fetched or time.time())
 
@@ -418,10 +424,25 @@ def load_schedule():
             "date": r["date"],
             "start_ts": r["start_ts"],
             "sessions": json.loads(r["sessions"]),
+            "circuit_id": r["circuit_id"] or "",
             "season": r["season"],
         }
         for r in rows
     ]
+
+
+# ---------- архив: история сезонов, статистика трасс (JSON по ключу) ----------
+def save_archive(key, data, fetched=None):
+    with _connect() as con:
+        con.execute("INSERT OR REPLACE INTO archive VALUES (?, ?, ?)",
+                    (key, json.dumps(data, ensure_ascii=False), fetched or time.time()))
+
+
+def load_archive(key):
+    """-> (данные, время загрузки) или (None, None)."""
+    with _connect() as con:
+        row = con.execute("SELECT json, fetched FROM archive WHERE key=?", (key,)).fetchone()
+    return (json.loads(row["json"]), row["fetched"]) if row else (None, None)
 
 
 # ---------- медиа пилотов (OpenF1) ----------

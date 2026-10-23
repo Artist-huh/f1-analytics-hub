@@ -184,6 +184,10 @@ class UiSmokeTest(unittest.TestCase):
         seed_env = mock.patch.dict(os.environ, {"F1_HUB_SEED": os.path.join(self.tmp.name, "no-seed.json")})
         seed_env.start()   # снимок и встроенные картинки из data/ тестам не видны
         self.addCleanup(seed_env.stop)
+        from services import archive
+        offline = mock.patch.object(archive, "get", lambda key, fetch, ttl=None, on_done=None: db.load_archive(key)[0])
+        offline.start()    # история и трассы: только кэш, без фоновых запросов в сеть
+        self.addCleanup(offline.stop)
         api._state.update(error=None, fail_until=0.0)
         media.clear_memory()
         self.page = FakePage()
@@ -477,6 +481,41 @@ class UiSmokeTest(unittest.TestCase):
             self.assertIn(expected, t)
         self.state.ui["team"] = "Unknown"
         self.assertIn("Команда не выбрана", texts(self.build("team")))
+
+    def test_history_screen(self):
+        from services import archive
+        fill_db()
+        self.state.load()
+        season_2025 = {"season": "2025", "rounds": "24", "standings": [
+            {"position": "1", "points": "423", "wins": "7", "driver_id": "norris", "code": "NOR", "name": "Lando Norris",
+             "team": "McLaren", "nationality": "British", "number": "4"},
+            {"position": "2", "points": "421", "wins": "8", "driver_id": "verstappen", "code": "VER",
+             "name": "Max Verstappen", "team": "Red Bull", "nationality": "Dutch", "number": "1"}],
+            "constructors": [{"position": "1", "points": "833", "wins": "14", "name": "McLaren",
+                              "constructor_id": "mclaren", "nationality": "British"}],
+            "winners": [{"round": "1", "race_name": "Australian GP", "country": "Australia", "name": "Lando Norris",
+                         "team": "McLaren", "driver_id": "norris"}]}
+        db.save_archive(archive.season_key(2025), season_2025)
+        t = texts(self.build("history"))
+        for expected in ("ЧЕМПИОН МИРА", "Lando Norris", "Кубок конструкторов: McLaren", "ЛИЧНЫЙ ЗАЧЁТ",
+                         "ПОБЕДИТЕЛИ ГОНОК", "Больше всего побед: Lando Norris — 1"):
+            self.assertIn(expected, t)
+        with mock.patch.object(archive, "season", return_value=None), \
+             mock.patch.object(archive, "loading", return_value=True):
+            self.state.ui["hist_year"] = 1988
+            self.assertIn("Загружаем сезон 1988…", texts(self.build("history")))
+        rows = [{"season": "2025", "name": "Lando Norris", "team": "McLaren", "nationality": "British",
+                 "constructor": "McLaren", "wins": "7"},
+                {"season": "2024", "name": "Max Verstappen", "team": "Red Bull", "nationality": "Dutch",
+                 "constructor": "McLaren", "wins": "9"}]
+        with mock.patch.object(archive, "champions", return_value=rows):
+            self.state.ui["hist_view"] = "champions"
+            tree = self.build("history")
+            t = texts(tree)
+            self.assertIn("РЕКОРДЫ", t)
+            self.assertIn("2026: Andrea Kimi Antonelli", t)            # текущий сезон — лидер
+            clickable(tree, "Max Verstappen")[0].on_click(Ctl())       # год -> сезон
+            self.assertEqual((self.state.ui["hist_view"], self.state.ui["hist_year"]), ("season", 2024))
 
     def test_title_fight_screen(self):
         fill_db()
