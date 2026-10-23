@@ -106,3 +106,55 @@ jobs:
       run: |
         mv release/F1AnalyticsHub-macOS.zip "F1AnalyticsHub-${{ github.event.release.tag_name }}-macOS.zip"
         gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-macOS.zip" --clobber
+
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Cache Flutter SDK
+      uses: actions/cache@v6
+      with:
+        path: ~/flutter
+        key: flutter-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      env:
+        F1_HUB_LOG: "off"
+      run: python -m unittest discover -s tests -t .
+
+    - name: Build APK (flet build installs Flutter itself; Android SDK is on the runner)
+      run: flet build apk --yes --no-rich-output --skip-flutter-doctor
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: F1AnalyticsHub-Android
+        path: build/apk/*.apk
+
+    - name: Upload release asset
+      if: github.event_name == 'release'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cp build/apk/*.apk "F1AnalyticsHub-${{ github.event.release.tag_name }}-Android.apk"
+        gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-Android.apk" --clobber
