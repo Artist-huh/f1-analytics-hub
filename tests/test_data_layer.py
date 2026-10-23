@@ -270,6 +270,25 @@ class DataLayerTest(unittest.TestCase):
         self.assertFalse(f1_api.refresh_standings(force=True))
         self.assertEqual(f1_api.get_cached_standings(), [])
 
+    def test_rate_limit_retry_on_pages(self):
+        """429 на длинной выгрузке: страница повторяется с паузой, прочие ошибки — сразу наружу."""
+        answers = [jolpica.ApiError("x: 429 Too Many Requests"), jolpica.ApiError("x: 429"),
+                   {"total": "1", "RaceTable": {"season": "2026", "Races": [{"round": "1"}]}}]
+
+        def fake_get(path, params=None):
+            a = answers.pop(0)
+            if isinstance(a, Exception):
+                raise a
+            return a
+
+        sleeps = []
+        with mock.patch.object(jolpica, "_get", fake_get), mock.patch.object(jolpica.time, "sleep", sleeps.append):
+            self.assertEqual(jolpica._get_all("x")[1], [{"round": "1"}])
+        self.assertEqual(sleeps, [3, 8])
+        with mock.patch.object(jolpica, "_get", side_effect=jolpica.ApiError("x: 500")), \
+                mock.patch.object(jolpica.time, "sleep", sleeps.append):
+            self.assertRaises(jolpica.ApiError, jolpica._get_all, "x")
+
     def test_malformed_results_keep_old_copy(self):
         self.patch_net()
         f1_api.refresh_all(force=True)

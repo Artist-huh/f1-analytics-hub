@@ -1,10 +1,10 @@
-"""Стратегия шин гонки: полосы по кругам для каждого пилота, цвет — состав шин, отметки пит-стопов"""
+"""Разбор гонки, вкладка «Шины»: полосы по кругам для каждого пилота, цвет — состав, отметки пит-стопов"""
 import flet as ft
 from design_system import *
 from services import archive, live
 from ui.components import *
 from ui.fmt import plural
-from ui.widgets import retry_block, screen
+from ui.widgets import retry_block
 
 TYRE_NAMES = {"S": "мягкие", "M": "средние", "H": "жёсткие", "I": "промежуточные", "W": "дождевые"}
 TYRE_COLOR = {"S": TYRE_COLORS["SOFT"], "M": TYRE_COLORS["MEDIUM"], "H": TYRE_COLORS["HARD"],
@@ -23,27 +23,22 @@ def finishing_order(state, race):
     return [codes.get(r["driver_id"], "") for r in rows]
 
 
-def build(state):
-    race = state.ui.get("strat_race")
-    if not race:
-        return screen(state, "Стратегия шин", [empty_block(ft.Icons.TIRE_REPAIR_ROUNDED, "Гонка не выбрана",
-                                                           "Открой прошедший этап в календаре.")], back=True)
+def tyres_section(state, race):
+    """Вкладка «Шины» разбора гонки: полосы стинтов по кругам (OpenF1)."""
     key = strategy_key(race)
-    data = archive.get(key, lambda: live.fetch_strategy(int(race["season"]), race["date"]), None, state.render)
+    fetch = lambda: live.fetch_strategy(int(race["season"]), race["date"])   # noqa: E731
+    data = archive.get(key, fetch, None, state.render)
     if not data:
         if archive.loading(key):
-            body = [ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
+            return [ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
                             ft.Text("Загружаем стинты и пит-стопы…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
                            spacing=SPACE_SM)]
-        else:
-            err = archive.error(key)
-            hint = (live.LOCKED_TEXT if err == live.LOCKED_TEXT else
-                    "OpenF1 не отдал данные этой гонки — возможно, они ещё не опубликованы." if err else
-                    "Нужен интернет: данные загружаются один раз и дальше доступны без сети.")
-            body = [retry_block("Стратегия не загружена", hint,
-                                lambda e: (archive.get(key, lambda: live.fetch_strategy(int(race["season"]), race["date"]),
-                                                       None, state.render, force=True), state.render()))]
-        return screen(state, "Стратегия шин", body, subtitle=race["race_name"], back=True)
+        err = archive.error(key)
+        hint = (live.LOCKED_TEXT if err == live.LOCKED_TEXT else
+                "OpenF1 не отдал данные этой гонки — возможно, они ещё не опубликованы." if err else
+                "Нужен интернет: данные загружаются один раз и дальше доступны без сети.")
+        return [retry_block("Стратегия не загружена", hint,
+                            lambda e: (archive.get(key, fetch, None, state.render, force=True), state.render()))]
 
     rows = live.strategy_rows(data, finishing_order(state, race))
     used = sorted({s["tyre"] for r in rows for s in r["stints"]}, key=lambda t: "SMHIW?".index(t) if t in "SMHIW" else 9)
@@ -54,7 +49,7 @@ def build(state):
     common = max(set(stops), key=stops.count) if stops else 0
     summary = (f"{data['laps']} {plural(data['laps'], 'круг', 'круга', 'кругов')} · чаще всего — "
                f"{common} {plural(common, 'пит-стоп', 'пит-стопа', 'пит-стопов')}")
-    body = [
+    return [
         AnimatedCard(ft.Column([ft.Text(summary, size=FONT_BODY_SMALL, color=TEXT_SECONDARY), legend_row],
                                spacing=SPACE_XS), padding=SPACE_SM),
         _axis(data["laps"]),
@@ -62,7 +57,6 @@ def build(state):
         ft.Text("Источник — OpenF1. Порядок — по местам финиша; цифры на полосах — номер круга пит-стопа.",
                 size=FONT_CAPTION, color=TEXT_DIM),
     ]
-    return screen(state, "Стратегия шин", body, subtitle=f"{race['round']}. {race['race_name']}", back=True)
 
 
 LABEL_W = 46

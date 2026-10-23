@@ -601,6 +601,38 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.ui["driver_id"], "leclerc")
         self.state.sub = None                                       # поток наблюдения завершится сам
 
+    def test_race_analysis_tabs(self):
+        from services import stats
+        from ui.screens import race as race_screen
+        laps = {"antonelli": [[1, 2, 100.0], [2, 1, 95.0], [3, 1, 95.5], [4, 1, 120.0], [5, 1, 95.2]],
+                "leclerc": [[1, 1, 99.0], [2, 2, 95.4], [3, 2, 95.6], [4, 2, 95.9], [5, 2, 96.0]],
+                "lawson": [[1, 3, 101.0], [2, 3, 97.0], [3, 3, 97.2], [4, 3, 97.1], [5, 3, 97.5]]}
+        self.assertEqual([n for n, _ in stats.clean_laps(laps["antonelli"])], [2, 3, 5])   # без 1-го и пит-стопа
+        self.assertEqual(stats.pace_summary(laps["antonelli"])["best"], 95.0)
+        quali = [{"driver_id": "antonelli", "code": "ANT", "team": "Mercedes", "position": "1", "q3": "1:30.000",
+                  "name": "Andrea Kimi Antonelli"},
+                 {"driver_id": "leclerc", "code": "LEC", "team": "Ferrari", "position": "2", "q3": "1:30.250"},
+                 {"driver_id": "lawson", "code": "LAW", "team": "Racing Bulls", "position": "3", "q2": "1:31.100"}]
+        self.assertEqual([round(g, 3) for _, _, g in stats.quali_gaps(quali)], [0, 0.25, 1.1])
+        fill_db()
+        self.state.load()
+        race = self.state.schedule[2]
+        db.save_archive(race_screen.laps_key(race), laps)
+        db.save_archive(race_screen.quali_key(race), quali)
+        self.state.open_race_strategy(race)
+        for view, expected in (("positions", "5 кругов"), ("pace", "быстрее всех"), ("quali", "+0.250")):
+            with self.subTest(view=view):
+                self.state.ui["race_view"] = view
+                t = " ".join(texts(self.build("race_strategy")))
+                self.assertIn(expected, t)
+        self.state.ui["race_view"] = "pace"
+        clickable(self.build("race_strategy"), "LAW")[0].on_click(Ctl())       # по умолчанию — тройка финиша
+        self.assertEqual(self.state.ui["pace_ids"], ["antonelli", "leclerc"])  # нажатие снимает с графика
+        clickable(self.build("race_strategy"), "LAW")[0].on_click(Ctl())
+        self.assertIn("lawson", self.state.ui["pace_ids"])                    # и возвращает
+        self.state.ui["race_view"] = "quali"
+        self.assertIn("Поул: Andrea Kimi Antonelli — 1:30.000", texts(self.build("race_strategy")))
+
     def test_season_heatmap(self):
         from ui.screens import heatmap
         ds = design_system

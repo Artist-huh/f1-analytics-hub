@@ -242,7 +242,8 @@ def _strategy_button(state, race):
 
     return ft.Container(
         ft.Row([ft.Icon(ft.Icons.TIRE_REPAIR_ROUNDED, color=ACCENT_TEXT, size=18),
-                ft.Text("Стратегия шин", size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
+                ft.Text("Разбор гонки: шины, позиции, темп", size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
+                        weight=ft.FontWeight.W_600),
                 ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM, size=18)], spacing=SPACE_XS, tight=True),
         height=TOUCH, padding=ft.Padding.symmetric(horizontal=SPACE_SM), border_radius=RADIUS_MD,
         bgcolor=SURFACE_RAISED, ink=True, on_click=go, alignment=ft.Alignment.CENTER_LEFT,

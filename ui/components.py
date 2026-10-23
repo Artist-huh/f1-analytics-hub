@@ -389,3 +389,67 @@ def legend(series):
                 ft.Text(name, size=FONT_CAPTION, color=TEXT_SECONDARY)], spacing=6, tight=True)
         for name, color, _ in series
     ], wrap=True, spacing=SPACE_SM, run_spacing=SPACE_XXS)
+
+
+def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False, y_format=None, ticks=5,
+                 end_labels=True):
+    """График по точкам (x, y) на canvas. series — [(подпись, цвет, [(x, y), ...], толщина)].
+    invert=True — меньшие значения сверху (позиции: P1 вверху). Ось Y не обязана начинаться с нуля
+    (время круга). y_format(v) — подпись делений; end_labels — значение у конца каждой линии."""
+    width = max(220, width)
+    left, right, top, bottom = 40, 46 if end_labels else 12, 10, 22
+    plot_w, plot_h = width - left - right, height - top - bottom
+    xs = [x for *_, pts, _w in series for x, _ in pts]
+    ys = [y for *_, pts, _w in series for _, y in pts]
+    if not xs:
+        return ft.Container(height=height)
+    x0, x1 = min(xs), max(xs)
+    lo = y_min if y_min is not None else min(ys)
+    hi = y_max if y_max is not None else max(ys)
+    if hi == lo:
+        hi = lo + 1
+    fmt = y_format or (lambda v: f"{v:g}")
+
+    def x(v):
+        return left + plot_w * ((v - x0) / (x1 - x0) if x1 > x0 else 0.5)
+
+    def y(v):
+        frac = (v - lo) / (hi - lo)
+        return top + plot_h * (frac if invert else 1 - frac)
+
+    shapes = []
+    grid = ft.Paint(color=LINE, stroke_width=1, style=ft.PaintingStyle.STROKE)
+    label_style = ft.TextStyle(size=10, color=TEXT_DIM)
+    for k in range(ticks):
+        v = lo + (hi - lo) * k / (ticks - 1)
+        shapes.append(cv.Line(left, y(v), left + plot_w, y(v), paint=grid))
+        shapes.append(cv.Text(left - 6, y(v), fmt(v), style=label_style, alignment=ft.Alignment.CENTER_RIGHT))
+    span = x1 - x0
+    step = max(1, round(span / 6 / 5) * 5) if span > 10 else 1
+    for v in range(int(x0), int(x1) + 1):
+        if (v - x0) % step == 0 or v == x1:
+            if v == x1 or x1 - v >= step / 2:
+                shapes.append(cv.Text(x(v), height - 4, str(v), style=label_style,
+                                      alignment=ft.Alignment.BOTTOM_CENTER))
+    for name, color, pts, line_w in series:
+        if not pts:
+            continue
+        paint = ft.Paint(color=color, stroke_width=line_w, style=ft.PaintingStyle.STROKE,
+                         stroke_cap=ft.StrokeCap.ROUND, stroke_join=ft.StrokeJoin.ROUND)
+        elements = [cv.Path.MoveTo(x(pts[0][0]), y(pts[0][1]))] + [cv.Path.LineTo(x(a), y(b)) for a, b in pts[1:]]
+        shapes.append(cv.Path(elements, paint=paint))
+        if end_labels and line_w >= 2:
+            ex, ey = pts[-1]
+            shapes.append(cv.Circle(x(ex), y(ey), 3.5, paint=ft.Paint(color=color)))
+            shapes.append(cv.Text(x(ex) + 6, y(ey), name, style=ft.TextStyle(size=10, color=color,
+                                                                            weight=ft.FontWeight.BOLD),
+                                  alignment=ft.Alignment.CENTER_LEFT))
+    return cv.Canvas(shapes=shapes, width=width, height=height)
+
+
+def fmt_lap(seconds):
+    """97.3 -> '1:37.300'."""
+    if seconds is None:
+        return "—"
+    m, s = divmod(seconds, 60)
+    return f"{int(m)}:{s:06.3f}"

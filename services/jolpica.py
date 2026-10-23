@@ -90,11 +90,29 @@ def fetch_standings(season="current"):
 PAGE = 100   # больше Jolpica за один запрос не отдаёт
 
 
+PAGE_PAUSE = 0.35      # между страницами: Jolpica режет пачки запросов (429)
+RATE_RETRIES = (3, 8, 15)   # сек. ожидания перед повтором страницы после 429
+
+
+def _get_page(path, params):
+    """Одна страница с повторами при «слишком много запросов» (429): длинные выгрузки (круги гонки —
+    13 страниц) упираются в лимит Jolpica, особенно если параллельно идёт фоновое обновление."""
+    for wait in RATE_RETRIES + (None,):
+        try:
+            return _get(path, params=params)
+        except ApiError as exc:
+            if wait is None or "429" not in str(exc):
+                raise
+            time.sleep(wait)
+
+
 def _get_all(path):
     """Все страницы ответа (результаты сезона ~400 строк = 4-5 запросов). -> список Races."""
     races, offset, total = [], 0, None
     while total is None or offset < total:
-        mr = _get(path, params={"limit": PAGE, "offset": offset})
+        if offset:
+            time.sleep(PAGE_PAUSE)
+        mr = _get_page(path, {"limit": PAGE, "offset": offset})
         try:
             total = int(mr.get("total", 0))
             races += mr["RaceTable"].get("Races") or []
@@ -294,3 +312,48 @@ def fetch_circuit_stats(circuit_id):
         return {"circuit_id": circuit_id, "winners": _winner_rows(wins), "poles": pole_rows, "fastest": fastest_rows}
     except (KeyError, TypeError) as exc:
         raise ApiError(f"circuit {circuit_id}: неожиданный формат ответа ({exc!r})") from exc
+
+
+# ---------------------------------------------------------------- разбор гонки
+def lap_seconds(text):
+    """'1:42.290' -> 102.29; пусто или ошибка -> None."""
+    try:
+        minutes, rest = text.split(":") if ":" in text else ("0", text)
+        return int(minutes) * 60 + float(rest)
+    except (AttributeError, ValueError):
+        return None
+
+
+def fetch_race_laps(year, rnd):
+    """Позиция и время каждого круга каждого пилота: {driver_id: [(круг, позиция, секунды), ...]}.
+    ~1200 строк на гонку — 13 запросов по 100; данные прошедшей гонки не меняются."""
+    _, races = _get_all(f"{year}/{rnd}/laps.json")
+    out = {}
+    try:
+        for race in races:
+            for lap in race.get("Laps") or []:
+                n = int(lap["number"])
+                for t in lap.get("Timings") or []:
+                    out.setdefault(t["driverId"], []).append([n, int(t["position"]), lap_seconds(t.get("time"))])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ApiError(f"laps {year}/{rnd}: неожиданный формат ответа ({exc!r})") from exc
+    for rows in out.values():
+        rows.sort()
+    return out
+
+
+def fetch_race_qualifying(year, rnd):
+    """Квалификация этапа с временами Q1/Q2/Q3."""
+    mr = _get(f"{year}/{rnd}/qualifying.json", params={"limit": 100})
+    try:
+        races = mr["RaceTable"].get("Races") or []
+        rows = []
+        for q in (races[0].get("QualifyingResults") or []) if races else []:
+            drv = q["Driver"]
+            rows.append({"driver_id": drv["driverId"], "code": drv.get("code", ""),
+                         "name": f"{drv['givenName']} {drv['familyName']}",
+                         "team": (q.get("Constructor") or {}).get("name", ""), "position": q["position"],
+                         "q1": q.get("Q1", ""), "q2": q.get("Q2", ""), "q3": q.get("Q3", "")})
+        return rows
+    except (KeyError, TypeError, IndexError) as exc:
+        raise ApiError(f"qualifying {year}/{rnd}: неожиданный формат ответа ({exc!r})") from exc

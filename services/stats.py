@@ -190,3 +190,36 @@ def title_race(rows, races_left, sprints_left, kind="drivers", next_has_sprint=F
             need = max(need, 0)
             next_clinch = int(need) if float(need).is_integer() else need
     return {"available": available, "contenders": contenders, "clinched": clinched, "next_clinch": next_clinch}
+
+
+# ---------------------------------------------------------------- разбор гонки
+def clean_laps(laps, cutoff=1.04):
+    """Чистые круги для темпа: без первого круга, кругов заезда/выезда из боксов и сейфти-кара —
+    всё, что медленнее медианы пилота больше чем на 4 % (заезд в боксы — это +5–20 с).
+    laps: [(круг, позиция, секунды)]."""
+    times = sorted(t for n, _, t in laps if t and n > 1)
+    if not times:
+        return []
+    median = times[len(times) // 2]
+    return [(n, t) for n, _, t in laps if t and n > 1 and t <= median * cutoff]
+
+
+def pace_summary(laps):
+    clean = clean_laps(laps)
+    times = sorted(t for _, t in clean)
+    if not times:
+        return {"median": None, "best": None, "laps": 0}
+    return {"median": times[len(times) // 2], "best": times[0], "laps": len(times)}
+
+
+def quali_gaps(rows):
+    """Отставание от поула: лучшее время пилота в той части квалификации, до которой он дошёл.
+    -> [(строка, лучшее_время_сек, отставание_сек)] по местам; без времени — отставание None."""
+    from .jolpica import lap_seconds
+    out = []
+    for r in rows:
+        times = [lap_seconds(r.get(k, "")) for k in ("q3", "q2", "q1")]
+        best = next((t for t in times if t), None)
+        out.append([r, best])
+    pole = next((b for _, b in out if b), None)
+    return [(r, b, (b - pole) if b and pole else None) for r, b in out]
