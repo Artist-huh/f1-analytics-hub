@@ -2,8 +2,28 @@
 import flet as ft
 
 from design_system import (
-    ACCENT, ACCENT_DEEP, ACCENT_GLOW, BG, DIM, F1_RED, FONT_DISPLAY_ITALIC, FONT_H2, FONT_HEADING, FONT_SCALE, LINE, MUTED, OK,
-    ON_ACCENT, RADIUS_FULL, RAISED, SURFACE, SURFACE_ELEVATED, TEXT, TOUCH, TYRES, WARN, DANGER, glow,
+    ACCENT,
+    ACCENT_DEEP,
+    ACCENT_GLOW,
+    DANGER,
+    DIM,
+    F1_RED,
+    FONT_DISPLAY_ITALIC,
+    FONT_H2,
+    FONT_HEADING,
+    FONT_SCALE,
+    LINE,
+    MUTED,
+    OK,
+    ON_ACCENT,
+    RADIUS_FULL,
+    RAISED,
+    SURFACE,
+    TEXT,
+    TOUCH,
+    TYRES,
+    WARN,
+    glow,
 )
 
 
@@ -97,7 +117,8 @@ def status_chip(state, compact=False):
         }.get(state.status["state"], ("Нет данных", DANGER))
     dot = ft.Container(width=8, height=8, bgcolor=color, border_radius=4,
                        shadow=ft.BoxShadow(blur_radius=8, color=ft.Colors.with_opacity(0.8, color)))
-    items = [dot] + ([] if compact else [txt(label, 12, TEXT)]) + [ft.Icon(ft.Icons.REFRESH_ROUNDED, color=MUTED, size=16)]
+    items = [dot] + ([] if compact else [txt(label, 12, TEXT)])
+    items.append(ft.Icon(ft.Icons.REFRESH_ROUNDED, color=MUTED, size=16))
     return ft.Container(
         content=ft.Row(items, spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, tight=True),
         bgcolor=RAISED, border_radius=RADIUS_FULL, height=36,

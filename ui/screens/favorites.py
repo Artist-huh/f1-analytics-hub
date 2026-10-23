@@ -1,5 +1,6 @@
 """Экран избранных пилотов"""
 import flet as ft
+
 from design_system import *
 from ui.components import *
 from ui.fmt import plural

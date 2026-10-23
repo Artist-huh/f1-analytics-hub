@@ -122,7 +122,7 @@ ANIM_SLOW = 400
 
 def shadow(level=1, color="#000000"):
     """Мягкая тень карточки: 1 — в покое, 2 — при наведении."""
-    import flet as ft   # здесь, а не наверху: сервисы берут из модуля только данные о командах
+    import flet as ft  # здесь, а не наверху: сервисы берут из модуля только данные о командах
     blur, dy, alpha = {1: (12, 4, 0.35), 2: (24, 10, 0.5)}.get(level, (12, 4, 0.35))
     return ft.BoxShadow(blur_radius=blur, spread_radius=0, offset=ft.Offset(0, dy),
                         color=ft.Colors.with_opacity(alpha, color))
@@ -349,9 +349,11 @@ def apply_theme(name="dark", team=None):
         g["ACCENT_SOFT"] = _mix(g["F1_RED"], base["BG"], 0.78)
     g["GRADIENT_RED"] = [g["ACCENT_GLOW"], g["F1_RED"], g["ACCENT_DEEP"]]
     g["GRADIENT_SURFACE"] = [g["SURFACE_RAISED"], g["SURFACE"]]
-    g["RAISED"], g["TEXT"], g["MUTED"], g["DIM"] = g["SURFACE_RAISED"], g["TEXT_PRIMARY"], g["TEXT_MUTED"], g["TEXT_DIM"]
+    g["RAISED"], g["TEXT"] = g["SURFACE_RAISED"], g["TEXT_PRIMARY"]
+    g["MUTED"], g["DIM"] = g["TEXT_MUTED"], g["TEXT_DIM"]
     g["OK"], g["WARN"] = g["SUCCESS"], g["WARNING"]
-    THEME, THEME_TEAM, IS_LIGHT = (name if name in THEME_NAMES else "dark"), (team if team_colors else None), name == "light"
+    THEME = name if name in THEME_NAMES else "dark"
+    THEME_TEAM, IS_LIGHT = (team if team_colors else None), name == "light"
     if name == "team" and not team_colors:
         THEME = "dark"
     return THEME

@@ -25,7 +25,8 @@ def standings_json(points_lec="126", season="2026", rnd="10", empty=False):
         "season": season, "round": rnd,
         "DriverStandings": [
             drv("1", "204", "6", "antonelli", "ANT", "Andrea Kimi", "Antonelli", "Mercedes", "Italian", "12"),
-            drv("10", "39", "0", "lawson", "LAW", "Liam", "Lawson", "Racing Bulls", "New Zealander", "30"),  # "10" после "9"
+            drv("10", "39", "0", "lawson", "LAW", "Liam", "Lawson", "Racing Bulls", "New Zealander",
+                "30"),  # "10" после "9"
             drv("4", points_lec, "0", "leclerc", "LEC", "Charles", "Leclerc", "Ferrari", "Monegasque", "16"),
         ],
     }]
@@ -400,7 +401,8 @@ class DataLayerTest(unittest.TestCase):
                           "CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);"
                           "INSERT INTO settings VALUES('refresh_minutes','30');"
                           "PRAGMA user_version=2;")
-        con.commit(); con.close()
+        con.commit()
+        con.close()
         self.assertEqual(f1_api.get_favorites(), ["leclerc"])
         self.assertEqual(f1_api.get_setting("refresh_minutes"), "30")
         self.assertIsNone(db.get_meta("standings_season"))                # старый кэш сброшен
@@ -482,7 +484,7 @@ class DataLayerTest(unittest.TestCase):
     def test_seed_bad_files_are_ignored(self):
         bad = os.path.join(self.tmp.name, "bad.json")
         self.assertFalse(seed.import_if_empty(os.path.join(self.tmp.name, "missing.json")))
-        write = lambda text: Path(bad).write_text(text, encoding="utf-8")  # noqa: E731
+        write = lambda text: Path(bad).write_text(text, encoding="utf-8")
         write("{not json")
         self.assertFalse(seed.import_if_empty(bad))
         write('{"version": 1, "exported_at": 1, "season": "2026", "standings": []}')   # старая версия
@@ -571,7 +573,8 @@ class DataLayerTest(unittest.TestCase):
         h2 = f1_api.start_background_refresh(interval=3600)    # новый интервал -> немедленное обновление
         time.sleep(0.3)
         self.assertGreater(len(fake.calls), n)
-        h1.set(); h2.set()
+        h1.set()
+        h2.set()
 
 
 class MediaTest(unittest.TestCase):
@@ -670,7 +673,7 @@ class ArchiveTest(unittest.TestCase):
     def test_get_caches_and_respects_ttl(self):
         calls = []
         done = threading.Event()
-        fetch = lambda: calls.append(1) or {"n": len(calls)}   # noqa: E731
+        fetch = lambda: calls.append(1) or {"n": len(calls)}
         self.assertIsNone(archive.get("k", fetch, ttl=None, on_done=done.set))   # сначала — пусто, загрузка в фоне
         self.assertTrue(done.wait(3))
         self._wait("k")
@@ -697,8 +700,9 @@ class ArchiveTest(unittest.TestCase):
 
     def test_season_archive_parsing(self):
         winners = {"MRData": {"total": "2", "RaceTable": {"season": "2010", "Races": [
-            _race("1", "Bahrain GP", "Results", [{"Driver": {"driverId": "alonso", "code": "ALO", "givenName": "Fernando",
-                                                            "familyName": "Alonso", "nationality": "Spanish"},
+            _race("1", "Bahrain GP", "Results", [{"Driver": {"driverId": "alonso", "code": "ALO",
+                                                             "givenName": "Fernando", "familyName": "Alonso",
+                                                             "nationality": "Spanish"},
                                                  "Constructor": {"name": "Ferrari"}, "grid": "3"}]),
         ]}}}
 
@@ -718,9 +722,12 @@ class ArchiveTest(unittest.TestCase):
             self.assertEqual(jolpica.fetch_season_archive(1955)["constructors"], [])   # Кубок — с 1958 года
 
     def test_champions_and_records(self):
-        rows = [{"season": "2021", "name": "Max Verstappen", "nationality": "Dutch", "constructor": "Mercedes", "wins": "10"},
-                {"season": "2020", "name": "Lewis Hamilton", "nationality": "British", "constructor": "Mercedes", "wins": "11"},
-                {"season": "2019", "name": "Lewis Hamilton", "nationality": "British", "constructor": "Mercedes", "wins": "11"}]
+        rows = [{"season": "2021", "name": "Max Verstappen", "nationality": "Dutch", "constructor": "Mercedes",
+                 "wins": "10"},
+                {"season": "2020", "name": "Lewis Hamilton", "nationality": "British", "constructor": "Mercedes",
+                 "wins": "11"},
+                {"season": "2019", "name": "Lewis Hamilton", "nationality": "British", "constructor": "Mercedes",
+                 "wins": "11"}]
         Path(os.environ["F1_HUB_SEED"]).parent.joinpath("champions.json").write_text(
             json.dumps({"version": 1, "champions": list(reversed(rows))}), encoding="utf-8")
         self.assertEqual([r["season"] for r in archive.champions()], ["2021", "2020", "2019"])   # новые сверху
@@ -757,7 +764,8 @@ class NotifyTest(unittest.TestCase):
         self.assertEqual(notify.due_reminders([practice], now), [])                            # о практике — нет
 
     def test_favorites_result(self):
-        standings = [{"driver_id": "leclerc", "name": "Charles Leclerc"}, {"driver_id": "lawson", "name": "Liam Lawson"}]
+        standings = [{"driver_id": "leclerc", "name": "Charles Leclerc"},
+                     {"driver_id": "lawson", "name": "Liam Lawson"}]
         results = [{"round": "17", "race_name": "Singapore GP", "season": "2026", "driver_id": "leclerc",
                     "position": "2", "points": "18"},
                    {"round": "17", "race_name": "Singapore GP", "season": "2026", "driver_id": "lawson",
@@ -765,7 +773,8 @@ class NotifyTest(unittest.TestCase):
                    {"round": "16", "race_name": "Old GP", "season": "2026", "driver_id": "leclerc",
                     "position": "1", "points": "25"}]
         nid, title, text = notify.favorites_result(["leclerc", "lawson"], standings, results)
-        self.assertEqual((nid, title, text), ("2026:17:result", "Итоги: Singapore GP", "Leclerc — P2 (+18), Lawson — сход"))
+        self.assertEqual((nid, title, text), ("2026:17:result", "Итоги: Singapore GP",
+                                              "Leclerc — P2 (+18), Lawson — сход"))
         self.assertIsNone(notify.favorites_result(["norris"], standings, results))
 
     def test_notifier_falls_back_to_in_app(self):
@@ -819,7 +828,8 @@ class StatsTest(unittest.TestCase):
         self.assertEqual(teams["available"], 86)           # 2 × (25 + 18)
 
     def test_podiums_by_round(self):
-        rows = [{"round": "1", "position": p, "driver_id": d} for p, d in (("2", "b"), ("1", "a"), ("3", "c"), ("4", "d"))]
+        pairs = (("2", "b"), ("1", "a"), ("3", "c"), ("4", "d"))
+        rows = [{"round": "1", "position": p, "driver_id": d} for p, d in pairs]
         self.assertEqual([r["driver_id"] for r in stats.podiums_by_round(rows)["1"]], ["a", "b", "c"])
         self.assertEqual(stats.podiums_by_round(rows[:2]), {})            # неполный подиум не показываем
 

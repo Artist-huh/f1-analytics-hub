@@ -70,7 +70,7 @@ def shot(out, name):
 
 def foreground():
     out = adb("shell", "dumpsys", "activity", "activities", check=False)
-    return PACKAGE in "".join(l for l in out.splitlines() if "mResumedActivity" in l or "topResumedActivity" in l)
+    return PACKAGE in "".join(ln for ln in out.splitlines() if "mResumedActivity" in ln or "topResumedActivity" in ln)
 
 
 def main():
@@ -114,7 +114,7 @@ def main():
             adb("shell", "cmd", "statusbar", "collapse", check=False)
             time.sleep(1)
         # системная «назад»: подэкран -> вкладка -> «Главная» -> выход
-        for step in range(2):
+        for _ in range(2):
             adb("shell", "input", "keyevent", "4")
             time.sleep(3)
         shot(out, "08_after_back")
@@ -128,11 +128,11 @@ def main():
             print("«назад»: подэкран -> вкладка -> главная -> выход")
     log = adb("logcat", "-d", check=False)
     (out / "logcat.txt").write_text(log, encoding="utf-8")
-    crashes = [l for l in log.splitlines() if "FATAL EXCEPTION" in l or "Traceback" in l]
+    crashes = [ln for ln in log.splitlines() if "FATAL EXCEPTION" in ln or "Traceback" in ln]
     if crashes:
         failures.append(f"в logcat ошибки: {crashes[:3]}")
-    app_warnings = [l for l in log.splitlines() if "flet.python" in l and
-                    ("не запрошено" in l or "не отправлено" in l)]
+    app_warnings = [ln for ln in log.splitlines() if "flet.python" in ln and
+                    ("не запрошено" in ln or "не отправлено" in ln)]
     if app_warnings:
         failures.append(f"уведомления на Android: {app_warnings[:2]}")
     if failures:

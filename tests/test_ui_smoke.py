@@ -65,7 +65,8 @@ def walk(node):
 
 
 def texts(node):
-    return [str(n.value) for n in walk(node) if type(n).__name__ == "Text" and getattr(n, "value", None) not in (None, "")]
+    return [str(n.value) for n in walk(node)
+            if type(n).__name__ == "Text" and getattr(n, "value", None) not in (None, "")]
 
 
 def make_fake_flet(name="flet"):
@@ -107,10 +108,11 @@ sys.modules["flet.canvas"] = sys.modules["flet"].canvas = make_fake_flet("flet.c
 for _m in [m for m in sys.modules if m == "ui" or m.startswith("ui.") or m == "main"]:
     del sys.modules[_m]
 
-from services import db, f1_api as api, jolpica, media  # noqa: E402
-from tests.test_data_layer import router  # noqa: E402
 import design_system  # noqa: E402
 import main as app  # noqa: E402
+from services import db, jolpica, media  # noqa: E402
+from services import f1_api as api  # noqa: E402
+from tests.test_data_layer import router  # noqa: E402
 from ui import components  # noqa: E402
 from ui.fmt import fmt_countdown, plural  # noqa: E402
 from ui.screens import calendar, compare, driver_detail, drivers  # noqa: E402
@@ -142,7 +144,8 @@ def fill_db():
 def add_podium():
     """Полный подиум на этапе 3 (в общих фикстурах у гонок подиум неполный)."""
     rows = [r for r in db.load_season_results() if r["round"] != "3"]
-    for pos, did, team in (("1", "leclerc", "Ferrari"), ("2", "antonelli", "Mercedes"), ("3", "lawson", "Racing Bulls")):
+    podium = (("1", "leclerc", "Ferrari"), ("2", "antonelli", "Mercedes"), ("3", "lawson", "Racing Bulls"))
+    for pos, did, team in podium:
         rows.append({"driver_id": did, "round": "3", "race_name": "Japanese GP", "circuit": "Suzuka",
                      "country": "Japan", "locality": "Suzuka", "date": "2026-04-05", "position": pos, "grid": pos,
                      "points": {"1": "25", "2": "18", "3": "15"}[pos], "status": "Finished", "team": team,
@@ -308,7 +311,8 @@ class UiSmokeTest(unittest.TestCase):
         t = texts(tree)
         self.assertIn("ПОСЛЕДНЯЯ ГОНКА", t)
         self.assertIn("Этап 3 · Japanese Grand Prix", t)
-        avatars = [n for n in walk(tree) if type(n).__name__ == "DriverAvatar" and callable(getattr(n, "on_click", None))]
+        avatars = [n for n in walk(tree)
+                   if type(n).__name__ == "DriverAvatar" and callable(getattr(n, "on_click", None))]
         self.assertEqual(len(avatars), 3)
         avatars[1].on_click(Ctl())                           # P1 в центре
         self.assertEqual(self.state.ui["driver_id"], "leclerc")
@@ -471,7 +475,8 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(len(remove), 3)
         remove[0].on_click(Ctl())
         self.assertEqual(self.state.compare_ids(), ["leclerc", "lawson"])
-        self.assertFalse([n for n in walk(self.build("compare")) if getattr(n, "tooltip", None) == "Убрать из сравнения"])
+        self.assertFalse([n for n in walk(self.build("compare")) if getattr(n, "tooltip",
+                                                                            None) == "Убрать из сравнения"])
         clickable(self.build("compare"), "Топ-3")[0].on_click(Ctl())
         self.assertEqual(self.state.compare_ids(), ["antonelli", "leclerc", "lawson"])
         self.state.set_compare(["antonelli", "leclerc", "lawson", "norris", "x"])   # не больше четырёх
@@ -529,7 +534,8 @@ class UiSmokeTest(unittest.TestCase):
         fill_db()
         self.state.load()
         season_2025 = {"season": "2025", "rounds": "24", "standings": [
-            {"position": "1", "points": "423", "wins": "7", "driver_id": "norris", "code": "NOR", "name": "Lando Norris",
+            {"position": "1", "points": "423", "wins": "7", "driver_id": "norris", "code": "NOR",
+             "name": "Lando Norris",
              "team": "McLaren", "nationality": "British", "number": "4"},
             {"position": "2", "points": "421", "wins": "8", "driver_id": "verstappen", "code": "VER",
              "name": "Max Verstappen", "team": "Red Bull", "nationality": "Dutch", "number": "1"}],
@@ -627,7 +633,8 @@ class UiSmokeTest(unittest.TestCase):
                                "updated": time.time()}
         tree = self.build("live")
         t = texts(tree)
-        for expected in ("LIVE", "Гонка · Monza 2026", "Сессия идёт · Круг 62 из 53", "+2.500", "лидер", "CHEQUERED FLAG", "44"):
+        for expected in ("LIVE", "Гонка · Monza 2026", "Сессия идёт · Круг 62 из 53", "+2.500", "лидер",
+                         "CHEQUERED FLAG", "44"):
             self.assertIn(expected, t)
         clickable(tree, "Интервал")[0].on_click(Ctl())
         self.assertEqual(self.state.ui["live_gap"], "interval")
@@ -697,7 +704,6 @@ class UiSmokeTest(unittest.TestCase):
 
     def test_team_radio_tab(self):
         from services import live, radio
-        from ui.screens import race as race_screen
         answers = {
             "sessions": [{"session_key": 9001, "session_name": "Race", "date_start": "2026-01-01T13:00:00+00:00"}],
             "team_radio": [{"driver_number": 12, "date": "2026-01-01T13:05:30+00:00", "recording_url": "https://r/2.mp3"},
@@ -730,7 +736,8 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Радио не загружено", texts(self.build("race_strategy")))
         db.save_archive(radio.radio_key(race), data)
         db.save_archive(radio.tx_key("https://r/1.mp3"), {"en": "Box this lap.", "ru": "Заезжай на этом круге."})
-        with mock.patch.object(radio, "supported", return_value=True),                 mock.patch.object(radio, "models_ready", return_value=True):
+        with mock.patch.object(radio, "supported", return_value=True), \
+                mock.patch.object(radio, "models_ready", return_value=True):
             t = texts(self.build("race_strategy"))
             self.assertIn("Заезжай на этом круге.", t)
             self.assertIn("5:30", t)                                            # от старта гонки
@@ -802,7 +809,7 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.ui["driver_id"], "leclerc")
 
     def test_race_strategy(self):
-        from services import archive, live
+        from services import live
         from ui.screens import race_strategy
         data = {"session_key": 1, "laps": 53,
                 "drivers": {"16": {"code": "LEC", "team": "Ferrari", "colour": "ED1131"},

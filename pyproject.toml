@@ -35,3 +35,21 @@ dependencies = ["pyjnius", "flet-permission-handler==1.0.5", "flet-audio==1.0.5"
 [tool.flet.splash]
 color = "#15151E"
 dark_color = "#15151E"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["venv", "build", "dist"]
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, порядок импортов, частые ошибки (bugbear), упрощения
+select = ["E", "W", "F", "I", "B", "SIM", "UP", "RUF100"]
+ignore = [
+    "F403", "F405",   # from design_system import * — намеренно: токены дизайна во всех экранах
+    "E731",           # короткие lambda для отложенной загрузки (fetch = lambda: ...)
+    "SIM108",         # тернарник не всегда читабельнее if/else
+    "UP007", "UP045", # Optional[...] в старом коде — не трогаем ради истории
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["services", "ui", "design_system", "main", "tests", "tools"]

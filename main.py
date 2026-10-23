@@ -1,4 +1,5 @@
 """F1 Analytics Hub — точка входа и навигация"""
+import contextlib
 import os
 import threading
 import time
@@ -6,13 +7,30 @@ import time
 import flet as ft
 
 import design_system as ds
-from services import f1_api, log, notify
 from design_system import *
+from services import f1_api, log, notify
 from ui import theming
 from ui.components import ResponsiveContainer, show_snack
 from ui.fmt import fmt_countdown
-from ui.screens import (home, season, calendar, circuit, drivers, driver_detail, compare, more, favorites, history,
-                        live, mini, predict, race, team, title, welcome)
+from ui.screens import (
+    calendar,
+    circuit,
+    compare,
+    driver_detail,
+    drivers,
+    favorites,
+    history,
+    home,
+    live,
+    mini,
+    more,
+    predict,
+    race,
+    season,
+    team,
+    title,
+    welcome,
+)
 from ui.state import AppState
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -108,10 +126,8 @@ def apply_page_theme(page, nav=None):
     )
     page.dark_theme = page.theme
     page.bgcolor = ds.BG
-    try:
+    with contextlib.suppress(Exception):
         page.window.bgcolor = ds.BG
-    except Exception:
-        pass
     if nav is not None:
         nav.bgcolor = ds.BG_DEEPEST
         nav.indicator_color = ds.F1_RED

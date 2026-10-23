@@ -1,5 +1,6 @@
 """Разбор гонки, вкладка «Шины»: полосы по кругам для каждого пилота, цвет — состав, отметки пит-стопов"""
 import flet as ft
+
 from design_system import *
 from services import archive, live
 from ui.components import *
@@ -26,7 +27,7 @@ def finishing_order(state, race):
 def tyres_section(state, race):
     """Вкладка «Шины» разбора гонки: полосы стинтов по кругам (OpenF1)."""
     key = strategy_key(race)
-    fetch = lambda: live.fetch_strategy(int(race["season"]), race["date"])   # noqa: E731
+    fetch = lambda: live.fetch_strategy(int(race["season"]), race["date"])
     data = archive.get(key, fetch, None, state.render)
     if not data:
         if archive.loading(key):
@@ -41,8 +42,10 @@ def tyres_section(state, race):
                             lambda e: (archive.get(key, fetch, None, state.render, force=True), state.render()))]
 
     rows = live.strategy_rows(data, finishing_order(state, race))
-    used = sorted({s["tyre"] for r in rows for s in r["stints"]}, key=lambda t: "SMHIW?".index(t) if t in "SMHIW" else 9)
-    legend_row = ft.Row([ft.Row([ft.Container(width=14, height=14, border_radius=7, bgcolor=TYRE_COLOR.get(t, TEXT_DIM)),
+    used = sorted({s["tyre"] for r in rows for s in r["stints"]},
+                  key=lambda t: "SMHIW?".index(t) if t in "SMHIW" else 9)
+    legend_row = ft.Row([ft.Row([ft.Container(width=14, height=14, border_radius=7,
+                                              bgcolor=TYRE_COLOR.get(t, TEXT_DIM)),
                                  ft.Text(TYRE_NAMES.get(t, t), size=FONT_CAPTION, color=TEXT_SECONDARY)],
                                 spacing=4, tight=True) for t in used], wrap=True, spacing=SPACE_SM)
     stops = [len(r["pits"]) for r in rows]

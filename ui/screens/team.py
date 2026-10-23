@@ -1,5 +1,6 @@
 """Страница команды: логотип и болид, показатели сезона, пилоты, дуэль напарников, график очков"""
 import flet as ft
+
 from design_system import *
 from services import stats as st
 from ui.components import *
@@ -19,7 +20,7 @@ def team_stats(state, team_name):
         "podiums": sum(1 for p in positions if p and p <= 3),
         "poles": sum(1 for q in quali if q["position"] == "1"),
         "fastest_laps": sum(1 for r in races if str(r.get("fastest_rank")) == "1"),
-        "dnf": sum(1 for r, p in zip(races, positions) if p is None and r["position"] != "W"),
+        "dnf": sum(1 for r, p in zip(races, positions, strict=True) if p is None and r["position"] != "W"),
         "one_two": sum(1 for rnd in {r["round"] for r in races}
                        if sorted(to_int(r["position"]) or 99 for r in races if r["round"] == rnd)[:2] == [1, 2]),
         "races": races,
@@ -56,12 +57,14 @@ def _hero(state, team, drivers):
     return ft.Container(
         ft.Column([
             ft.Row([TeamLogo(team["name"], state.team_logo(team["name"]), size=56),
-                    ft.Column([ft.Text(team["name"].upper(), size=FONT_H3, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
+                    ft.Column([ft.Text(team["name"].upper(), size=FONT_H3, color=ON_COLOR,
+                                       font_family=FONT_DISPLAY_ITALIC),
                                ft.Row([flag(flag_src, 12, iso),
                                        ft.Text(" · ".join(short_name(d["name"]) for d in drivers),
                                                size=FONT_BODY_SMALL, color=ON_COLOR)], spacing=6)],
                               spacing=2, expand=True)], spacing=SPACE_SM),
-            ft.Container(image(state.team_car(team["name"]), height=90, fit=ft.BoxFit.CONTAIN, label=f"Болид {team['name']}"),
+            ft.Container(image(state.team_car(team["name"]), height=90, fit=ft.BoxFit.CONTAIN,
+                               label=f"Болид {team['name']}"),
                          alignment=ft.Alignment.CENTER, height=90),
             ft.Row([_hero_value(f"P{team['position']}", "в Кубке"),
                     _hero_value(team["points"], plural(float(team["points"]), "очко", "очка", "очков")),
@@ -141,7 +144,8 @@ def _chart(state, team):
     if not rounds:
         return ft.Container()
     series = [(team["name"], get_team_color(team["name"]), team_points_by_round(state, team["name"], rounds))]
-    leader = state.constructors[0] if team["position"] != "1" else (state.constructors[1] if len(state.constructors) > 1 else None)
+    rivals = [c for c in state.constructors if c is not team and c["position"] != team["position"]]
+    leader = state.constructors[0] if team["position"] != "1" else (rivals[0] if rivals else None)
     if leader:
         series.append((leader["name"], TEXT_MUTED, team_points_by_round(state, leader["name"], rounds)))
     return ft.Column([

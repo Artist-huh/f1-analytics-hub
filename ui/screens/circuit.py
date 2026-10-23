@@ -3,6 +3,7 @@ import time
 from collections import Counter
 
 import flet as ft
+
 from design_system import *
 from services import archive, media
 from ui.components import *
@@ -61,7 +62,8 @@ def build(state):
     else:
         sections.append(retry_block("История трассы не загружена",
                                     "Нужен интернет: данные загружаются один раз и дальше доступны без сети.",
-                                    lambda e: (archive.circuit(cid, on_done=state.render, force=True), state.render()) if cid else None))
+                                    lambda e: (archive.circuit(cid, on_done=state.render, force=True),
+                                               state.render()) if cid else None))
     return screen(state, race.get("locality") or "Трасса", sections, subtitle=race.get("circuit"), back=True)
 
 
@@ -75,7 +77,8 @@ def _hero(state, race):
     specs.append(("Этап", race.get("round", "—")))
     return AnimatedCard(ft.Column([
         ft.Row([flag(flag_src, 18, iso),
-                ft.Column([ft.Text(race.get("race_name", ""), size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_HEADING),
+                ft.Column([ft.Text(race.get("race_name", ""), size=FONT_H4, color=TEXT_PRIMARY,
+                                   font_family=FONT_HEADING),
                            ft.Text(f"{race.get('locality', '')}, {race.get('country', '')}", size=FONT_BODY_SMALL,
                                    color=TEXT_MUTED)], spacing=0, expand=True)], spacing=SPACE_SM),
         ft.Container(image(track, height=200, fit=ft.BoxFit.CONTAIN, label=f"Схема трассы {race['circuit']}",
@@ -85,7 +88,8 @@ def _hero(state, race):
                            ft.Text(k, size=FONT_CAPTION, color=TEXT_MUTED)],
                           horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0, expand=True)
                 for k, v in specs]),
-        ft.Text(fmt_date_full(race["start_ts"]), size=FONT_CAPTION, color=TEXT_DIM) if race.get("start_ts") else ft.Container(),
+        ft.Text(fmt_date_full(race["start_ts"]), size=FONT_CAPTION,
+                color=TEXT_DIM) if race.get("start_ts") else ft.Container(),
     ], spacing=SPACE_SM), padding=SPACE_MD, accent=F1_RED)
 
 
@@ -109,7 +113,8 @@ def _history(state, data):
     fact_rows = [ft.Row([ft.Text(k, size=FONT_BODY_SMALL, color=TEXT_MUTED, expand=True),
                          ft.Text(v, size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600,
                                  text_align=ft.TextAlign.RIGHT)], spacing=SPACE_SM) for k, v in facts]
-    out = [SectionHeader("Трасса в цифрах", subtitle="Данные о кругах — с 2004 года; конфигурация трассы могла меняться"),
+    out = [SectionHeader("Трасса в цифрах",
+                         subtitle="Данные о кругах — с 2004 года; конфигурация трассы могла меняться"),
            AnimatedCard(ft.Column(fact_rows, spacing=SPACE_XS), padding=SPACE_SM)]
     out.append(_people(state, "Последние победители", list(reversed(data["winners"]))[:10]))
     if data.get("poles"):

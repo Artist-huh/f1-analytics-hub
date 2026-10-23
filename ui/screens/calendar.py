@@ -2,12 +2,12 @@
 import time
 
 import flet as ft
-from design_system import *
-from ui.components import *
-from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_date, fmt_date_full, fmt_day, short_name, to_int
-from ui.widgets import empty_state, pill, screen
-from services import f1_api as api
 
+from design_system import *
+from services import f1_api as api
+from ui.components import *
+from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_date, fmt_date_full, fmt_day, short_name
+from ui.widgets import empty_state, pill, screen
 
 # Характеристики трасс: (часть названия автодрома или города, длина круга, кругов в гонке)
 TRACK_INFO = [

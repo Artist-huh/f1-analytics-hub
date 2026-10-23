@@ -1,11 +1,25 @@
 """Раздел «Ещё»: меню, стратегия, настройки."""
 import flet as ft
 
-from design_system import (ACCENT, ACCENT_DEEP, ACCENT_GLOW, ACCENT_TEXT, DANGER, DIM, F1_RED, MUTED, OK, ON_ACCENT,
-                           RAISED, SURFACE, TEXT, WARN)
-from services import db, f1_api as api, log, media, notify
+from design_system import (
+    ACCENT,
+    ACCENT_DEEP,
+    ACCENT_GLOW,
+    ACCENT_TEXT,
+    DANGER,
+    DIM,
+    MUTED,
+    OK,
+    ON_ACCENT,
+    RAISED,
+    SURFACE,
+    TEXT,
+    WARN,
+)
+from services import db, log, media, notify
+from services import f1_api as api
 from ui.fmt import fmt_updated
-from ui.widgets import button, card, dropdown, pill, screen, tyre_chip, txt
+from ui.widgets import button, card, dropdown, pill, screen, txt, tyre_chip
 
 
 # ---------------------------------------------------------------- меню
@@ -41,7 +55,8 @@ def build_menu(state):
               lambda e: state.open_sub("settings")),
     ]
     if not notify.is_android():
-        body.insert(-1, _tile(ft.Icons.PICTURE_IN_PICTURE_ALT, "Мини-виджет", "Окно поверх остальных: таймер и топ-3 (Ctrl+M)",
+        body.insert(-1, _tile(ft.Icons.PICTURE_IN_PICTURE_ALT, "Мини-виджет",
+                              "Окно поверх остальных: таймер и топ-3 (Ctrl+M)",
                               lambda e: state.toggle_mini()))
     return screen(state, "Ещё", body)
 
@@ -128,19 +143,20 @@ def _theme_card(state):
     """Оформление: тёмная / светлая / в цветах команды (+ выбор команды)."""
     import design_system as ds
     current, chosen_team = ds.THEME, ds.THEME_TEAM
+    default_team = state.constructors[0]["name"] if state.constructors else None
 
     def option(key, icon, hint):
         active = current == key
         return ft.Container(
             ft.Column([ft.Icon(icon, color=ON_ACCENT if active else TEXT, size=22),
-                       txt({"team": "Команда"}.get(key, ds.THEME_NAMES[key]), 12, ON_ACCENT if active else TEXT, bold=True,
+                       txt({"team": "Команда"}.get(key, ds.THEME_NAMES[key]), 12, ON_ACCENT if active else TEXT,
+                           bold=True,
                            no_wrap=True),
                        txt(hint, 10, ON_ACCENT if active else MUTED, text_align=ft.TextAlign.CENTER)],
                       horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
             expand=True, padding=ft.Padding.symmetric(horizontal=4, vertical=10), border_radius=12, ink=True,
             bgcolor=ACCENT if active else RAISED,
-            on_click=lambda e, k=key: state.set_theme(k, chosen_team or (state.constructors[0]["name"]
-                                                                         if k == "team" and state.constructors else None)),
+            on_click=lambda e, k=key: state.set_theme(k, chosen_team or (default_team if k == "team" else None)),
         )
 
     items = [txt("Оформление", 16, bold=True, head=True),
@@ -215,7 +231,8 @@ def build_settings(state):
                      options=[ft.DropdownOption(key=k, text=v) for k, v in INTERVALS.items()],
                      on_select=on_interval),
             button("Обновить сейчас", lambda e: state.refresh_now(), icon=ft.Icons.REFRESH),
-            txt("Лимит Jolpica — около 200 запросов в час; при таких интервалах приложение укладывается с запасом.", 11, DIM),
+            txt("Лимит Jolpica — около 200 запросов в час; при таких интервалах приложение укладывается с запасом.",
+                11, DIM),
         ], spacing=10)),
         card(ft.Column([txt("Состояние данных", 16, bold=True, head=True)] + info, spacing=8)),
         card(ft.Column([

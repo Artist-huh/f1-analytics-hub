@@ -1,5 +1,6 @@
 """Прогноз чемпионата: кто ещё может стать чемпионом и что нужно лидеру"""
 import flet as ft
+
 from design_system import *
 from ui.components import *
 from ui.fmt import plural, short_name
@@ -130,7 +131,8 @@ def _contenders(state, race, view, total):
         ], spacing=SPACE_XS), padding=SPACE_SM, accent=color,
             on_click=(lambda e, i=row["driver_id"]: state.open_driver(i)) if view == "drivers" else None))
     out = [SectionHeader("Ещё могут стать чемпионом" if view == "drivers" else "Ещё могут выиграть Кубок",
-                         subtitle="Тёмная часть полосы — набрано, светлая — максимум при победах во всех оставшихся гонках")]
+                         subtitle="Тёмная часть полосы — набрано, светлая — максимум при победах "
+                                  "во всех оставшихся гонках")]
     out += rows
     gone = total - len(race["contenders"])
     if gone:

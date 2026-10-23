@@ -1,0 +1,33 @@
+name: Lint and tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    # Правила — в pyproject.toml ([tool.ruff]); версия закреплена, чтобы новые правила не ломали CI внезапно
+    - name: Ruff
+      run: |
+        pip install ruff==0.17.2
+        ruff check --output-format=github .
+
+    - name: Unit tests
+      env:
+        F1_HUB_LOG: "off"
+      run: |
+        pip install -r requirements.txt
+        python -m unittest discover -s tests -t .

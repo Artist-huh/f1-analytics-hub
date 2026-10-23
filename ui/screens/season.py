@@ -1,5 +1,6 @@
 """Экран чемпионата — турнирные таблицы пилотов и команд"""
 import flet as ft
+
 from design_system import *
 from ui.components import *
 from ui.screens import heatmap
@@ -27,7 +28,8 @@ def render(state):
     body = [tabs]
     if not state.standings:
         body.append(empty_state(state, "Таблицы пока нет",
-                                "Подключись к интернету и нажми «Обновить» — данные сохранятся и дальше будут доступны без сети."))
+                                "Подключись к интернету и нажми «Обновить» — данные сохранятся "
+                                "и дальше будут доступны без сети."))
     elif view == "teams":
         body += _build_constructor_standings(state, is_mobile)
     elif view == "heat":

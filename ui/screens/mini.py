@@ -1,5 +1,6 @@
 """Мини-виджет (компьютер): маленькое окно поверх остальных — таймер до гонки и топ-3 зачёта"""
 import flet as ft
+
 from design_system import *
 from ui.components import *
 from ui.fmt import fmt_clock, fmt_countdown, fmt_day

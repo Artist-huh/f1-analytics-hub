@@ -1,5 +1,6 @@
 """Live-тайминг: позиции, отрывы, шины и пит-стопы последней сессии (OpenF1)"""
 import flet as ft
+
 from design_system import *
 from services import live
 from ui.components import *
@@ -52,8 +53,9 @@ def _header(state, data):
     s = data["session"]
     name = SESSION_RU.get(s["name"], s["name"])
     total = None
-    nxt = next((r for r in state.schedule if r["locality"] and s["location"] and
-                (s["location"].lower() in r["locality"].lower() or r["locality"].lower() in s["location"].lower())), None)
+    place = (s["location"] or "").lower()
+    nxt = next((r for r in state.schedule if r["locality"] and place and
+                (place in r["locality"].lower() or r["locality"].lower() in place)), None)
     if nxt:
         info = track_info(nxt)
         total = info[1] if info else None
@@ -62,7 +64,8 @@ def _header(state, data):
         badge = ft.Container(ft.Row([ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
                                      ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
                                     spacing=6, tight=True),
-                             bgcolor=DANGER, border_radius=RADIUS_FULL, padding=ft.Padding.symmetric(horizontal=10, vertical=4))
+                             bgcolor=DANGER, border_radius=RADIUS_FULL,
+                             padding=ft.Padding.symmetric(horizontal=10, vertical=4))
         status = "Сессия идёт"
     else:
         badge = ft.Container(ft.Text("ФИНИШ", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC),
@@ -102,21 +105,25 @@ def _table(state, data, mode):
             ft.Container(width=3, height=30, bgcolor=color, border_radius=2),
             *([DriverAvatar(r["code"], d["team"] if d else r["team"], size=32, src=state.photo(d) if d else None)]
               if avatars else []),
-            ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC, no_wrap=True),
-                       ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)],
+            ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC,
+                               no_wrap=True),
+                       ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1,
+                               overflow=ft.TextOverflow.ELLIPSIS)],
                       spacing=0, expand=True),
             ft.Text(gap or ("лидер" if r["position"] == 1 and data["racing"] else ""), size=FONT_BODY_SMALL,
                     color=TEXT_PRIMARY if gap else ACCENT_TEXT, width=scaled(78), text_align=ft.TextAlign.RIGHT),
             tyre_badge(r["tyre"], r["tyre_age"]),
             ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY), width=scaled(22),
-                         alignment=ft.Alignment.CENTER, tooltip=f"{r['pits']} {plural(r['pits'], 'пит-стоп', 'пит-стопа', 'пит-стопов')}"),
+                         alignment=ft.Alignment.CENTER,
+                         tooltip=f"{r['pits']} {plural(r['pits'], 'пит-стоп', 'пит-стопа', 'пит-стопов')}"),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=SURFACE, border_radius=RADIUS_SM, border=ft.Border.all(1, LINE_SUBTLE),
             padding=ft.Padding.symmetric(horizontal=SPACE_XS, vertical=4),
             on_click=(lambda e, i=d["driver_id"]: state.open_driver(i)) if d else None, ink=bool(d)))
     head = ft.Row([ft.Text("Поз.", size=FONT_TINY, color=TEXT_DIM, width=70 if avatars else 30),
                    ft.Text("Пилот", size=FONT_TINY, color=TEXT_DIM, expand=True),
-                   ft.Text("Отрыв" if mode == "leader" else "Интервал", size=FONT_TINY, color=TEXT_DIM, width=scaled(78),
+                   ft.Text("Отрыв" if mode == "leader" else "Интервал", size=FONT_TINY, color=TEXT_DIM,
+                           width=scaled(78),
                            text_align=ft.TextAlign.RIGHT),
                    ft.Text("Шины", size=FONT_TINY, color=TEXT_DIM, width=scaled(48), no_wrap=True),
                    ft.Text("Пит", size=FONT_TINY, color=TEXT_DIM, width=scaled(22), no_wrap=True)], spacing=SPACE_XS)

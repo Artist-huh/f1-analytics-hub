@@ -1,10 +1,11 @@
 """Главный экран: ближайшая гонка, подиум последней гонки, лидеры чемпионата, быстрый доступ"""
 import flet as ft
+
 from design_system import *
-from ui.components import *
-from ui.fmt import fmt_countdown, fmt_day, fmt_clock, plural, short_name
-from ui.widgets import empty_state, screen
 from services import f1_api as api
+from ui.components import *
+from ui.fmt import fmt_clock, fmt_countdown, fmt_day, plural, short_name
+from ui.widgets import empty_state, screen
 
 
 def render(state):
@@ -22,7 +23,8 @@ def render(state):
 
     if not standings:
         sections.append(empty_state(state, "Данных пока нет",
-                                    "Подключись к интернету и нажми «Обновить» — таблицы сохранятся и будут доступны без сети."))
+                                    "Подключись к интернету и нажми «Обновить» — таблицы сохранятся "
+                                    "и будут доступны без сети."))
     else:
         last, podium = state.last_race()
         if podium:
@@ -276,7 +278,8 @@ def team_row(state, c, leader_points, show_car=False):
     ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER)
     items = [top]
     if show_car:
-        items.append(ft.Container(image(state.team_car(c["name"]), height=64, fit=ft.BoxFit.CONTAIN, label=f"Болид {c['name']}"),
+        items.append(ft.Container(image(state.team_car(c["name"]), height=64, fit=ft.BoxFit.CONTAIN,
+                                        label=f"Болид {c['name']}"),
                                   alignment=ft.Alignment.CENTER, height=64))
     items.append(progress_bar(float(c["points"]) / leader_points if leader_points else 0, color))
     return AnimatedCard(

@@ -1,5 +1,6 @@
 """Экран «Пилоты»: карточки с портретами, поиск и фильтр по команде"""
 import flet as ft
+
 from design_system import *
 from ui.components import *
 from ui.widgets import empty_state, field_border, screen

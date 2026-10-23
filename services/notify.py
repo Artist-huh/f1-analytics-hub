@@ -35,7 +35,7 @@ def is_android():
 def due_reminders(schedule, now=None, lead=LEAD, sent=()):
     """Сессии, до старта которых осталось не больше lead секунд и о которых ещё не напоминали.
     -> [(id, заголовок, текст)]"""
-    from ui.fmt import fmt_clock, fmt_day   # форматирование дат — общее с интерфейсом
+    from ui.fmt import fmt_clock, fmt_day  # форматирование дат — общее с интерфейсом
     now = time.time() if now is None else now
     out = []
     for race in schedule:

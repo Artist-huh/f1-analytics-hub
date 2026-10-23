@@ -1,5 +1,7 @@
 """Переиспользуемые элементы интерфейса в стиле F1: карточки с анимацией, фото пилотов,
 логотипы команд, флаги, бейджи позиций, графики."""
+import contextlib
+
 import flet as ft
 import flet.canvas as cv
 
@@ -67,10 +69,8 @@ class FadeIn(ft.Container):
             self._fade = False
             self.opacity = 1
             self.offset = ft.Offset(0, 0)
-            try:
+            with contextlib.suppress(Exception):   # страница уже перестроена — не страшно
                 self.update()
-            except Exception:   # страница уже перестроена — не страшно
-                pass
 
 
 class AnimatedCard(ft.Container):
@@ -364,7 +364,7 @@ def line_chart(series, labels, width, height=200, y_suffix=""):
         if i % every == 0 or i == n - 1:
             shapes.append(cv.Text(x(i), height - 4, str(label), style=label_style,
                                   alignment=ft.Alignment.BOTTOM_CENTER))
-    for idx, (name, color, values) in enumerate(series):
+    for idx, (_name, color, values) in enumerate(series):
         if not values:
             continue
         dashed = [6, 4] if idx >= 1 and any(c == color for _, c, _ in series[:idx]) else None
@@ -436,10 +436,9 @@ def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False
     span = x1 - x0
     step = max(1, round(span / 6 / 5) * 5) if span > 10 else 1
     for v in range(int(x0), int(x1) + 1):
-        if (v - x0) % step == 0 or v == x1:
-            if v == x1 or x1 - v >= step / 2:
-                shapes.append(cv.Text(x(v), height - 4, str(v), style=label_style,
-                                      alignment=ft.Alignment.BOTTOM_CENTER))
+        if ((v - x0) % step == 0 or v == x1) and (v == x1 or x1 - v >= step / 2):
+            shapes.append(cv.Text(x(v), height - 4, str(v), style=label_style,
+                                  alignment=ft.Alignment.BOTTOM_CENTER))
     for name, color, pts, line_w in series:
         if not pts:
             continue
@@ -450,8 +449,8 @@ def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False
         if end_labels and line_w >= 2:
             ex, ey = pts[-1]
             shapes.append(cv.Circle(x(ex), y(ey), 3.5, paint=ft.Paint(color=color)))
-            shapes.append(cv.Text(x(ex) + 6, y(ey), name, style=ft.TextStyle(size=10, color=color,
-                                                                            weight=ft.FontWeight.BOLD),
+            end_style = ft.TextStyle(size=10, color=color, weight=ft.FontWeight.BOLD)
+            shapes.append(cv.Text(x(ex) + 6, y(ey), name, style=end_style,
                                   alignment=ft.Alignment.CENTER_LEFT))
     return cv.Canvas(shapes=shapes, width=width, height=height)
 

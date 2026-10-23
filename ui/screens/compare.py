@@ -1,5 +1,6 @@
 """Сравнение 2–4 пилотов: показатели сезона, график очков, личные встречи"""
 import flet as ft
+
 from design_system import *
 from services import stats as st
 from ui.components import *
@@ -89,7 +90,8 @@ def _build_selector(state, drivers):
                         on_click=lambda e, i=d["driver_id"]: remove(i), tooltip="Убрать из сравнения",
                     ) if len(drivers) > 2 else ft.Container(),
                 ], width=(52 if narrow else 64) + 4),
-                ft.Text(d["code"] or short_name(d["name"]), size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_ITALIC),
+                ft.Text(d["code"] or short_name(d["name"]), size=FONT_BODY, color=TEXT_PRIMARY,
+                        font_family=FONT_ITALIC),
                 ft.Container(height=3, width=36, bgcolor=color, border_radius=2),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XXS),
             expand=True,

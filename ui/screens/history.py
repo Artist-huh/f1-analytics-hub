@@ -1,9 +1,10 @@
 """История сезонов с 1950 года: чемпионы, зачёты, победители гонок, рекорды по титулам"""
 import flet as ft
+
 from design_system import *
 from services import archive
 from ui.components import *
-from ui.fmt import plural, short_name
+from ui.fmt import plural
 from ui.widgets import dropdown, pill, retry_block, screen
 
 
@@ -74,7 +75,8 @@ def _season_view(state):
                                    spacing=SPACE_SM)]
         return [picker, retry_block(f"Сезон {year} не загружен",
                                     "Нужен интернет: архив загружается один раз и дальше доступен без сети.",
-                                    lambda e: (archive.season(year, state.season, on_done=state.render, force=True), state.render()))]
+                                    lambda e: (archive.season(year, state.season, on_done=state.render, force=True),
+                                               state.render()))]
     sections = [picker]
     if data["standings"]:
         sections.append(_champion_hero(state, data, year))
@@ -96,7 +98,8 @@ def _champion_hero(state, data, year):
                      font_family=FONT_ITALIC),
              ft.Text(lead["name"], size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
              ft.Row([flag(flag_src, 14, iso), ft.Text(lead["team"], size=FONT_BODY_SMALL, color=ON_COLOR)], spacing=6),
-             ft.Text(f"{lead['points']} очков · {lead['wins']} {plural(int(lead['wins']), 'победа', 'победы', 'побед')}",
+             ft.Text(f"{lead['points']} очков · {lead['wins']} "
+                     f"{plural(int(lead['wins']), 'победа', 'победы', 'побед')}",
                      size=FONT_BODY_SMALL, color=ON_COLOR)]
     if team_champ:
         lines.append(ft.Text(f"Кубок конструкторов: {team_champ}", size=FONT_CAPTION, color=ON_COLOR))
@@ -151,7 +154,8 @@ def _constructors(state, data):
         color = get_team_color(c["name"]) if team_key(c["name"]) else TEXT_MUTED
         items.append(ft.Container(ft.Column([
             ft.Row([PositionBadge(c["position"], size=28),
-                    ft.Text(c["name"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600, expand=True),
+                    ft.Text(c["name"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600,
+                            expand=True),
                     ft.Text(c["points"], size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC)],
                    spacing=SPACE_SM),
             progress_bar(float(c["points"]) / lead, color, height=3),
@@ -225,7 +229,8 @@ def _champions_view(state):
     ], spacing=SPACE_XS, run_spacing=SPACE_XS))
     best = rec["best_wins"]
     if best:
-        out.append(ft.Text(f"Больше всего побед за чемпионский сезон: {best['name']} — {best['wins']} ({best['season']})",
+        out.append(ft.Text(f"Больше всего побед за чемпионский сезон: {best['name']} — {best['wins']} "
+                           f"({best['season']})",
                            size=FONT_BODY_SMALL, color=TEXT_MUTED))
 
     out.append(SectionHeader("Чемпионы по годам", subtitle="Нажми на год — откроется сезон"))

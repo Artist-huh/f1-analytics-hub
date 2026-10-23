@@ -2,6 +2,7 @@
 import time
 
 import flet as ft
+
 from design_system import *
 from services import predictions as pr
 from ui.components import *
@@ -131,7 +132,8 @@ def _picker(state, season, race, saved):
     return AnimatedCard(ft.Column([
         ft.Text(f"{race['round']}. {race['race_name']}", size=FONT_BODY, color=TEXT_PRIMARY,
                 weight=ft.FontWeight.W_600),
-        ft.Text(f"Приём до {fmt_date_full(pr.lock_time(race))}, {fmt_clock(pr.lock_time(race))}", size=FONT_CAPTION, color=TEXT_MUTED),
+        ft.Text(f"Приём до {fmt_date_full(pr.lock_time(race))}, {fmt_clock(pr.lock_time(race))}", size=FONT_CAPTION,
+                color=TEXT_MUTED),
         ft.Row(slots, spacing=SPACE_XS),
         ft.Text(f"Кто возьмёт «{dict(SLOTS)[slot].lower()}»?", size=FONT_BODY_SMALL, color=TEXT_SECONDARY),
         ft.Row(chips, spacing=SPACE_XS, run_spacing=SPACE_XS, wrap=True),

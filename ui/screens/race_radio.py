@@ -1,5 +1,6 @@
 """Разбор гонки, вкладка «Радио»: лента переговоров пилотов с инженерами, проигрывание и перевод на русский"""
 import flet as ft
+
 from design_system import *
 from services import archive, live, log, radio
 from ui.components import *
@@ -12,7 +13,7 @@ PAGE = 30                     # записей за раз: «Показать �
 
 def radio_section(state, race):
     key = radio.radio_key(race)
-    fetch = lambda: radio.fetch_radio(int(race["season"]), race["date"])   # noqa: E731
+    fetch = lambda: radio.fetch_radio(int(race["season"]), race["date"])
     data = archive.get(key, fetch, None, state.render)
     if not data:
         if archive.loading(key):
@@ -148,7 +149,8 @@ def toggle_play(state, url):
         return
 
     def changed(e):
-        if e.state in (fa.AudioState.COMPLETED, fa.AudioState.STOPPED, fa.AudioState.DISPOSED) and state.ui.get("radio_playing") == url:
+        if e.state in (fa.AudioState.COMPLETED, fa.AudioState.STOPPED,
+                       fa.AudioState.DISPOSED) and state.ui.get("radio_playing") == url:
             state.ui.pop("radio_playing", None)
             state.render()
 

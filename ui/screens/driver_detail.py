@@ -1,5 +1,6 @@
 """Страница пилота: портрет, статистика сезона, график очков, результаты гонок"""
 import flet as ft
+
 from design_system import *
 from services import stats as st
 from ui.components import *
@@ -72,7 +73,8 @@ def _build_hero(state, driver, is_mobile):
                     font_family=FONT_DISPLAY_ITALIC),
         ], spacing=0),
         ft.Container(ft.Row([TeamLogo(team, state.team_logo(team), size=30),
-                             ft.Text(team, size=FONT_BODY_SMALL, color=ON_COLOR, weight=ft.FontWeight.W_600, expand=True,
+                             ft.Text(team, size=FONT_BODY_SMALL, color=ON_COLOR, weight=ft.FontWeight.W_600,
+                                     expand=True,
                                      max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)], spacing=SPACE_XS),
                      on_click=lambda e: _open_team_of(state, team), ink=True, border_radius=RADIUS_SM,
                      tooltip="Страница команды"),
@@ -87,7 +89,8 @@ def _build_hero(state, driver, is_mobile):
         content=ft.Stack([
             ft.Container(ft.Text(driver.get("number") or "", size=180, font_family=FONT_DISPLAY_ITALIC,
                                  color=ft.Colors.with_opacity(0.15, ON_COLOR)), right=10, top=-40),
-            ft.Container(image(state.photo(driver, "hero"), height=height, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {driver['name']}",
+            ft.Container(image(state.photo(driver, "hero"), height=height, fit=ft.BoxFit.FIT_HEIGHT,
+                               label=f"Фото: {driver['name']}",
                                fallback=ft.Container()), right=0, bottom=0),
             ft.Container(info, left=SPACE_MD, top=SPACE_MD, bottom=SPACE_MD),
         ], height=height),
@@ -119,7 +122,8 @@ def _build_actions(state, driver):
 
     def action(icon, label, on_click, color=TEXT_PRIMARY):
         return ft.Container(
-            ft.Row([ft.Icon(icon, color=color, size=20), ft.Text(label, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600)],
+            ft.Row([ft.Icon(icon, color=color, size=20),
+                    ft.Text(label, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600)],
                    spacing=SPACE_XS, tight=True, alignment=ft.MainAxisAlignment.CENTER),
             height=TOUCH, expand=True, border_radius=RADIUS_MD, bgcolor=SURFACE_RAISED,
             border=ft.Border.all(1, LINE), ink=True, on_click=on_click, alignment=ft.Alignment.CENTER,
@@ -166,7 +170,8 @@ def _build_points_chart(state, driver):
         series.append((short_name(d["name"]), color, values))
     chart = line_chart(series, rounds, content_width(state) - 2 * SPACE_SM, height=200)
     return ft.Column([
-        SectionHeader("Набор очков", subtitle="Гонки и спринты, по этапам" + (" · против напарника" if len(people) > 1 else "")),
+        SectionHeader("Набор очков",
+                      subtitle="Гонки и спринты, по этапам" + (" · против напарника" if len(people) > 1 else "")),
         AnimatedCard(ft.Column([chart, legend(series)], spacing=SPACE_XS), padding=SPACE_SM),
     ], spacing=SPACE_SM)
 

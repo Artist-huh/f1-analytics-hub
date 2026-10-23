@@ -8,7 +8,8 @@ import threading
 import time
 
 import design_system as ds
-from services import f1_api as api, live, log, media, notify, stats
+from services import f1_api as api
+from services import live, log, media, notify, stats
 
 logger = log.get("ui")
 

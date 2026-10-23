@@ -1,5 +1,6 @@
 """Тепловая карта сезона: пилоты × этапы, клетка окрашена по месту (гонки или квалификации)"""
 import flet as ft
+
 from design_system import *
 from ui.components import *
 from ui.fmt import short_name, to_int

@@ -39,7 +39,7 @@ def driver_stats(results, quali=(), sprints=()):
         "top10": sum(1 for p in finished if p <= 10),
         "poles": sum(1 for p in q_positions if p == 1),
         "fastest_laps": sum(1 for r in results if str(r.get("fastest_rank")) == "1"),
-        "dnf": sum(1 for r, p in zip(results, positions) if p is None and r["position"] != "W"),
+        "dnf": sum(1 for r, p in zip(results, positions, strict=True) if p is None and r["position"] != "W"),
         "best": min(finished) if finished else None,
         "avg_finish": sum(finished) / len(finished) if finished else None,
         "avg_quali": sum(q_positions) / len(q_positions) if q_positions else None,

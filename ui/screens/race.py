@@ -1,7 +1,9 @@
 """Разбор прошедшей гонки: шины, позиции по кругам, темп, отставание в квалификации, радио"""
 import flet as ft
+
 from design_system import *
-from services import archive, jolpica, stats as st
+from services import archive, jolpica
+from services import stats as st
 from ui.components import *
 from ui.fmt import plural, short_name
 from ui.screens.race_radio import radio_section
@@ -133,7 +135,8 @@ def pace_section(state, race):
         active = driver_id in picked
         color = get_team_color(d["team"])
         chips.append(ft.Container(
-            ft.Text(code, size=FONT_CAPTION, color=readable_on(color) if active else TEXT_SECONDARY, font_family=FONT_ITALIC),
+            ft.Text(code, size=FONT_CAPTION, color=readable_on(color) if active else TEXT_SECONDARY,
+                    font_family=FONT_ITALIC),
             bgcolor=color if active else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
             padding=ft.Padding.symmetric(horizontal=12, vertical=8), on_click=lambda e, i=driver_id: toggle(i),
             tooltip=f"{d['name']}: показать на графике"))
@@ -184,7 +187,7 @@ def quali_section(state, race):
     gaps = st.quali_gaps(data)
     worst = max((g for _, _, g in gaps if g is not None), default=1) or 1
     rows = []
-    for r, best, gap in gaps:
+    for r, _best, gap in gaps:
         color = get_team_color(r["team"])
         stage = "Q3" if r.get("q3") else "Q2" if r.get("q2") else "Q1"
         bar = (ft.Row([ft.Container(width=10, height=10, bgcolor=GOLD, border_radius=5)]) if gap == 0 else

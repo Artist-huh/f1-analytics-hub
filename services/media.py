@@ -20,6 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 
 import design_system as ds
+
 from . import db, log
 
 OPENF1_DRIVERS = "https://api.openf1.org/v1/drivers"
