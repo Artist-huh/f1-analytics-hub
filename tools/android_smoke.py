@@ -46,13 +46,7 @@ def find(xml, label):
 
 
 def wait_for(label, timeout=240):
-    end = time.time() + timeout
-    while time.time() < end:
-        xml = dump()
-        if find(xml, label):
-            return xml
-        time.sleep(3)
-    return None
+    return wait_any([label], timeout)[1]
 
 
 def wait_any(labels, timeout=240):
@@ -60,6 +54,12 @@ def wait_any(labels, timeout=240):
     end = time.time() + timeout
     while time.time() < end:
         xml = dump()
+        if "isn't responding" in xml or "не отвечает" in xml:
+            # зависание системного приложения эмулятора (лаунчер) закрывает экран — ждём, а не закрываем
+            print("системное окно «не отвечает» — нажимаем «Wait»")
+            tap("Wait", xml) or tap("Подождать", xml)
+            time.sleep(2)
+            continue
         for label in labels:
             if find(xml, label):
                 return label, xml
