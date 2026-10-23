@@ -34,7 +34,7 @@ _session.mount(
     ),
 )
 _session.headers.update({
-    "User-Agent": "FerrariLeclercHub/2.0 (student project)",
+    "User-Agent": "F1AnalyticsHub/2.0 (fan project)",
     "Accept": "application/json",
 })
 
@@ -79,41 +79,92 @@ def fetch_standings():
                 "code": drv.get("code", ""),
                 "name": f"{drv['givenName']} {drv['familyName']}",
                 "team": teams[-1]["name"] if teams else "—",  # последняя = текущая команда
+                "nationality": drv.get("nationality", ""),
+                "number": str(drv.get("permanentNumber", "")),
             })
         return season, str(block.get("round", "0")), rows
     except (KeyError, TypeError, IndexError) as exc:
         raise ApiError(f"standings: неожиданный формат ответа ({exc!r})") from exc
 
 
-def fetch_driver_results(driver_id):
-    """-> (season, rows) — результаты гонок пилота в текущем сезоне."""
-    mr = _get(f"current/drivers/{driver_id}/results.json", params={"limit": 100})
+PAGE = 100   # больше Jolpica за один запрос не отдаёт
+
+
+def _get_all(path):
+    """Все страницы ответа (результаты сезона ~400 строк = 4-5 запросов). -> список Races."""
+    races, offset, total = [], 0, None
+    while total is None or offset < total:
+        mr = _get(path, params={"limit": PAGE, "offset": offset})
+        try:
+            total = int(mr.get("total", 0))
+            races += mr["RaceTable"].get("Races") or []
+            season = str(mr["RaceTable"].get("season", ""))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ApiError(f"{path}: неожиданный формат ответа ({exc!r})") from exc
+        offset += PAGE
+    return season, races
+
+
+def _race_info(race):
+    circuit = race.get("Circuit", {})
+    loc = circuit.get("Location", {})
+    return {
+        "round": str(race["round"]),
+        "race_name": race.get("raceName", ""),
+        "circuit": circuit.get("circuitName", "—"),
+        "country": loc.get("country", ""),
+        "locality": loc.get("locality", ""),
+        "date": race.get("date", ""),
+    }
+
+
+def fetch_season_results():
+    """-> (season, round, rows) — результаты всех гонок сезона по всем пилотам.
+    Гонка может быть разрезана между страницами — строки собираются по каждому Results."""
+    season, races = _get_all("current/results.json")
     try:
-        table = mr["RaceTable"]
-        season = str(table.get("season", ""))
-        rows = []
-        for race in table.get("Races") or []:
-            results = race.get("Results") or []
-            if not results:
-                continue
-            res = results[0]
-            circuit = race.get("Circuit", {})
-            loc = circuit.get("Location", {})
-            rows.append({
-                "round": str(race["round"]),
-                "race_name": race.get("raceName", ""),
-                "circuit": circuit.get("circuitName", "—"),
-                "country": loc.get("country", ""),
-                "locality": loc.get("locality", ""),
-                "date": race.get("date", ""),
-                "position": str(res.get("positionText") or res.get("position", "—")),
-                "grid": str(res.get("grid", "—")),
-                "points": str(res.get("points", "0")),
-                "status": res.get("status", ""),
-            })
+        rows, last_round = [], 0
+        for race in races:
+            info = _race_info(race)
+            last_round = max(last_round, int(race["round"]))
+            for res in race.get("Results") or []:
+                rows.append({
+                    **info,
+                    "driver_id": res["Driver"]["driverId"],
+                    "position": str(res.get("positionText") or res.get("position", "—")),
+                    "grid": str(res.get("grid", "")),
+                    "points": str(res.get("points", "0")),
+                    "status": res.get("status", ""),
+                    "team": (res.get("Constructor") or {}).get("name", ""),
+                    "fastest_rank": str((res.get("FastestLap") or {}).get("rank", "")),
+                })
+        return season, str(last_round), rows
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ApiError(f"results: неожиданный формат ответа ({exc!r})") from exc
+
+
+def fetch_qualifying():
+    """-> (season, rows) — позиции в квалификациях сезона (для поулов и среднего места)."""
+    season, races = _get_all("current/qualifying.json")
+    try:
+        rows = [{"driver_id": q["Driver"]["driverId"], "round": str(race["round"]), "position": str(q["position"])}
+                for race in races for q in race.get("QualifyingResults") or []]
         return season, rows
     except (KeyError, TypeError) as exc:
-        raise ApiError(f"results: неожиданный формат ответа ({exc!r})") from exc
+        raise ApiError(f"qualifying: неожиданный формат ответа ({exc!r})") from exc
+
+
+def fetch_sprints():
+    """-> (season, rows) — результаты спринтов (очки входят в график набора очков)."""
+    season, races = _get_all("current/sprint.json")
+    try:
+        rows = [{"driver_id": r["Driver"]["driverId"], "round": str(race["round"]),
+                 "position": str(r.get("positionText") or r.get("position", "—")),
+                 "points": str(r.get("points", "0"))}
+                for race in races for r in race.get("SprintResults") or []]
+        return season, rows
+    except (KeyError, TypeError) as exc:
+        raise ApiError(f"sprint: неожиданный формат ответа ({exc!r})") from exc
 
 
 def fetch_constructor_standings():

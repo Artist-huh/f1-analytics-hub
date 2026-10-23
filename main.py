@@ -7,7 +7,6 @@ import flet as ft
 
 from services import f1_api, log
 from design_system import *
-from theme import FONT_HEAD, FONT_FILE
 from ui.components import ResponsiveContainer
 from ui.fmt import fmt_countdown
 from ui.screens import home, season, calendar, drivers, driver_detail, compare, more, favorites
@@ -29,7 +28,6 @@ SUBS = {
     "driver_detail": driver_detail.build,
     "compare": compare.build,
     "favorites": favorites.build,
-    "duel": more.build_duel,
     "strategy": more.build_strategy,
     "settings": more.build_settings,
 }
@@ -37,6 +35,7 @@ SUBS = {
 TICK_SECONDS = 30
 MAX_CONTENT_WIDTH = 1100   # шире контент не растягиваем — по бокам поля
 NARROW_WIDTH = 400         # уже — компактные подписи
+SWITCH_MS = 280            # смена экранов
 logger = log.get("main")
 
 
@@ -78,20 +77,50 @@ def run_on_ui(page, fn):
         logger.info("перерисовка пропущена: сессия закрыта")
 
 
+def nav_bar(on_change):
+    def dest(icon, selected, label):
+        return ft.NavigationBarDestination(icon=icon, selected_icon=selected, label=label)
+
+    return ft.NavigationBar(
+        selected_index=0,
+        bgcolor=BG_DEEPEST,
+        indicator_color=F1_RED,
+        label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
+        height=72,
+        elevation=0,
+        border=ft.Border.only(top=ft.BorderSide(1, LINE)),
+        animation_duration=ft.Duration(milliseconds=SWITCH_MS),
+        destinations=[
+            dest(ft.Icons.HOME_OUTLINED, ft.Icons.HOME_ROUNDED, "Главная"),
+            dest(ft.Icons.EMOJI_EVENTS_OUTLINED, ft.Icons.EMOJI_EVENTS_ROUNDED, "Чемпионат"),
+            dest(ft.Icons.CALENDAR_TODAY_OUTLINED, ft.Icons.CALENDAR_MONTH_ROUNDED, "Календарь"),
+            dest(ft.Icons.PERSON_OUTLINE_ROUNDED, ft.Icons.PERSON_ROUNDED, "Пилоты"),
+            dest(ft.Icons.MORE_HORIZ_ROUNDED, ft.Icons.MORE_HORIZ_ROUNDED, "Ещё"),
+        ],
+        on_change=on_change,
+    )
+
+
 def main(page: ft.Page):
     page.title = "F1 Analytics Hub"
     page.theme_mode = ft.ThemeMode.DARK
-    page.theme = ft.Theme(color_scheme_seed=ACCENT_PRIMARY)
+    page.theme = ft.Theme(
+        color_scheme_seed=F1_RED,
+        color_scheme=ft.ColorScheme(primary=F1_RED, on_primary=ON_ACCENT, secondary=F1_RED,
+                                    surface=SURFACE, on_surface=TEXT_PRIMARY),
+    )
+    page.dark_theme = page.theme
     page.bgcolor = BG
     page.padding = 0
-    page.fonts = {FONT_HEAD: FONT_FILE}
+    page.fonts = dict(FONTS)
 
-    # Размеры окна
+    # Размеры окна на десктопе (на телефоне игнорируются)
     try:
-        page.window.width = 430
-        page.window.height = 820
+        page.window.width = 440
+        page.window.height = 880
         page.window.min_width = 360
         page.window.min_height = 640
+        page.window.bgcolor = BG
     except Exception:
         pass
 
@@ -100,55 +129,33 @@ def main(page: ft.Page):
     state = AppState(page)
     state.load()
 
-    # Контейнер контента
+    # Контент: экраны сменяются с анимацией (только при переходе, не при обновлении данных)
+    switcher = ft.AnimatedSwitcher(
+        content=ft.Container(),
+        transition=ft.AnimatedSwitcherTransition.FADE,
+        duration=ft.Duration(milliseconds=SWITCH_MS),
+        reverse_duration=ft.Duration(milliseconds=SWITCH_MS // 2),
+        switch_in_curve=ft.AnimationCurve.EASE_OUT,
+        switch_out_curve=ft.AnimationCurve.EASE_IN,
+        expand=True,
+    )
     content = ft.Container(
+        content=switcher,
         expand=True,
         padding=ft.Padding.symmetric(horizontal=SPACE_MD, vertical=SPACE_XS),
     )
-
-    # Навигационная панель
-    nav = ft.NavigationBar(
-        selected_index=0,
-        bgcolor=SURFACE,
-        indicator_color=ACCENT_PRIMARY,
-        label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
-        height=70,
-        destinations=[
-            ft.NavigationBarDestination(
-                icon=ft.Icons.HOME_OUTLINED,
-                selected_icon=ft.Icons.HOME_ROUNDED,
-                label="Главная"
-            ),
-            ft.NavigationBarDestination(
-                icon=ft.Icons.EMOJI_EVENTS_OUTLINED,
-                selected_icon=ft.Icons.EMOJI_EVENTS_ROUNDED,
-                label="Чемпионат"
-            ),
-            ft.NavigationBarDestination(
-                icon=ft.Icons.CALENDAR_TODAY_OUTLINED,
-                selected_icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
-                label="Календарь"
-            ),
-            ft.NavigationBarDestination(
-                icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
-                selected_icon=ft.Icons.PERSON_ROUNDED,
-                label="Пилоты"
-            ),
-            ft.NavigationBarDestination(
-                icon=ft.Icons.MORE_HORIZ_ROUNDED,
-                selected_icon=ft.Icons.MORE_HORIZ_ROUNDED,
-                label="Ещё"
-            ),
-        ],
-        on_change=lambda e: state.open_tab(e.control.selected_index),
-    )
-
+    nav = nav_bar(lambda e: state.open_tab(e.control.selected_index))
+    shown = {"key": None}
     pending = threading.Event()   # перерисовка уже запланирована — повторные запросы сливаются
 
     def redraw():
         pending.clear()
+        key = state.screen_key()
+        state.fresh = key != shown["key"]
+        shown["key"] = key
         state.countdown = None
-        content.content = build_screen(state)
+        switcher.duration = ft.Duration(milliseconds=SWITCH_MS if state.fresh else 0)
+        switcher.content = ft.Container(build_screen(state), expand=True, key=str(time.monotonic()))
         nav.selected_index = state.tab
         page.update()
 
@@ -160,29 +167,31 @@ def main(page: ft.Page):
     state.render = render
     state.run_on_ui = lambda fn: run_on_ui(page, fn)
     page.navigation_bar = nav
-    content.content = build_screen(state)
-    page.add(content)
+    shown["key"] = state.screen_key()
+    switcher.content = ft.Container(build_screen(state), expand=True)
+    page.add(ft.SafeArea(content, expand=True, avoid_intrusions_bottom=False))
 
     def layout_class():
-        width = page.width or 430
-        return width < NARROW_WIDTH, ResponsiveContainer.is_mobile(width)
+        width = page.width or 440
+        return width < NARROW_WIDTH, ResponsiveContainer.is_mobile(width), width >= MAX_CONTENT_WIDTH
 
     def fit_width():
         """Контент не шире MAX_CONTENT_WIDTH (по центру); в узком окне подписи навигации — только у активной вкладки."""
-        width = page.width or 430
+        width = page.width or 440
         side = max(SPACE_MD, (width - MAX_CONTENT_WIDTH) / 2)
         content.padding = ft.Padding.symmetric(horizontal=side, vertical=SPACE_XS)
         nav.label_behavior = (ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED if width < NARROW_WIDTH
                               else ft.NavigationBarLabelBehavior.ALWAYS_SHOW)
 
-    # Экран перестраивается, только когда окно пересекает точку перелома
-    layout = {"class": layout_class()}
+    # Экран перестраивается, когда окно пересекает точку перелома или меняется ширина графиков
+    layout = {"class": layout_class(), "width": page.width}
 
     def on_resize(e):
         fit_width()
         current = layout_class()
-        if current != layout["class"]:
-            layout["class"] = current
+        width = page.width or 0
+        if current != layout["class"] or abs(width - (layout["width"] or 0)) > 80:
+            layout["class"], layout["width"] = current, width
             render()
         else:
             page.update()
@@ -191,6 +200,18 @@ def main(page: ft.Page):
     page.update()
     page.on_resize = on_resize
     page.on_keyboard_event = lambda e: state.on_key(e.key, e.ctrl or e.meta)
+
+    # Системная «назад» на Android: подэкран -> вкладка -> «Главная», и только потом выход
+    async def on_confirm_pop(e):
+        handled = state.go_back()
+        await e.control.confirm_pop(not handled)
+
+    try:
+        root = page.views[0]
+        root.can_pop = False
+        root.on_confirm_pop = on_confirm_pop
+    except (AttributeError, IndexError, TypeError):
+        pass
 
     # Запуск фонового обновления; закрытая сессия отписывается от него
     state.start_refresher()

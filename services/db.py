@@ -1,19 +1,26 @@
 """Локальная БД (SQLite): копия данных API + данные пользователя.
 
 Кэш API (можно стереть):
-  meta, standings, constructor_standings, race_results, schedule
+  meta, standings, constructor_standings, race_results, qualifying, sprint_results,
+  schedule, driver_media
 Данные пользователя (clear_cache их не трогает):
   favorites — избранные пилоты, settings — настройки
 """
 import json
 import os
+import shutil
 import sqlite3
 import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+APP_DIR = ".f1_analytics_hub"
+LEGACY_DIRS = (".ferrari_leclerc_hub",)   # старое имя папки — база переносится при первом запуске
+
+CACHE_TABLES = ("standings", "constructor_standings", "race_results", "qualifying", "sprint_results",
+                "schedule", "driver_media", "meta")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -21,29 +28,48 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS standings (
-    season    TEXT    NOT NULL,
-    driver_id TEXT    NOT NULL,
-    position  INTEGER NOT NULL,
-    points    REAL    NOT NULL,
-    wins      INTEGER NOT NULL,
-    code      TEXT,
-    name      TEXT    NOT NULL,
-    team      TEXT,
+    season      TEXT    NOT NULL,
+    driver_id   TEXT    NOT NULL,
+    position    INTEGER NOT NULL,
+    points      REAL    NOT NULL,
+    wins        INTEGER NOT NULL,
+    code        TEXT,
+    name        TEXT    NOT NULL,
+    team        TEXT,
+    nationality TEXT,
+    number      TEXT,
     PRIMARY KEY (season, driver_id)
 );
 CREATE TABLE IF NOT EXISTS race_results (
+    season       TEXT    NOT NULL,
+    driver_id    TEXT    NOT NULL,
+    round        INTEGER NOT NULL,
+    race_name    TEXT,
+    circuit      TEXT,
+    country      TEXT,
+    locality     TEXT,
+    date         TEXT,
+    position     TEXT,
+    grid         TEXT,
+    points       REAL,
+    status       TEXT,
+    team         TEXT,
+    fastest_rank TEXT,
+    PRIMARY KEY (season, driver_id, round)
+);
+CREATE TABLE IF NOT EXISTS qualifying (
     season    TEXT    NOT NULL,
     driver_id TEXT    NOT NULL,
     round     INTEGER NOT NULL,
-    race_name TEXT,
-    circuit   TEXT,
-    country   TEXT,
-    locality  TEXT,
-    date      TEXT,
+    position  INTEGER NOT NULL,
+    PRIMARY KEY (season, driver_id, round)
+);
+CREATE TABLE IF NOT EXISTS sprint_results (
+    season    TEXT    NOT NULL,
+    driver_id TEXT    NOT NULL,
+    round     INTEGER NOT NULL,
     position  TEXT,
-    grid      TEXT,
     points    REAL,
-    status    TEXT,
     PRIMARY KEY (season, driver_id, round)
 );
 CREATE TABLE IF NOT EXISTS constructor_standings (
@@ -68,6 +94,13 @@ CREATE TABLE IF NOT EXISTS schedule (
     sessions  TEXT    NOT NULL,
     PRIMARY KEY (season, round)
 );
+CREATE TABLE IF NOT EXISTS driver_media (
+    code     TEXT PRIMARY KEY,
+    ref      TEXT,
+    number   TEXT,
+    team     TEXT,
+    headshot TEXT
+);
 CREATE TABLE IF NOT EXISTS favorites (
     driver_id TEXT PRIMARY KEY,
     added_at  REAL NOT NULL
@@ -82,20 +115,47 @@ _init_lock = threading.Lock()
 _initialized = set()
 
 
+def data_dir() -> Path:
+    """Папка данных: FLET_APP_STORAGE_DATA во Flet-сборках (Android, .exe), иначе домашняя папка."""
+    base = os.environ.get("FLET_APP_STORAGE_DATA")
+    return Path(base) if base else Path.home() / APP_DIR
+
+
 def db_path() -> Path:
-    """Где лежит БД. F1_HUB_DB — для тестов; FLET_APP_STORAGE_DATA — папка данных
-    приложения во Flet-сборках; иначе — домашняя папка пользователя."""
+    """Где лежит БД. F1_HUB_DB — для тестов и особых случаев."""
     override = os.environ.get("F1_HUB_DB")
     if override:
         return Path(override)
-    base = os.environ.get("FLET_APP_STORAGE_DATA") or (Path.home() / ".ferrari_leclerc_hub")
-    return Path(base) / "f1_hub.db"
+    return data_dir() / "f1_hub.db"
+
+
+def _migrate_legacy_dir(path):
+    """Перенести базу из старой папки (избранное и настройки пользователя)."""
+    if path.exists() or os.environ.get("F1_HUB_DB") or os.environ.get("FLET_APP_STORAGE_DATA"):
+        return
+    for name in LEGACY_DIRS:
+        old = Path.home() / name / path.name
+        if old.is_file():
+            try:
+                for suffix in ("", "-wal", "-shm"):
+                    src = Path(str(old) + suffix)
+                    if src.is_file():
+                        shutil.copy2(src, Path(str(path) + suffix))
+            except OSError:
+                pass
+            return
 
 
 def _create_schema(path):
     con = sqlite3.connect(path, timeout=10)
     try:
         con.execute("PRAGMA journal_mode=WAL")
+        version = con.execute("PRAGMA user_version").fetchone()[0]
+        if version != SCHEMA_VERSION:
+            # Кэш API пересоздаётся по новой схеме (данные скачаются заново),
+            # избранное и настройки не трогаем.
+            for table in CACHE_TABLES:
+                con.execute(f"DROP TABLE IF EXISTS {table}")
         con.executescript(SCHEMA)
         con.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         con.commit()
@@ -111,6 +171,7 @@ def _connect():
     if key not in _initialized:
         with _init_lock:
             if key not in _initialized:
+                _migrate_legacy_dir(path)
                 _create_schema(path)
                 _initialized.add(key)
     con = sqlite3.connect(path, timeout=10)
@@ -133,6 +194,11 @@ def get_meta(key):
     return row["value"] if row else None
 
 
+def set_meta(key, value):
+    with _connect() as con:
+        _meta_set(con, key, value)
+
+
 def fetched_at(key):
     """Unix-время последней успешной загрузки или None."""
     value = get_meta(key)
@@ -143,17 +209,22 @@ def _meta_set(con, key, value):
     con.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)", (key, str(value)))
 
 
+def _latest_season(con, key):
+    row = con.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
 # ---------- standings ----------
 def save_standings(season, rnd, rows, fetched=None):
     """Атомарно заменяет весь зачёт сезона."""
     data = [
         (season, r["driver_id"], int(r["position"]), float(r["points"]), int(r["wins"]),
-         r.get("code", ""), r["name"], r.get("team", ""))
+         r.get("code", ""), r["name"], r.get("team", ""), r.get("nationality", ""), r.get("number", ""))
         for r in rows
     ]
     with _connect() as con:
         con.execute("DELETE FROM standings WHERE season=?", (season,))
-        con.executemany("INSERT INTO standings VALUES (?,?,?,?,?,?,?,?)", data)
+        con.executemany("INSERT INTO standings VALUES (?,?,?,?,?,?,?,?,?,?)", data)
         _meta_set(con, "standings_season", season)
         _meta_set(con, "standings_round", rnd)
         _meta_set(con, "standings_fetched_at", fetched or time.time())
@@ -162,12 +233,10 @@ def save_standings(season, rnd, rows, fetched=None):
 def load_standings():
     """Зачёт в формате, который ожидает UI (все значения — строки)."""
     with _connect() as con:
-        row = con.execute("SELECT value FROM meta WHERE key='standings_season'").fetchone()
-        if not row:
+        season = _latest_season(con, "standings_season")
+        if not season:
             return []
-        rows = con.execute(
-            "SELECT * FROM standings WHERE season=? ORDER BY position", (row["value"],)
-        ).fetchall()
+        rows = con.execute("SELECT * FROM standings WHERE season=? ORDER BY position", (season,)).fetchall()
     return [
         {
             "position": str(r["position"]),
@@ -177,52 +246,110 @@ def load_standings():
             "code": r["code"] or "",
             "name": r["name"],
             "team": r["team"] or "—",
+            "nationality": r["nationality"] or "",
+            "number": r["number"] or "",
             "season": r["season"],
         }
         for r in rows
     ]
 
 
-# ---------- race results ----------
-def save_results(season, driver_id, rows, fetched=None):
-    data = [
-        (season, driver_id, int(r["round"]), r["race_name"], r["circuit"], r["country"],
-         r["locality"], r["date"], r["position"], r["grid"], float(r["points"]), r["status"])
-        for r in rows
-    ]
+# ---------- результаты гонок (все пилоты сезона) ----------
+def _result_tuple(season, r):
+    return (season, r["driver_id"], int(r["round"]), r.get("race_name", ""), r.get("circuit", ""),
+            r.get("country", ""), r.get("locality", ""), r.get("date", ""), r["position"],
+            r.get("grid", ""), float(r.get("points") or 0), r.get("status", ""), r.get("team", ""),
+            r.get("fastest_rank", ""))
+
+
+def save_season_results(season, rnd, rows, fetched=None):
+    """Заменяет результаты всех гонок сезона (все пилоты)."""
     with _connect() as con:
-        con.execute("DELETE FROM race_results WHERE season=? AND driver_id=?", (season, driver_id))
-        con.executemany("INSERT INTO race_results VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", data)
-        _meta_set(con, f"results_fetched_at:{driver_id}", fetched or time.time())
+        con.execute("DELETE FROM race_results WHERE season=?", (season,))
+        con.executemany("INSERT INTO race_results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        [_result_tuple(season, r) for r in rows])
+        _meta_set(con, "results_season", season)
+        _meta_set(con, "results_round", rnd)
+        _meta_set(con, "results_fetched_at", fetched or time.time())
+
+
+def _result_dict(r):
+    return {
+        "driver_id": r["driver_id"],
+        "round": str(r["round"]),
+        "race_name": r["race_name"],
+        "circuit": r["circuit"],
+        "country": r["country"],
+        "locality": r["locality"],
+        "date": r["date"],
+        "position": r["position"],
+        "grid": r["grid"],
+        "points": _fmt_points(r["points"] or 0),
+        "status": r["status"],
+        "team": r["team"] or "",
+        "fastest_rank": r["fastest_rank"] or "",
+        "season": r["season"],
+    }
+
+
+def load_season_results():
+    """Все результаты гонок последнего сезона: по этапам, внутри этапа — по позиции."""
+    with _connect() as con:
+        season = _latest_season(con, "results_season")
+        if not season:
+            return []
+        rows = con.execute(
+            "SELECT * FROM race_results WHERE season=? ORDER BY round, "
+            "CAST(position AS INTEGER) = 0, CAST(position AS INTEGER)", (season,)).fetchall()
+    return [_result_dict(r) for r in rows]
 
 
 def load_results(driver_id):
+    """Результаты одного пилота за последний сезон, по этапам."""
     with _connect() as con:
-        row = con.execute(
-            "SELECT MAX(season) AS s FROM race_results WHERE driver_id=?", (driver_id,)
-        ).fetchone()
-        if not row or row["s"] is None:
+        season = _latest_season(con, "results_season")
+        if not season:
             return []
-        rows = con.execute(
-            "SELECT * FROM race_results WHERE season=? AND driver_id=? ORDER BY round",
-            (row["s"], driver_id),
-        ).fetchall()
-    return [
-        {
-            "round": str(r["round"]),
-            "race_name": r["race_name"],
-            "circuit": r["circuit"],
-            "country": r["country"],
-            "locality": r["locality"],
-            "date": r["date"],
-            "position": r["position"],
-            "grid": r["grid"],
-            "points": _fmt_points(r["points"]),
-            "status": r["status"],
-            "season": r["season"],
-        }
-        for r in rows
-    ]
+        rows = con.execute("SELECT * FROM race_results WHERE season=? AND driver_id=? ORDER BY round",
+                           (season, driver_id)).fetchall()
+    return [_result_dict(r) for r in rows]
+
+
+# ---------- квалификации и спринты ----------
+def save_qualifying(season, rows):
+    with _connect() as con:
+        con.execute("DELETE FROM qualifying WHERE season=?", (season,))
+        con.executemany("INSERT INTO qualifying VALUES (?,?,?,?)",
+                        [(season, r["driver_id"], int(r["round"]), int(r["position"])) for r in rows])
+        _meta_set(con, "qualifying_season", season)
+
+
+def load_qualifying():
+    with _connect() as con:
+        season = _latest_season(con, "qualifying_season")
+        if not season:
+            return []
+        rows = con.execute("SELECT * FROM qualifying WHERE season=? ORDER BY round, position", (season,)).fetchall()
+    return [{"driver_id": r["driver_id"], "round": str(r["round"]), "position": str(r["position"])} for r in rows]
+
+
+def save_sprints(season, rows):
+    with _connect() as con:
+        con.execute("DELETE FROM sprint_results WHERE season=?", (season,))
+        con.executemany("INSERT INTO sprint_results VALUES (?,?,?,?,?)",
+                        [(season, r["driver_id"], int(r["round"]), r["position"], float(r.get("points") or 0))
+                         for r in rows])
+        _meta_set(con, "sprints_season", season)
+
+
+def load_sprints():
+    with _connect() as con:
+        season = _latest_season(con, "sprints_season")
+        if not season:
+            return []
+        rows = con.execute("SELECT * FROM sprint_results WHERE season=? ORDER BY round", (season,)).fetchall()
+    return [{"driver_id": r["driver_id"], "round": str(r["round"]), "position": r["position"],
+             "points": _fmt_points(r["points"] or 0)} for r in rows]
 
 
 # ---------- constructor standings ----------
@@ -242,12 +369,11 @@ def save_constructors(season, rnd, rows, fetched=None):
 
 def load_constructors():
     with _connect() as con:
-        row = con.execute("SELECT value FROM meta WHERE key='constructors_season'").fetchone()
-        if not row:
+        season = _latest_season(con, "constructors_season")
+        if not season:
             return []
         rows = con.execute(
-            "SELECT * FROM constructor_standings WHERE season=? ORDER BY position", (row["value"],)
-        ).fetchall()
+            "SELECT * FROM constructor_standings WHERE season=? ORDER BY position", (season,)).fetchall()
     return [
         {
             "position": str(r["position"]),
@@ -278,12 +404,10 @@ def save_schedule(season, rows, fetched=None):
 
 def load_schedule():
     with _connect() as con:
-        row = con.execute("SELECT value FROM meta WHERE key='schedule_season'").fetchone()
-        if not row:
+        season = _latest_season(con, "schedule_season")
+        if not season:
             return []
-        rows = con.execute(
-            "SELECT * FROM schedule WHERE season=? ORDER BY round", (row["value"],)
-        ).fetchall()
+        rows = con.execute("SELECT * FROM schedule WHERE season=? ORDER BY round", (season,)).fetchall()
     return [
         {
             "round": str(r["round"]),
@@ -298,6 +422,24 @@ def load_schedule():
         }
         for r in rows
     ]
+
+
+# ---------- медиа пилотов (OpenF1) ----------
+def save_driver_media(rows, fetched=None):
+    with _connect() as con:
+        con.execute("DELETE FROM driver_media")
+        con.executemany("INSERT OR REPLACE INTO driver_media VALUES (?,?,?,?,?)",
+                        [(r["code"], r.get("ref", ""), r.get("number", ""), r.get("team", ""),
+                          r.get("headshot", "")) for r in rows])
+        _meta_set(con, "media_fetched_at", fetched or time.time())
+
+
+def load_driver_media():
+    """code -> {ref, number, team, headshot}."""
+    with _connect() as con:
+        rows = con.execute("SELECT * FROM driver_media").fetchall()
+    return {r["code"]: {"code": r["code"], "ref": r["ref"] or "", "number": r["number"] or "",
+                        "team": r["team"] or "", "headshot": r["headshot"] or ""} for r in rows}
 
 
 # ---------- favorites ----------
@@ -334,7 +476,7 @@ def set_setting(key, value):
 def clear_cache():
     """Стирает копию данных API. Избранное и настройки остаются."""
     with _connect() as con:
-        for table in ("standings", "constructor_standings", "race_results", "schedule", "meta"):
+        for table in CACHE_TABLES:
             con.execute(f"DELETE FROM {table}")
 
 

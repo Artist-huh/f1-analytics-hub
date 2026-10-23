@@ -1,190 +1,297 @@
-"""Экран сравнения двух пилотов head-to-head"""
+"""Сравнение 2–4 пилотов: показатели сезона, график очков, личные встречи"""
 import flet as ft
 from design_system import *
+from services import stats as st
 from ui.components import *
-from ui.fmt import to_int
-from ui.widgets import empty_state, field_border, screen
+from ui.fmt import short_name, to_int
+from ui.state import MAX_COMPARE
+from ui.widgets import empty_state, screen
+
+# (подпись, ключ, меньше-лучше, формат)
+METRICS = [
+    ("Позиция в зачёте", "position", True, lambda v: f"P{v}"),
+    ("Очки", "points", False, lambda v: f"{v:g}"),
+    ("Победы", "wins", False, str),
+    ("Подиумы", "podiums", False, str),
+    ("Поулы", "poles", False, str),
+    ("Быстрые круги", "fastest_laps", False, str),
+    ("Финиши в топ-10", "top10", False, str),
+    ("Сходы", "dnf", True, str),
+    ("Лучший финиш", "best", True, lambda v: f"P{v}"),
+    ("Средний финиш", "avg_finish", True, lambda v: f"{v:.1f}"),
+    ("Средняя квалификация", "avg_quali", True, lambda v: f"{v:.1f}"),
+    ("Очков за гонку", "points_per_race", False, lambda v: f"{v:.1f}"),
+    ("Отыгрыш со старта", "avg_gain", False, lambda v: f"{v:+.1f}"),
+]
+
+head_to_head = st.head_to_head   # совместимость: тесты и другие экраны
+
+
+def metric_values(state, drivers, key):
+    """Значения показателя для каждого пилота (None — нет данных)."""
+    out = []
+    for d in drivers:
+        if key == "position":
+            out.append(to_int(d["position"]))
+        elif key == "points":
+            out.append(float(d["points"]))
+        else:
+            out.append(state.driver_stats(d["driver_id"]).get(key))
+    return out
+
+
+def leaders(values, lower_is_better):
+    """Индексы лучших значений (несколько при равенстве; пусто, если все равны или нет данных)."""
+    known = [v for v in values if v is not None]
+    if len(known) < 2 or len(set(known)) == 1:
+        return set()
+    best = min(known) if lower_is_better else max(known)
+    return {i for i, v in enumerate(values) if v == best}
 
 
 def build(state):
     """Построить экран сравнения"""
-    drivers = state.standings
-    if len(drivers) < 2:
+    if len(state.standings) < 2:
         return screen(state, "Сравнение", [empty_state(state, "Не с кем сравнивать",
                                                         "Нужна таблица чемпионата — нажми «Обновить».")], back=True)
-
-    is_mobile = ResponsiveContainer.is_mobile(page_width(state))
-    d1 = state.driver(state.ui.get("cmp1")) or drivers[0]
-    d2 = state.driver(state.ui.get("cmp2"))
-    if d2 is None or d2["driver_id"] == d1["driver_id"]:
-        d2 = next(d for d in drivers if d["driver_id"] != d1["driver_id"])
-
+    drivers = [state.driver(i) for i in state.compare_ids()]
     sections = [
-        _build_driver_selector(state, drivers, d1, d2, is_mobile),
-        _build_comparison_header(d1, d2, is_mobile),
-        _build_stats_comparison(d1, d2),
-        _build_head_to_head(state, d1, d2),
+        _build_selector(state, drivers),
+        _build_metrics(state, drivers),
+        _build_chart(state, drivers),
+        _build_head_to_head(state, drivers),
     ]
-    return screen(state, "Сравнение", sections, subtitle="Два пилота лицом к лицу", back=True)
+    return screen(state, "Сравнение", sections, subtitle=f"{len(drivers)} пилота · сезон {state.season}", back=True)
 
 
-def _build_driver_selector(state, drivers, d1, d2, is_mobile):
-    """Селекторы для выбора пилотов"""
+# ---------------------------------------------------------------- выбор пилотов
+def _build_selector(state, drivers):
+    ids = [d["driver_id"] for d in drivers]
+    narrow = is_narrow(state)
 
-    current = {"cmp1": d1["driver_id"], "cmp2": d2["driver_id"]}
+    def remove(driver_id):
+        state.set_compare([i for i in ids if i != driver_id])
 
-    def on_select(slot, other):
-        def handler(e):
-            chosen = e.control.value
-            if not chosen:
-                return
-            state.ui[other] = current[slot] if chosen == current[other] else current[other]  # один пилот дважды — меняем местами
-            state.ui[slot] = chosen
-            state.render()
-        return handler
-
-    def dropdown(label, value, handler):
-        return ft.Dropdown(
-            label=label,
-            value=value,
-            options=[ft.DropdownOption(key=d["driver_id"], text=f"{d['position']}. {d['name']}") for d in drivers],
-            on_select=handler,
-            border=field_border(LINE_STRONG, ACCENT_PRIMARY),
-            bgcolor=SURFACE,
-            color=TEXT_PRIMARY,
-            text_size=FONT_BODY,
-            dense=True,
+    cells = []
+    for d in drivers:
+        color = get_team_color(d["team"])
+        cells.append(ft.Container(
+            ft.Column([
+                ft.Stack([
+                    DriverAvatar(d["code"], d["team"], size=52 if narrow else 64, src=state.photo(d),
+                                 on_click=lambda e, i=d["driver_id"]: state.open_driver(i)),
+                    ft.Container(
+                        ft.Icon(ft.Icons.CLOSE_ROUNDED, size=14, color=TEXT_PRIMARY),
+                        width=24, height=24, border_radius=12, bgcolor=SURFACE_ELEVATED,
+                        alignment=ft.Alignment.CENTER, right=-4, top=-4, ink=True,
+                        on_click=lambda e, i=d["driver_id"]: remove(i), tooltip="Убрать из сравнения",
+                    ) if len(drivers) > 2 else ft.Container(),
+                ], width=(52 if narrow else 64) + 4),
+                ft.Text(d["code"] or short_name(d["name"]), size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_ITALIC),
+                ft.Container(height=3, width=36, bgcolor=color, border_radius=2),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XXS),
             expand=True,
+        ))
+    if len(drivers) < MAX_COMPARE:
+        cells.append(ft.Container(
+            ft.Column([
+                ft.Container(ft.Icon(ft.Icons.ADD_ROUNDED, color=TEXT_PRIMARY, size=26),
+                             width=52 if narrow else 64, height=52 if narrow else 64, border_radius=32,
+                             border=ft.Border.all(2, F1_RED), alignment=ft.Alignment.CENTER,
+                             bgcolor=ACCENT_SOFT),
+                ft.Text("Добавить", size=FONT_CAPTION, color=TEXT_MUTED),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XXS),
+            expand=True, ink=True, border_radius=RADIUS_MD, on_click=lambda e: _show_picker(state, ids),
+        ))
+
+    presets = _presets(state)
+    chips = [ft.Container(ft.Text(label, size=FONT_CAPTION, color=TEXT_SECONDARY, weight=ft.FontWeight.W_600),
+                          bgcolor=SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
+                          padding=ft.Padding.symmetric(horizontal=12, vertical=8),
+                          on_click=lambda e, p=preset: state.set_compare(p))
+             for label, preset in presets]
+    return AnimatedCard(ft.Column([
+        ft.Row(cells, vertical_alignment=ft.CrossAxisAlignment.START, spacing=SPACE_XXS),
+        ft.Row(chips, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO),
+    ], spacing=SPACE_SM), padding=SPACE_SM)
+
+
+def _presets(state):
+    s = state.standings
+    out = [("Топ-2", [d["driver_id"] for d in s[:2]]), ("Топ-3", [d["driver_id"] for d in s[:3]]),
+           ("Топ-4", [d["driver_id"] for d in s[:4]])]
+    leader = s[0]
+    mates = [leader] + state.teammates(leader)
+    if len(mates) > 1:
+        out.append((f"Напарники {leader['team']}", [d["driver_id"] for d in mates]))
+    favs = [i for i in state.favorites if state.driver(i)]
+    if len(favs) >= 2:
+        out.append(("Избранные", favs[:MAX_COMPARE]))
+    return out
+
+
+def _show_picker(state, ids):
+    """Диалог выбора пилота для сравнения (с фото)."""
+    page = state.page
+
+    def add(driver_id):
+        page.pop_dialog()
+        state.set_compare(ids + [driver_id])
+
+    items = [
+        ft.Container(
+            content=ft.Row([
+                PositionBadge(d["position"], size=28),
+                DriverAvatar(d["code"], d["team"], size=40, src=state.photo(d)),
+                ft.Column([
+                    ft.Text(d["name"], size=FONT_BODY, weight=ft.FontWeight.W_600, color=TEXT_PRIMARY),
+                    ft.Text(d["team"], size=FONT_CAPTION, color=TEXT_SECONDARY),
+                ], spacing=2, expand=True),
+                ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED, color=ACCENT_TEXT),
+            ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            bgcolor=SURFACE_RAISED, border_radius=RADIUS_SM, padding=SPACE_XS, ink=True,
+            on_click=lambda e, i=d["driver_id"]: add(i),
         )
-
-    def swap(e):
-        state.ui["cmp1"], state.ui["cmp2"] = current["cmp2"], current["cmp1"]
-        state.render()
-
-    first = dropdown("Пилот 1", d1["driver_id"], on_select("cmp1", "cmp2"))
-    second = dropdown("Пилот 2", d2["driver_id"], on_select("cmp2", "cmp1"))
-    swap_btn = ft.IconButton(icon=ft.Icons.SWAP_HORIZ_ROUNDED if not is_mobile else ft.Icons.SWAP_VERT_ROUNDED,
-                             icon_color=ACCENT_PRIMARY, tooltip="Поменять местами", on_click=swap)
-    if is_mobile:
-        content = ft.Column([ft.Row([first]), ft.Row([ft.Container(expand=True), swap_btn, ft.Container(expand=True)]),
-                             ft.Row([second])], spacing=0)
-    else:
-        content = ft.Row([first, swap_btn, second], vertical_alignment=ft.CrossAxisAlignment.CENTER)
-    return ft.Container(content=content, bgcolor=SURFACE, border_radius=RADIUS_MD, padding=SPACE_SM,
-                        border=ft.Border.all(1, LINE))
-
-
-def _build_comparison_header(d1, d2, is_mobile):
-    """Header с двумя пилотами"""
-
-    def column(d):
-        return ft.Column([
-            DriverAvatar(d["code"], d["team"], size=48 if is_mobile else 64),
-            ft.Text(d["name"].split()[-1], size=FONT_H4, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY,
-                    text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-            ft.Text(d["team"], size=FONT_BODY_SMALL, color=TEXT_SECONDARY, text_align=ft.TextAlign.CENTER,
-                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XXS, expand=True)
-
-    return ft.Row([
-        column(d1),
-        ft.Text("VS", size=FONT_H2, weight=ft.FontWeight.BOLD, color=ACCENT_PRIMARY, font_family=FONT_HEADING),
-        column(d2),
-    ], vertical_alignment=ft.CrossAxisAlignment.CENTER)
-
-
-def _build_stats_comparison(d1, d2):
-    """Сравнение статистики (числа сравниваются как числа, а не как строки)"""
-    stats = [
-        ("Позиция", d1["position"], d2["position"], True),   # True = меньше лучше
-        ("Очки", d1["points"], d2["points"], False),
-        ("Победы", d1["wins"], d2["wins"], False),
+        for d in state.standings if d["driver_id"] not in ids
     ]
-    c1, c2 = get_team_color(d1["team"]), get_team_color(d2["team"])
+    page.show_dialog(ft.AlertDialog(
+        title=ft.Text("Добавить в сравнение", size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_HEADING),
+        content=ft.Column(items, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO, width=380, height=420),
+        actions=[ft.TextButton("Закрыть", on_click=lambda e: page.pop_dialog())],
+        bgcolor=SURFACE,
+    ))
+
+
+# ---------------------------------------------------------------- показатели
+def _build_metrics(state, drivers):
+    colors = [get_team_color(d["team"]) for d in drivers]
     rows = []
-    for label, v1, v2, lower_is_better in stats:
-        a, b = float(v1), float(v2)
-        if a == b:
-            leader = 0
-        elif lower_is_better:
-            leader = 1 if a < b else 2
-        else:
-            leader = 1 if a > b else 2
-
-        def value(text, slot):
-            return ft.Text(text, size=FONT_H3, weight=ft.FontWeight.BOLD, font_family=FONT_HEADING,
-                           color=SUCCESS if leader == slot else TEXT_PRIMARY if leader == 0 else TEXT_MUTED,
-                           text_align=ft.TextAlign.CENTER, expand=True)
-
-        items = [ft.Row([value(v1, 1), ft.Text(label, size=FONT_BODY_SMALL, color=TEXT_SECONDARY, expand=True,
-                                               text_align=ft.TextAlign.CENTER), value(v2, 2)])]
-        if not lower_is_better and a + b > 0:
-            items.append(ft.Row([
-                ft.Container(expand=round(a * 10) or None, height=4, bgcolor=c1, border_radius=2),
-                ft.Container(expand=round(b * 10) or None, height=4, bgcolor=c2, border_radius=2),
-            ], spacing=2))
-        rows.append(ft.Container(content=ft.Column(items, spacing=SPACE_XS), bgcolor=SURFACE,
-                                 border_radius=RADIUS_SM, padding=SPACE_SM))
-
-    return ft.Column([SectionHeader("Статистика"), ft.Column(rows, spacing=SPACE_XS)], spacing=SPACE_SM)
-
-
-def head_to_head(results1, results2):
-    """Кто финишировал выше на общих этапах. Сход проигрывает финишу; два схода — не в счёт.
-    -> (побед первого, побед второго, [(этап, название, поз1, поз2), ...])"""
-    by_round = {r["round"]: r for r in results2}
-    w1 = w2 = 0
-    races = []
-    for r1 in results1:
-        r2 = by_round.get(r1["round"])
-        if not r2:
-            continue
-        p1, p2 = to_int(r1["position"]), to_int(r2["position"])
-        if p1 is None and p2 is None:
-            continue
-        if p2 is None or (p1 is not None and p1 < p2):
-            w1 += 1
-        else:
-            w2 += 1
-        races.append((r1["round"], r1["race_name"], r1["position"], r2["position"]))
-    return w1, w2, races
+    for label, key, lower, fmt in METRICS:
+        values = metric_values(state, drivers, key)
+        best = leaders(values, lower)
+        known = [v for v in values if v is not None]
+        span = (max(known) - min(min(known), 0)) if known else 0
+        cells = []
+        for i, v in enumerate(values):
+            win = i in best
+            text = "—" if v is None else fmt(v)
+            bar = None
+            if v is not None and not lower and span > 0 and key != "avg_gain":
+                bar = progress_bar(max(v, 0) / span, colors[i], height=3)
+            cells.append(ft.Container(
+                ft.Column([ft.Text(text, size=FONT_H4, font_family=FONT_DISPLAY_ITALIC,
+                                   color=TEXT_PRIMARY if win else TEXT_MUTED, text_align=ft.TextAlign.CENTER)]
+                          + ([bar] if bar else []),
+                          spacing=4, horizontal_alignment=ft.CrossAxisAlignment.STRETCH),
+                expand=True, padding=ft.Padding.symmetric(horizontal=6, vertical=6), border_radius=RADIUS_SM,
+                bgcolor=ft.Colors.with_opacity(0.18, colors[i]) if win else None,
+                border=ft.Border.all(1, colors[i]) if win else None,
+            ))
+        rows.append(ft.Container(
+            ft.Column([ft.Text(label, size=FONT_CAPTION, color=TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
+                       ft.Row(cells, spacing=SPACE_XXS)],
+                      spacing=4, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            bgcolor=SURFACE, border_radius=RADIUS_SM, padding=ft.Padding.symmetric(horizontal=6, vertical=SPACE_XS),
+            border=ft.Border.all(1, LINE_SUBTLE),
+        ))
+    header = ft.Row([ft.Container(ft.Text(d["code"] or short_name(d["name"]), size=FONT_BODY_SMALL,
+                                          color=colors[i], font_family=FONT_ITALIC, text_align=ft.TextAlign.CENTER),
+                                  expand=True)
+                     for i, d in enumerate(drivers)], spacing=SPACE_XXS)
+    return ft.Column([SectionHeader("Показатели сезона", subtitle="Лучшее значение выделено цветом команды"),
+                      ft.Container(header, padding=ft.Padding.symmetric(horizontal=6)),
+                      ft.Column(rows, spacing=SPACE_XXS)], spacing=SPACE_SM)
 
 
-def _build_head_to_head(state, d1, d2):
-    """История личных встреч"""
-    header = SectionHeader("Head-to-Head", subtitle="Кто финишировал выше в гонках")
-    res1, res2 = state.driver_results(d1["driver_id"]), state.driver_results(d2["driver_id"])
-    if not res1 or not res2:
-        loading = state.results_loading(d1["driver_id"]) or state.results_loading(d2["driver_id"])
-        return ft.Column([header, ft.Row([
-            ft.ProgressRing(width=18, height=18, stroke_width=2, color=ACCENT_PRIMARY) if loading
+# ---------------------------------------------------------------- график
+def _build_chart(state, drivers):
+    rounds = st.rounds(state.season_results, state.sprints)
+    series = [(short_name(d["name"]), get_team_color(d["team"]),
+               st.cumulative_points(state.driver_results(d["driver_id"]), state.driver_sprints(d["driver_id"]), rounds))
+              for d in drivers]
+    if not rounds:
+        return ft.Container()
+    return ft.Column([
+        SectionHeader("Набор очков", subtitle="Гонки и спринты по этапам (напарники — пунктиром)"),
+        AnimatedCard(ft.Column([line_chart(series, rounds, content_width(state) - 2 * SPACE_SM, height=220),
+                                legend(series)], spacing=SPACE_XS), padding=SPACE_SM),
+    ], spacing=SPACE_SM)
+
+
+# ---------------------------------------------------------------- личные встречи
+def _build_head_to_head(state, drivers):
+    results = {d["driver_id"]: state.driver_results(d["driver_id"]) for d in drivers}
+    if not all(results.values()):
+        loading = any(state.results_loading(d["driver_id"]) for d in drivers)
+        return ft.Column([SectionHeader("Личные встречи"), ft.Row([
+            ft.ProgressRing(width=18, height=18, stroke_width=2, color=F1_RED) if loading
             else ft.Icon(ft.Icons.INFO_OUTLINE_ROUNDED, color=TEXT_DIM, size=18),
             ft.Text("Загружаем результаты гонок…" if loading else "Нет общих гонок для сравнения",
                     size=FONT_BODY_SMALL, color=TEXT_MUTED),
         ], spacing=SPACE_SM)], spacing=SPACE_SM)
+    if len(drivers) == 2:
+        return _build_duel(state, *drivers, results)
+    return _build_group(state, drivers, results)
 
-    w1, w2, races = head_to_head(res1, res2)
-    c1, c2 = get_team_color(d1["team"]), get_team_color(d2["team"])
-    score = ft.Container(
-        content=ft.Row([
-            ft.Text(str(w1), size=FONT_H1, weight=ft.FontWeight.BOLD, color=c1, font_family=FONT_HEADING,
-                    expand=True, text_align=ft.TextAlign.CENTER),
+
+def _score_card(title, a, b, c1, c2):
+    total = a + b
+    return AnimatedCard(ft.Column([
+        ft.Text(title, size=FONT_CAPTION, color=TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
+        ft.Row([
+            ft.Text(str(a), size=FONT_H1, color=c1, font_family=FONT_DISPLAY_ITALIC, expand=True,
+                    text_align=ft.TextAlign.CENTER),
             ft.Text(":", size=FONT_H2, color=TEXT_DIM),
-            ft.Text(str(w2), size=FONT_H1, weight=ft.FontWeight.BOLD, color=c2, font_family=FONT_HEADING,
-                    expand=True, text_align=ft.TextAlign.CENTER),
+            ft.Text(str(b), size=FONT_H1, color=c2, font_family=FONT_DISPLAY_ITALIC, expand=True,
+                    text_align=ft.TextAlign.CENTER),
         ]),
-        bgcolor=SURFACE, border_radius=RADIUS_MD, padding=SPACE_SM,
-    )
+        ft.Row([ft.Container(expand=a or None, height=5, bgcolor=c1, border_radius=3),
+                ft.Container(expand=b or None, height=5, bgcolor=c2, border_radius=3)],
+               spacing=2) if total else ft.Container(),
+    ], spacing=SPACE_XXS, horizontal_alignment=ft.CrossAxisAlignment.CENTER), padding=SPACE_SM, expand=True)
+
+
+def _build_duel(state, d1, d2, results):
+    w1, w2, races = st.head_to_head(results[d1["driver_id"]], results[d2["driver_id"]])
+    q1, q2 = st.quali_head_to_head(state.driver_quali(d1["driver_id"]), state.driver_quali(d2["driver_id"]))
+    c1, c2 = get_team_color(d1["team"]), get_team_color(d2["team"])
+    if c1 == c2:
+        c2 = TEXT_SECONDARY      # напарники: второй — светлым, чтобы различать
     lines = []
     for rnd, name, p1, p2 in reversed(races):
         a, b = to_int(p1), to_int(p2)
         first_won = b is None or (a is not None and a < b)
         lines.append(ft.Row([
             ft.Text(f"P{p1}" if a else p1, size=FONT_BODY_SMALL, weight=ft.FontWeight.BOLD, width=40,
-                    color=SUCCESS if first_won else TEXT_MUTED, text_align=ft.TextAlign.CENTER),
+                    color=c1 if first_won else TEXT_DIM, text_align=ft.TextAlign.CENTER),
             ft.Text(f"{rnd}. {name}", size=FONT_BODY_SMALL, color=TEXT_SECONDARY, expand=True,
                     text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
             ft.Text(f"P{p2}" if b else p2, size=FONT_BODY_SMALL, weight=ft.FontWeight.BOLD, width=40,
-                    color=SUCCESS if not first_won else TEXT_MUTED, text_align=ft.TextAlign.CENTER),
+                    color=c2 if not first_won else TEXT_DIM, text_align=ft.TextAlign.CENTER),
         ]))
-    return ft.Column([header, score, ft.Column(lines, spacing=SPACE_XXS)], spacing=SPACE_SM)
+    return ft.Column([
+        SectionHeader("Личные встречи", subtitle=f"{d1['code']} против {d2['code']}"),
+        ft.Row([_score_card("Гонки: кто финишировал выше", w1, w2, c1, c2),
+                _score_card("Квалификации", q1, q2, c1, c2)], spacing=SPACE_XS),
+        ft.Column(lines, spacing=SPACE_XXS),
+    ], spacing=SPACE_SM)
+
+
+def _build_group(state, drivers, results):
+    counts = st.finishing_ahead(results)
+    top = max(counts.values()) or 1
+    rows = []
+    for d in sorted(drivers, key=lambda x: -counts[x["driver_id"]]):
+        n = counts[d["driver_id"]]
+        color = get_team_color(d["team"])
+        rows.append(ft.Row([
+            DriverAvatar(d["code"], d["team"], size=36, src=state.photo(d)),
+            ft.Column([ft.Text(d["name"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
+                       progress_bar(n / top, color, height=6)], spacing=4, expand=True),
+            ft.Text(str(n), size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC, width=40,
+                    text_align=ft.TextAlign.RIGHT),
+        ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER))
+    return ft.Column([
+        SectionHeader("Кто чаще был впереди", subtitle="Гонки, где пилот финишировал выше всех выбранных"),
+        AnimatedCard(ft.Column(rows, spacing=SPACE_SM), padding=SPACE_SM),
+    ], spacing=SPACE_SM)

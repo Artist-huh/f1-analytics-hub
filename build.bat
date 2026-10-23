@@ -26,7 +26,7 @@ echo [4/4] Building
 "%FLET%" pack main.py -y --name F1AnalyticsHub --icon assets\icon.ico ^
     --add-data "assets;assets" "data;data" ^
     --product-name "F1 Analytics Hub" --file-description "F1 Analytics Hub" ^
-    --product-version "1.0.0" --file-version "1.0.0.0" ^
+    --product-version "2.0.0" --file-version "2.0.0.0" ^
     --company-name "F1 Hub" --copyright "MIT License" ^
     --pyinstaller-build-args=--exclude-module=PIL ^
     --pyinstaller-build-args=--exclude-module=psutil ^

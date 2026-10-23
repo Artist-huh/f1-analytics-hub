@@ -1,8 +1,9 @@
-"""Мелкие переиспользуемые элементы интерфейса."""
+"""Каркас экрана и мелкие элементы: текст, карточка, вкладки-«пилюли», кнопки, статус сети."""
 import flet as ft
 
-from theme import (
-    ACCENT, ON_ACCENT, ROSSO, SURFACE, RAISED, LINE, TEXT, MUTED, DIM, OK, WARN, FONT_HEAD, TYRES,
+from design_system import (
+    ACCENT, ACCENT_DEEP, ACCENT_GLOW, BG, DIM, F1_RED, FONT_DISPLAY_ITALIC, FONT_HEADING, LINE, MUTED, OK,
+    ON_ACCENT, RADIUS_FULL, RAISED, SURFACE, SURFACE_ELEVATED, TEXT, TOUCH, TYRES, WARN, DANGER, glow,
 )
 
 
@@ -10,20 +11,26 @@ def txt(value, size=14, color=TEXT, bold=False, head=False, **kw):
     return ft.Text(
         str(value), size=size, color=color,
         weight=ft.FontWeight.BOLD if bold else None,
-        font_family=FONT_HEAD if head else None, **kw,
+        font_family=FONT_HEADING if head else None, **kw,
     )
 
 
 def card(content, bgcolor=SURFACE, radius=14, padding=14, on_click=None, border=None, **kw):
     return ft.Container(content=content, bgcolor=bgcolor, border_radius=radius,
-                        padding=padding, on_click=on_click, border=border, **kw)
+                        padding=padding, on_click=on_click, border=border or ft.Border.all(1, LINE), **kw)
 
 
 def pill(label, selected, on_click):
+    """Вкладка-переключатель: выбранная — красная со свечением."""
     return ft.Container(
-        content=txt(label, 13, ON_ACCENT if selected else MUTED, bold=selected),
-        bgcolor=ACCENT if selected else RAISED, border_radius=20,
-        padding=ft.Padding.symmetric(horizontal=16, vertical=8), on_click=on_click, ink=True,
+        content=txt(label, 13, ON_ACCENT if selected else MUTED, bold=True),
+        gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
+                                   colors=[ACCENT_GLOW, F1_RED]) if selected else None,
+        bgcolor=None if selected else RAISED,
+        border_radius=RADIUS_FULL,
+        padding=ft.Padding.symmetric(horizontal=18, vertical=10),
+        on_click=on_click, ink=True,
+        animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
     )
 
 
@@ -35,16 +42,19 @@ def button(label, on_click, primary=True, icon=None):
     row.append(txt(label, 14, fg, bold=True))
     return ft.Container(
         content=ft.Row(row, spacing=8, alignment=ft.MainAxisAlignment.CENTER),
-        bgcolor=ACCENT if primary else RAISED, border_radius=10,
-        padding=ft.Padding.symmetric(horizontal=16, vertical=12), on_click=on_click, ink=True,
+        gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
+                                   colors=[ACCENT_GLOW, F1_RED, ACCENT_DEEP]) if primary else None,
+        bgcolor=None if primary else RAISED, border_radius=12, height=TOUCH,
+        padding=ft.Padding.symmetric(horizontal=16), on_click=on_click, ink=True,
+        shadow=glow(strength=0.3) if primary else None,
     )
 
 
 def field_border(color, focused):
     """Рамка поля ввода / списка: тонкая линия color, при фокусе — focused в 2 px (Flet 1.0+)."""
     return {
-        ft.ControlState.DEFAULT: ft.OutlineInputBorder(side=ft.BorderSide(1, color)),
-        ft.ControlState.FOCUSED: ft.OutlineInputBorder(side=ft.BorderSide(2, focused)),
+        ft.ControlState.DEFAULT: ft.OutlineInputBorder(side=ft.BorderSide(1, color), border_radius=12),
+        ft.ControlState.FOCUSED: ft.OutlineInputBorder(side=ft.BorderSide(2, focused), border_radius=12),
     }
 
 
@@ -68,49 +78,6 @@ def vdivider():
     return ft.Container(width=1, height=40, bgcolor=LINE)
 
 
-def stat(label, value, color=TEXT, size=40):
-    return ft.Column(
-        [txt(value, size, color, bold=True, head=True), txt(label, 12, MUTED)],
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0, expand=True,
-    )
-
-
-def stat_row(stats):
-    """stats — список готовых stat(); между ними тонкие разделители."""
-    items = []
-    for i, s in enumerate(stats):
-        if i:
-            items.append(vdivider())
-        items.append(s)
-    return ft.Row(items, vertical_alignment=ft.CrossAxisAlignment.CENTER)
-
-
-def ratio_bar(fraction, color, height=4):
-    """Полоска, заполненная на fraction (0..1). Через expand-пропорции, без измерения ширины."""
-    n = max(0, min(100, int(fraction * 100)))
-    return ft.Row(
-        [
-            ft.Container(expand=n or None, height=height, bgcolor=color, border_radius=2),
-            ft.Container(expand=(100 - n) or None, height=height, bgcolor=LINE, border_radius=2),
-        ],
-        spacing=0,
-    )
-
-
-def bar_chart(items, height=110):
-    """items: (подпись, значение, цвет, текст_сверху). Столбики прокручиваются вбок."""
-    top = max((v for _, v, _, _ in items), default=0)
-    cols = []
-    for label, value, color, caption in items:
-        h = max(3, int(height * value / top)) if top else 3
-        cols.append(ft.Column(
-            [txt(caption, 11, MUTED), ft.Container(width=22, height=h, bgcolor=color, border_radius=4),
-             txt(label, 11, DIM)],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4,
-        ))
-    return ft.Row(cols, spacing=10, vertical_alignment=ft.CrossAxisAlignment.END, scroll=ft.ScrollMode.AUTO)
-
-
 def tyre_chip(letter):
     return ft.Container(
         content=txt(letter, 13, TEXT, bold=True, head=True), width=30, height=30,
@@ -119,21 +86,23 @@ def tyre_chip(letter):
     )
 
 
-def status_chip(state):
+def status_chip(state, compact=False):
+    """Индикатор данных (онлайн / из кэша); нажатие — обновить. compact — только точка и значок
+    (узкий экран с длинным заголовком)."""
     if state.refreshing:
         label, color = "Обновление…", WARN
     else:
         label, color = {
             "live": ("Онлайн", OK), "cached": ("Из кэша", WARN),
-        }.get(state.status["state"], ("Нет данных", ROSSO))
+        }.get(state.status["state"], ("Нет данных", DANGER))
+    dot = ft.Container(width=8, height=8, bgcolor=color, border_radius=4,
+                       shadow=ft.BoxShadow(blur_radius=8, color=ft.Colors.with_opacity(0.8, color)))
+    items = [dot] + ([] if compact else [txt(label, 12, TEXT)]) + [ft.Icon(ft.Icons.REFRESH_ROUNDED, color=MUTED, size=16)]
     return ft.Container(
-        content=ft.Row(
-            [ft.Container(width=8, height=8, bgcolor=color, border_radius=4),
-             txt(label, 12, TEXT), ft.Icon(ft.Icons.REFRESH_ROUNDED, color=MUTED, size=16)],
-            spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        ),
-        bgcolor=RAISED, border_radius=16,
-        padding=ft.Padding.symmetric(horizontal=10, vertical=6), on_click=lambda e: state.refresh_now(),
+        content=ft.Row(items, spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, tight=True),
+        bgcolor=RAISED, border_radius=RADIUS_FULL, height=36,
+        padding=ft.Padding.symmetric(horizontal=12), on_click=lambda e: state.refresh_now(), ink=True,
+        tooltip=f"{label} · обновить данные (F5)",
     )
 
 
@@ -169,32 +138,43 @@ def banner(state):
             [ft.Icon(ft.Icons.WIFI_OFF_ROUNDED, color=WARN, size=20),
              ft.Column([txt(title, 13, TEXT, bold=True), txt(hint, 11, MUTED)], expand=True, spacing=1),
              ft.Container(txt("Повторить", 12, TEXT, bold=True), bgcolor=RAISED, border_radius=8,
-                          padding=ft.Padding.symmetric(horizontal=10, vertical=6),
+                          padding=ft.Padding.symmetric(horizontal=12, vertical=10), ink=True,
                           on_click=lambda e: state.refresh_now())],
             vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
-        bgcolor=SURFACE, border=ft.Border.all(1, WARN), border_radius=10,
+        bgcolor=SURFACE, border=ft.Border.all(1, WARN), border_radius=12,
         padding=ft.Padding.symmetric(horizontal=12, vertical=10),
     )
 
 
 def screen(state, title, body, subtitle=None, back=False):
-    """Каркас экрана: закреплённая шапка + прокручиваемое тело."""
+    """Каркас экрана: закреплённая шапка + прокручиваемое тело.
+    Элементы тела плавно появляются при переходе на экран (state.fresh)."""
+    from ui.components import FadeIn
     left = []
     if back:
-        left.append(ft.Container(
-            content=ft.Icon(ft.Icons.ARROW_BACK_ROUNDED, color=TEXT, size=22),
-            on_click=lambda e: state.close_sub(), padding=6,
-        ))
-    titles = [txt(title, 30, bold=True, head=True)]
+        left.append(ft.IconButton(icon=ft.Icons.ARROW_BACK_ROUNDED, icon_color=TEXT, icon_size=24,
+                                  on_click=lambda e: state.close_sub(), tooltip="Назад (Esc)",
+                                  width=TOUCH, height=TOUCH))
+    from ui.components import page_width
+    # на телефоне длинный заголовок с кнопкой «назад» не помещается рядом с подписью «Онлайн»
+    compact = page_width(state) < 480 and (back or len(title) > 10)
+    titles = [ft.Text(title, size=28, color=TEXT, font_family=FONT_DISPLAY_ITALIC, max_lines=1,
+                      overflow=ft.TextOverflow.ELLIPSIS)]
     if subtitle:
-        titles.append(txt(subtitle, 12, MUTED))
+        titles.append(txt(subtitle, 12, MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS))
     header = ft.Row(
-        left + [ft.Column(titles, spacing=0, expand=True), status_chip(state)],
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        left + [ft.Column(titles, spacing=0, expand=True), status_chip(state, compact)],
+        vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=4,
     )
     note = banner(state)
+    animate = getattr(state, "fresh", False)
+    items = [FadeIn(item, index=i, enabled=animate) for i, item in enumerate(body)]
+    items.append(ft.Container(height=SPACE_BOTTOM))
     return ft.Column(
         [header, ft.Container(height=8)] + ([note, ft.Container(height=6)] if note else [])
-        + [ft.Column(body, scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)],
+        + [ft.Column(items, scroll=ft.ScrollMode.AUTO, expand=True, spacing=12)],
         expand=True, spacing=0,
     )
+
+
+SPACE_BOTTOM = 12   # воздух под последним элементом, чтобы он не прилипал к нижнему меню

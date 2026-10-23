@@ -68,13 +68,13 @@ def texts(node):
     return [str(n.value) for n in walk(node) if type(n).__name__ == "Text" and getattr(n, "value", None) not in (None, "")]
 
 
-def make_fake_flet():
-    mod = types.ModuleType("flet")
+def make_fake_flet(name="flet"):
+    mod = types.ModuleType(name)
 
-    def __getattr__(name):
-        if name.startswith("__"):
-            raise AttributeError(name)
-        return type(name, (Ctl,), {})
+    def __getattr__(attr):
+        if attr.startswith("__"):
+            raise AttributeError(attr)
+        return type(attr, (Ctl,), {})
     mod.__getattr__ = __getattr__
     mod.run = lambda *a, **k: None
     return mod
@@ -103,37 +103,51 @@ class FakePage:
 
 # flet подменяем ДО импорта интерфейса
 sys.modules["flet"] = make_fake_flet()
+sys.modules["flet.canvas"] = sys.modules["flet"].canvas = make_fake_flet("flet.canvas")
 for _m in [m for m in sys.modules if m == "ui" or m.startswith("ui.") or m == "main"]:
     del sys.modules[_m]
 
-from services import db, f1_api as api, jolpica  # noqa: E402
-from tests.test_data_layer import results_json, router, standings_json  # noqa: E402
+from services import db, f1_api as api, jolpica, media  # noqa: E402
+from tests.test_data_layer import router  # noqa: E402
 import design_system  # noqa: E402
 import main as app  # noqa: E402
+from ui import components  # noqa: E402
 from ui.fmt import fmt_countdown, plural  # noqa: E402
 from ui.screens import calendar, compare, driver_detail, drivers  # noqa: E402
 from ui.state import AppState  # noqa: E402
 
 
 def fill_db():
-    """Реальные парсеры + подставной API, затем календарь с будущими датами."""
-    with mock.patch.object(jolpica._session, "get", router(standings=standings_json(), results=results_json())):
-        with mock.patch.object(jolpica, "MIN_INTERVAL", 0):
-            assert api.refresh_all(force=True)
+    """Реальные парсеры + подставной API (без OpenF1 и картинок), затем календарь с будущими датами."""
+    with mock.patch.object(jolpica._session, "get", router()), mock.patch.object(jolpica, "MIN_INTERVAL", 0), \
+            mock.patch.object(media, "refresh_refs", return_value=True), \
+            mock.patch.object(media, "prefetch", return_value=None):
+        assert api.refresh_all(force=True)
     now = time.time()
 
-    def race(rnd, name, circuit, locality, start):
-        return {"round": str(rnd), "race_name": name, "circuit": circuit, "locality": locality, "country": "X",
+    def race(rnd, name, circuit, locality, start, country="Italy"):
+        return {"round": str(rnd), "race_name": name, "circuit": circuit, "locality": locality, "country": country,
                 "date": "2026-01-01", "start_ts": start,
                 "sessions": [{"key": "Qualifying", "ts": start - 86400}, {"key": "Race", "ts": start}]}
     rows = [
-        race(1, "Australian Grand Prix", "Albert Park", "Melbourne", now - 90 * 86400),
-        race(2, "Chinese Grand Prix", "Shanghai", "Shanghai", now - 80 * 86400),
-        race(3, "Japanese Grand Prix", "Suzuka", "Suzuka", now - 70 * 86400),
+        race(1, "Australian Grand Prix", "Albert Park", "Melbourne", now - 90 * 86400, "Australia"),
+        race(2, "Chinese Grand Prix", "Shanghai", "Shanghai", now - 80 * 86400, "China"),
+        race(3, "Japanese Grand Prix", "Suzuka", "Suzuka", now - 70 * 86400, "Japan"),
         race(4, "Italian Grand Prix", "Autodromo Nazionale di Monza", "Monza", now + 3 * 86400 + 5 * 3600 + 600),
-        race(5, "Singapore Grand Prix", "Marina Bay", "Marina Bay", now + 10 * 86400),
+        race(5, "Singapore Grand Prix", "Marina Bay", "Marina Bay", now + 10 * 86400, "Singapore"),
     ]
     db.save_schedule("2026", rows)
+
+
+def add_podium():
+    """Полный подиум на этапе 3 (в общих фикстурах у гонок подиум неполный)."""
+    rows = [r for r in db.load_season_results() if r["round"] != "3"]
+    for pos, did, team in (("1", "leclerc", "Ferrari"), ("2", "antonelli", "Mercedes"), ("3", "lawson", "Racing Bulls")):
+        rows.append({"driver_id": did, "round": "3", "race_name": "Japanese GP", "circuit": "Suzuka",
+                     "country": "Japan", "locality": "Suzuka", "date": "2026-04-05", "position": pos, "grid": pos,
+                     "points": {"1": "25", "2": "18", "3": "15"}[pos], "status": "Finished", "team": team,
+                     "fastest_rank": ""})
+    db.save_season_results("2026", "3", rows)
 
 
 def click_all(node, state):
@@ -167,17 +181,18 @@ class UiSmokeTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         os.environ["F1_HUB_DB"] = os.path.join(self.tmp.name, "ui.db")
+        seed_env = mock.patch.dict(os.environ, {"F1_HUB_SEED": os.path.join(self.tmp.name, "no-seed.json")})
+        seed_env.start()   # снимок и встроенные картинки из data/ тестам не видны
+        self.addCleanup(seed_env.stop)
         api._state.update(error=None, fail_until=0.0)
+        media.clear_memory()
         self.page = FakePage()
         self.state = AppState(self.page)
         self.renders = []
         self.state.render = lambda: self.renders.append(1)
-        net = mock.patch.object(AppState, "_fetch_results", return_value=True)   # экраны не ходят в сеть
-        self.fetch = net.start()
         self.addCleanup(self.tmp.cleanup)
         self.addCleanup(os.environ.pop, "F1_HUB_DB", None)
         self.addCleanup(api.shutdown)
-        self.addCleanup(net.stop)
         self.addCleanup(join_workers)   # раньше остальных cleanup: потоки ещё под моками
 
     def all_screens(self):
@@ -202,12 +217,13 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Пилот не выбран", texts(self.build("driver_detail")))
         self.assertIn("Не с кем сравнивать", texts(self.build("compare")))
 
-    # --- с данными и на разной ширине окна: экраны собираются без ошибок
+    # --- с данными и на разной ширине окна (телефон, планшет, десктоп): экраны собираются без ошибок
     def test_every_screen_renders_with_data_on_all_widths(self):
         fill_db()
+        add_podium()
         self.state.load()
         self.state.ui["driver_id"] = "leclerc"
-        for width in (360, 430, 900, 1400):
+        for width in (360, 412, 430, 900, 1400):
             self.page.width = width
             for name, build in self.all_screens():
                 with self.subTest(screen=name, width=width):
@@ -215,15 +231,44 @@ class UiSmokeTest(unittest.TestCase):
                     self.assertTrue(t)
                     self.assertFalse(any("Не удалось" in x for x in t))
 
+    def test_no_driver_is_special(self):
+        """Приложение одинаково для всех пилотов: нигде нет блоков «про Леклера» и дуэли с ним."""
+        fill_db()
+        self.state.load()
+        self.assertNotIn("duel", app.SUBS)
+        self.state.ui["driver_id"] = "antonelli"
+        for name, build in self.all_screens():
+            with self.subTest(screen=name):
+                joined = " ".join(texts(build(self.state)))
+                self.assertNotIn("Леклер", joined)
+                self.assertNotIn("Ferrari.", joined)
+
     def test_home_content(self):
         fill_db()
         self.state.load()
         t = texts(self.build("tab0"))
-        for expected in ("F1 Hub", "Сезон 2026", "Следующая гонка", "Italian Grand Prix", "3 д 5 ч",
-                         "Antonelli", "Mercedes", "3/5", "Andrea Kimi Antonelli", "Charles Leclerc"):
+        for expected in ("F1 Hub", "Сезон 2026", "ЭТАП 4", "Italian Grand Prix", "3 д 5 ч",
+                         "Antonelli", "Mercedes", "3/5", "Leclerc"):
             self.assertIn(expected, t)
+        self.assertNotIn("Andrea Kimi Antonelli", t)    # телефон: в строках таблицы — фамилии
+        self.page.width = 900
+        self.assertIn("Andrea Kimi Antonelli", texts(self.build("tab0")))   # десктоп: полное имя
         self.assertIsNotNone(self.state.countdown)        # отсчёт зарегистрирован для ticker
         self.assertEqual(self.state.countdown[1], "4")
+        self.assertNotIn("ПОСЛЕДНЯЯ ГОНКА", t)             # подиум неполный — секцию не показываем
+
+    def test_home_last_race_podium(self):
+        fill_db()
+        add_podium()
+        self.state.load()
+        tree = self.build("tab0")
+        t = texts(tree)
+        self.assertIn("ПОСЛЕДНЯЯ ГОНКА", t)
+        self.assertIn("Этап 3 · Japanese Grand Prix", t)
+        avatars = [n for n in walk(tree) if type(n).__name__ == "DriverAvatar" and callable(getattr(n, "on_click", None))]
+        self.assertEqual(len(avatars), 3)
+        avatars[1].on_click(Ctl())                           # P1 в центре
+        self.assertEqual(self.state.ui["driver_id"], "leclerc")
 
     def test_home_buttons_navigate(self):
         fill_db()
@@ -234,21 +279,25 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.build("tab0"), "Сравнение")[-1].on_click(Ctl())
         self.assertEqual(self.state.sub, "compare")
         self.state.open_tab(0)
-        clickable(self.build("tab0"), "Andrea Kimi Antonelli")[-1].on_click(Ctl())
+        clickable(self.build("tab0"), "Antonelli")[0].on_click(Ctl())   # строка пилота (ниже — строка команды)
         self.assertEqual((self.state.sub, self.state.ui["driver_id"]), ("driver_detail", "antonelli"))
 
     def test_championship_tabs(self):
         fill_db()
         self.state.load()
+        self.page.width = 900
         t = texts(self.build("tab1"))
         self.assertIn("Andrea Kimi Antonelli", t)
         self.assertIn("лидер", t)
-        self.assertIn("−78", t)                           # отставание Леклера от лидера
+        self.assertIn("−78", t)                           # отставание от лидера
         self.state.ui["champ"] = "teams"
-        t = texts(self.build("tab1"))
+        tree = self.build("tab1")
+        t = texts(tree)
         self.assertIn("Mercedes", t)
-        self.assertIn("6 побед", t)
-        self.assertIn("0 побед", t)
+        self.assertIn("Antonelli", t)                     # пилоты команды под названием
+        self.assertTrue([n for n in walk(tree) if type(n).__name__ == "TeamLogo"])
+        clickable(tree, "Ferrari")[0].on_click(Ctl())     # команда -> её пилоты
+        self.assertEqual((self.state.tab, self.state.ui["drv_team"]), (3, "Ferrari"))
         self.state.ui["champ"] = "favs"
         self.assertIn("Нет избранных пилотов", texts(self.build("tab1")))
         api.toggle_favorite("leclerc")
@@ -259,6 +308,7 @@ class UiSmokeTest(unittest.TestCase):
 
     def test_calendar_upcoming_past_and_dialog(self):
         fill_db()
+        add_podium()
         self.state.load()
         t = texts(self.build("tab2"))
         self.assertIn("Ближайшая", t)
@@ -268,16 +318,16 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("5,793 км", t)                      # Монца опознана по названию автодрома
         self.state.ui["cal"] = "past"
         tree = self.build("tab2")
-        t = texts(tree)
-        self.assertIn("P3 · +15", t)                      # результат Леклера на прошедшем этапе
-        self.assertIn("R · +0", t)                        # сход
-        self.assertIn("P2 · +17.5", t)
+        self.assertIn("Победа: Leclerc", texts(tree))     # прошедший этап — победитель и подиум
         clickable(tree, "Japanese Grand Prix")[0].on_click(Ctl())
-        self.assertEqual(len(self.page.dialogs), 1)       # модальное окно с расписанием
+        self.assertEqual(len(self.page.dialogs), 1)       # модальное окно с подиумом и расписанием
         dialog = self.page.dialogs[0]
-        self.assertIn("3. Japanese Grand Prix", texts(dialog))
-        clickable(dialog, "Закрыть")[0].on_click(Ctl())
-        self.assertEqual(self.page.dialogs, [])
+        dt = texts(dialog)
+        self.assertIn("3. Japanese Grand Prix", dt)
+        self.assertIn("ПОДИУМ", dt)
+        self.assertIn("Liam Lawson", dt)
+        clickable(dialog, "Charles Leclerc")[0].on_click(Ctl())   # из подиума — на страницу пилота
+        self.assertEqual((self.state.sub, self.page.dialogs), ("driver_detail", []))
 
     def test_track_info_matching(self):
         def race(circuit, locality=""):
@@ -302,62 +352,90 @@ class UiSmokeTest(unittest.TestCase):
         field.on_change(Ctl(control=Ctl(value="law")))
         self.assertEqual(self.renders, [])                # экран не перестраивается — поле ввода не теряет фокус
         self.assertEqual(grid.updated, 1)
-        self.assertIn("Liam Lawson", texts(grid))
-        self.assertNotIn("Charles Leclerc", texts(grid))
+        self.assertIn("LAWSON", texts(grid))
+        self.assertNotIn("LECLERC", texts(grid))
         field.on_change(Ctl(control=Ctl(value="nobody")))
         self.assertIn("Пилоты не найдены", texts(grid))
+
+    def test_driver_photos_flags_and_logos(self):
+        fill_db()
+        db.save_driver_media([{"code": "LEC", "ref": "chalec01", "number": "16", "team": "Ferrari", "headshot": ""}])
+        self.state.load()
+        lec = self.state.driver("leclerc")
+        self.assertIn("/ferrari/chalec01/2026ferrarichalec01right.webp", self.state.photo(lec))
+        self.assertIn("c_fill,g_north,w_480,h_600", self.state.photo(lec, "portrait"))
+        self.assertIsNone(self.state.photo(self.state.driver("lawson")))      # нет в справочнике -> инициалы
+        images = [str(n.src) for n in walk(self.build("tab1")) if type(n).__name__ == "Image"]
+        self.assertTrue(any("chalec01" in src for src in images))
+        self.assertTrue(any("flagcdn.com/w80/mc.png" in src for src in images))   # флаг Монако
+        self.state.ui["champ"] = "teams"
+        images = [str(n.src) for n in walk(self.build("tab1")) if type(n).__name__ == "Image"]
+        self.assertTrue(any("2026mercedeslogowhite.webp" in src for src in images))
+        self.assertEqual(self.state.flag(country="Italy")[1], "it")
 
     def test_driver_detail_and_summary(self):
         fill_db()
         self.state.load()
-        s = driver_detail.season_summary(self.state.results)
+        s = driver_detail.season_summary(self.state.driver_results("leclerc"))
         self.assertEqual((s["podiums"], s["best"], s["dnf"]), (2, 2, 1))
         self.assertAlmostEqual(s["avg_gain"], 1.0)
         self.assertAlmostEqual(s["race_points"], 32.5)
         self.state.open_driver("leclerc")
         t = texts(self.build("driver_detail"))
-        for expected in ("Charles Leclerc", "+1.0", "P2", "Результаты гонок", "Japanese GP"):
+        for expected in ("LECLERC", "Charles", "P4", "Поулы", "Быстрые круги", "РЕЗУЛЬТАТЫ ГОНОК", "Japanese GP",
+                         "НАБОР ОЧКОВ", "Этап 2 · квал. P1 · старт 4 · 8 мар"):
             self.assertIn(expected, t)
 
-    def test_driver_detail_loads_other_driver_results_on_demand(self):
+    def test_every_driver_has_full_detail_page(self):
+        """Любой пилот, не только «главный»: статистика и результаты без похода в сеть."""
         fill_db()
         self.state.load()
-        self.state.open_driver("antonelli")
-        self.build("driver_detail")
-        for _ in range(100):
-            if self.fetch.called and not self.state.results_loading("antonelli"):
-                break
-            time.sleep(0.02)
-        self.fetch.assert_called_once_with("antonelli")
-        self.assertIn("Результатов пока нет", texts(self.build("driver_detail")))
-        self.fetch.assert_called_once()                   # повторно в сеть не идём
+        for d in self.state.standings:
+            with self.subTest(driver=d["driver_id"]):
+                self.state.ui["driver_id"] = d["driver_id"]
+                t = texts(self.build("driver_detail"))
+                self.assertIn("РЕЗУЛЬТАТЫ ГОНОК", t)
+                self.assertNotIn("Результатов пока нет", t)
 
-    def test_compare_numbers_and_head_to_head(self):
+    def test_compare_defaults_metrics_and_leaders(self):
         fill_db()
         self.state.load()
-        self.state.ui.update(cmp1="lawson", cmp2="leclerc")
-        tree = self.build("compare")
-        pos_row = next(n for n in walk(tree) if type(n).__name__ == "Row" and "Позиция" in texts(n))
-        colors = {n.value: n.color for n in walk(pos_row) if type(n).__name__ == "Text" and n.value in ("10", "4")}
-        self.assertEqual(colors["4"], design_system.SUCCESS)   # P4 лучше P10 (раньше сравнивались строки)
-        self.assertNotEqual(colors["10"], design_system.SUCCESS)
-        r1 = [{"round": "1", "race_name": "A", "position": "3"}, {"round": "2", "race_name": "B", "position": "R"},
-              {"round": "3", "race_name": "C", "position": "5"}, {"round": "4", "race_name": "D", "position": "R"}]
-        r2 = [{"round": "1", "race_name": "A", "position": "1"}, {"round": "2", "race_name": "B", "position": "9"},
-              {"round": "3", "race_name": "C", "position": "R"}, {"round": "4", "race_name": "D", "position": "R"}]
-        w1, w2, races = compare.head_to_head(r1, r2)
-        self.assertEqual((w1, w2, len(races)), (1, 2, 3))      # двойной сход не считается
+        self.assertEqual(self.state.compare_ids(), ["antonelli", "leclerc"])   # по умолчанию — двое лидеров
+        self.assertEqual(compare.leaders([10, 4], lower_is_better=True), {1})   # P4 лучше P10
+        self.assertEqual(compare.leaders([3, 3], lower_is_better=False), set())
+        self.state.ui["cmp"] = ["lawson", "leclerc"]
+        drivers_ = [self.state.driver(i) for i in self.state.compare_ids()]
+        self.assertEqual(compare.metric_values(self.state, drivers_, "position"), [10, 4])
+        self.assertEqual(compare.metric_values(self.state, drivers_, "poles"), [0, 1])
+        t = texts(self.build("compare"))
+        for expected in ("Поулы", "Быстрые круги", "Средняя квалификация", "Гонки: кто финишировал выше",
+                         "Квалификации", "НАБОР ОЧКОВ"):
+            self.assertIn(expected, t)
 
-    def test_compare_select_and_swap(self):
+    def test_compare_add_remove_and_presets(self):
         fill_db()
         self.state.load()
-        first, second = [n for n in walk(self.build("compare")) if type(n).__name__ == "Dropdown"]
-        self.assertEqual((first.value, second.value), ("antonelli", "leclerc"))
-        first.on_select(Ctl(control=Ctl(value="leclerc")))     # тот же пилот, что во втором слоте
-        self.assertEqual((self.state.ui["cmp1"], self.state.ui["cmp2"]), ("leclerc", "antonelli"))
-        swap = next(n for n in walk(self.build("compare")) if getattr(n, "tooltip", None) == "Поменять местами")
-        swap.on_click(Ctl())
-        self.assertEqual((self.state.ui["cmp1"], self.state.ui["cmp2"]), ("antonelli", "leclerc"))
+        clickable(self.build("compare"), "Добавить")[0].on_click(Ctl())
+        clickable(self.page.dialogs[-1], "Liam Lawson")[0].on_click(Ctl())
+        self.assertEqual(self.page.dialogs, [])
+        self.assertEqual(self.state.compare_ids(), ["antonelli", "leclerc", "lawson"])
+        self.assertIn("КТО ЧАЩЕ БЫЛ ВПЕРЕДИ", texts(self.build("compare")))   # 3+ пилота — общий счёт
+        remove = [n for n in walk(self.build("compare")) if getattr(n, "tooltip", None) == "Убрать из сравнения"]
+        self.assertEqual(len(remove), 3)
+        remove[0].on_click(Ctl())
+        self.assertEqual(self.state.compare_ids(), ["leclerc", "lawson"])
+        self.assertFalse([n for n in walk(self.build("compare")) if getattr(n, "tooltip", None) == "Убрать из сравнения"])
+        clickable(self.build("compare"), "Топ-3")[0].on_click(Ctl())
+        self.assertEqual(self.state.compare_ids(), ["antonelli", "leclerc", "lawson"])
+        self.state.set_compare(["antonelli", "leclerc", "lawson", "norris", "x"])   # не больше четырёх
+        self.assertEqual(len(self.state.ui["cmp"]), 4)
+
+    def test_compare_from_driver_page(self):
+        fill_db()
+        self.state.load()
+        self.state.open_driver("lawson")
+        clickable(self.build("driver_detail"), "Сравнить")[0].on_click(Ctl())
+        self.assertEqual((self.state.sub, self.state.compare_ids()[0]), ("compare", "lawson"))
 
     def test_favorites_add_dialog_and_stats(self):
         fill_db()
@@ -370,9 +448,12 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.favorites, ["lawson"])
         api.toggle_favorite("leclerc")
         self.state.load()
-        t = texts(self.build("favorites"))
+        tree = self.build("favorites")
+        t = texts(tree)
         self.assertIn("165", t)                                  # 39 + 126 — числа, а не строки
         self.assertIn("P4", t)
+        clickable(tree, "Сравнить избранных")[0].on_click(Ctl())
+        self.assertEqual((self.state.sub, self.state.compare_ids()), ("compare", ["lawson", "leclerc"]))
         api.toggle_favorite("antonelli")
         self.state.load()
         clickable(self.build("favorites"), "Добавить пилота")[0].on_click(Ctl())
@@ -398,19 +479,19 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Monza", t)                         # ближайшая гонка — Монца
         self.assertIn("1 пит-стоп", t)
 
-    def test_duel_and_settings(self):
+    def test_settings_content(self):
         fill_db()
         self.state.load()
-        t = texts(app.SUBS["duel"](self.state))
-        self.assertIn("Позиция в зачёте", t)
-        self.assertIn("Antonelli впереди на 78", t)
         t = texts(app.SUBS["settings"](self.state))
         self.assertIn("данные свежие", t)
         self.assertIn("Jolpica F1 API", t)
+        self.assertIn("О приложении", t)
+        self.assertIn("Фото и логотипы", t)
 
     # --- обработчики нажатий не падают
     def test_handlers(self):
         fill_db()
+        add_podium()
         self.state.load()
         with mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()), \
              mock.patch.object(api, "refresh_all", return_value=True):
@@ -440,6 +521,18 @@ class UiSmokeTest(unittest.TestCase):
         self.state.open_tab(1)
         self.state.close_sub()
         self.assertIsNone(self.state.sub)                        # смена вкладки сбрасывает историю
+
+    def test_android_back_button(self):
+        """Системная «назад»: подэкран -> вкладка -> «Главная» -> выход из приложения."""
+        fill_db()
+        self.state.load()
+        self.state.open_tab(3)
+        self.state.open_driver("leclerc")
+        self.assertTrue(self.state.go_back())
+        self.assertEqual((self.state.tab, self.state.sub), (3, None))
+        self.assertTrue(self.state.go_back())
+        self.assertEqual(self.state.tab, 0)
+        self.assertFalse(self.state.go_back())                   # дальше — закрыть приложение
 
     def test_hotkeys(self):
         fill_db()
@@ -472,11 +565,23 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.favorites, ["norris"])
 
     def test_team_colors(self):
-        self.assertEqual(design_system.get_team_color(""), design_system.TEXT_DIM)      # раньше — цвет Red Bull
-        self.assertEqual(design_system.get_team_color("Racing Bulls"), design_system.TEAMS["rb"]["primary"])
-        self.assertEqual(design_system.get_team_color("Red Bull"), design_system.TEAMS["red_bull"]["primary"])
-        self.assertNotEqual(design_system.get_team_color("Audi"), design_system.TEXT_DIM)
-        self.assertNotEqual(design_system.get_team_color("Cadillac F1 Team"), design_system.TEXT_DIM)
+        ds = design_system
+        self.assertEqual(ds.get_team_color(""), ds.TEXT_DIM)      # неизвестная команда — нейтральный цвет
+        self.assertEqual(ds.get_team_color("Racing Bulls"), ds.TEAMS["rb"]["color"])
+        self.assertEqual(ds.get_team_color("RB F1 Team"), ds.TEAMS["rb"]["color"])
+        self.assertEqual(ds.get_team_color("Red Bull"), ds.TEAMS["red_bull"]["color"])
+        self.assertNotEqual(ds.get_team_color("Audi"), ds.TEXT_DIM)
+        self.assertNotEqual(ds.get_team_color("Cadillac F1 Team"), ds.TEXT_DIM)
+        self.assertEqual(ds.team_slug("Haas F1 Team"), "haasf1team")
+        self.assertEqual(ds.F1_RED, "#E10600")
+
+    def test_line_chart(self):
+        chart = components.line_chart([("A", "#f00", [0, 25, 43]), ("B", "#f00", [0, 18, 30])], [1, 2, 3], 300)
+        paths = [s for s in chart.shapes if type(s).__name__ == "Path"]
+        self.assertEqual(len(paths), 2)
+        self.assertIsNone(paths[0].paint.stroke_dash_pattern)
+        self.assertEqual(paths[1].paint.stroke_dash_pattern, [6, 4])     # напарник того же цвета — пунктир
+        self.assertEqual([components._nice_step(x) for x in (3, 11, 43, 120)], [5, 20, 50, 200])
 
     # --- оболочка: main() собирается, render перерисовывает и синхронизирует вкладку
     def test_main_shell(self):
@@ -489,9 +594,9 @@ class UiSmokeTest(unittest.TestCase):
         shown = texts(page.added[0])
         self.assertIn("F1 Hub", shown)
         self.assertIn("Italian Grand Prix", shown)
+        self.assertEqual(set(page.fonts), set(design_system.FONTS))
 
-    def test_render_from_threads_goes_through_event_loop(self):
-        """page.update() из фонового потока во Flet 0.80+ не доходит до окна — нужен run_task."""
+    def _main_with_loop(self):
         fill_db()
         page = FakePage()
         tasks = []
@@ -499,6 +604,11 @@ class UiSmokeTest(unittest.TestCase):
         with mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()), \
              mock.patch("threading.Thread.start"):
             app.main(page)
+        return page, tasks
+
+    def test_render_from_threads_goes_through_event_loop(self):
+        """page.update() из фонового потока во Flet 0.80+ не доходит до окна — нужен run_task."""
+        page, tasks = self._main_with_loop()
         on_change = page.navigation_bar.on_change
         updates = page.updates
         on_change(Ctl(control=Ctl(selected_index=2)))
@@ -509,6 +619,17 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(page.updates, updates + 1)
         self.assertEqual(page.navigation_bar.selected_index, 3)
         self.assertIn("Пилоты", texts(page.added[0]))
+
+    def test_screen_change_animates_only_on_navigation(self):
+        page, tasks = self._main_with_loop()
+        page.navigation_bar.on_change(Ctl(control=Ctl(selected_index=1)))
+        asyncio.run(tasks.pop()())
+        fades = [n for n in walk(page.added[0]) if type(n).__name__ == "FadeIn"]
+        self.assertTrue(fades and all(f.opacity == 0 for f in fades))   # новый экран — появляется плавно
+        page.navigation_bar.on_change(Ctl(control=Ctl(selected_index=1)))   # тот же экран (обновление)
+        asyncio.run(tasks.pop()())
+        fades = [n for n in walk(page.added[0]) if type(n).__name__ == "FadeIn"]
+        self.assertTrue(fades and all(f.opacity == 1 for f in fades))   # перерисовка без анимации
 
     # --- сообщения об ошибках сети (FR-14)
     def test_banner_states(self):
@@ -570,7 +691,7 @@ class UiSmokeTest(unittest.TestCase):
              mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()):
             app.main(page)
         shown = texts(page.added[0])
-        self.assertIn("Andrea Kimi Antonelli", shown)              # таблица видна сразу
+        self.assertIn("Antonelli", shown)                         # таблица видна сразу
         self.assertIn("Из кэша", shown)                            # и честно помечена как сохранённая
 
     def test_screen_error_is_contained(self):

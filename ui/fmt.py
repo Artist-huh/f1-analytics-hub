@@ -70,6 +70,12 @@ def fmt_updated(ts):
         else f"{fmt_date(ts)}, {fmt_clock(ts)}"
 
 
+def short_name(full_name):
+    """'Andrea Kimi Antonelli' -> 'Antonelli'."""
+    parts = (full_name or "").split()
+    return parts[-1] if parts else ""
+
+
 def to_int(value, default=None):
     try:
         return int(str(value))

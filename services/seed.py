@@ -13,6 +13,7 @@
 import argparse
 import json
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -20,7 +21,7 @@ from pathlib import Path
 from . import db, log
 
 logger = log.get("seed")
-VERSION = 1
+VERSION = 2   # v2: результаты всех пилотов, квалификации, спринты, справочник фото
 
 
 def default_path():
@@ -31,7 +32,7 @@ def default_path():
     return base / "data" / "seed.json"
 
 
-def export_snapshot(path=None, driver_id="leclerc"):
+def export_snapshot(path=None):
     """Записывает текущее содержимое БД в JSON. Возвращает путь или None, если БД пуста."""
     standings = db.load_standings()
     if not standings:
@@ -45,15 +46,38 @@ def export_snapshot(path=None, driver_id="leclerc"):
         "standings": standings,
         "constructors": db.load_constructors(),
         "constructors_round": db.get_meta("constructors_round") or "0",
-        "driver_id": driver_id,
-        "results": db.load_results(driver_id),
+        "results_round": db.get_meta("results_round") or "0",
+        "results": db.load_season_results(),
+        "qualifying": db.load_qualifying(),
+        "sprints": db.load_sprints(),
         "schedule": db.load_schedule(),
+        "driver_media": list(db.load_driver_media().values()),
     }
     path = Path(path) if path else default_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=1), encoding="utf-8")
+    path.write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     logger.info("снимок записан: %s", path)
+    _export_media(path.parent / "media", snapshot)
     return path
+
+
+def _export_media(target, snapshot):
+    """Скопировать скачанные картинки сезона рядом со снимком (фото без сети при первом запуске)."""
+    from . import media
+    refs = {r["code"]: r for r in snapshot["driver_media"]}
+    files = [media._cache_file(url) for url, _ in media.all_urls(snapshot["standings"], snapshot["constructors"],
+                                                                snapshot["schedule"], refs)]
+    files = [f for f in files if f.is_file()]
+    if not files:
+        return
+    target.mkdir(parents=True, exist_ok=True)
+    keep = {f.name for f in files}
+    for old in target.glob("*"):
+        if old.name not in keep:
+            old.unlink()
+    for f in files:
+        shutil.copy2(f, target / f.name)
+    logger.info("картинки для снимка: %d файлов в %s", len(files), target)
 
 
 def import_if_empty(path=None):
@@ -72,9 +96,15 @@ def import_if_empty(path=None):
         if snap.get("constructors"):
             db.save_constructors(season, snap.get("constructors_round", "0"), snap["constructors"], fetched=stamp)
         if snap.get("results"):
-            db.save_results(season, snap.get("driver_id", "leclerc"), snap["results"], fetched=stamp)
+            db.save_season_results(season, snap.get("results_round", "0"), snap["results"], fetched=stamp)
+        if snap.get("qualifying"):
+            db.save_qualifying(season, snap["qualifying"])
+        if snap.get("sprints"):
+            db.save_sprints(season, snap["sprints"])
         if snap.get("schedule"):
             db.save_schedule(season, snap["schedule"], fetched=stamp)
+        if snap.get("driver_media"):
+            db.save_driver_media(snap["driver_media"], fetched=stamp)
         logger.info("импортирован начальный снимок данных (сезон %s) из %s", season, path)
         return True
     except (OSError, ValueError, KeyError, TypeError) as exc:

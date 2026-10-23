@@ -1,4 +1,4 @@
-"""Экран выбора и просмотра пилотов"""
+"""Экран «Пилоты»: карточки с портретами, поиск и фильтр по команде"""
 import flet as ft
 from design_system import *
 from ui.components import *
@@ -50,12 +50,12 @@ def _build_search_and_filters(state, drivers, on_search):
         value=state.ui["drv_q"],
         hint_text="Имя, код или команда",
         prefix_icon=ft.Icons.SEARCH,
-        border=field_border(LINE_STRONG, ACCENT_PRIMARY),
+        border=field_border(LINE_STRONG, F1_RED),
         bgcolor=SURFACE,
         color=TEXT_PRIMARY,
+        cursor_color=F1_RED,
         hint_style=ft.TextStyle(color=TEXT_MUTED),
         text_size=FONT_BODY,
-        dense=True,
         expand=True,
         autofocus=state.ui.pop("drv_focus", False),   # Ctrl+F
         on_change=on_search,
@@ -70,7 +70,7 @@ def _build_search_and_filters(state, drivers, on_search):
     chips = [ft.Chip(
         label=ft.Text("Все", size=FONT_BODY_SMALL),
         selected=selected is None,
-        selected_color=SURFACE_ELEVATED,
+        selected_color=ACCENT_SOFT,
         bgcolor=SURFACE_RAISED,
         show_checkmark=False,
         on_select=lambda e: choose(None),
@@ -80,7 +80,7 @@ def _build_search_and_filters(state, drivers, on_search):
             label=ft.Text(team, size=FONT_BODY_SMALL),
             leading=ft.Container(width=10, height=10, bgcolor=get_team_color(team), border_radius=RADIUS_FULL),
             selected=selected == team,
-            selected_color=SURFACE_ELEVATED,
+            selected_color=ACCENT_SOFT,
             bgcolor=SURFACE_RAISED,
             show_checkmark=False,
             on_select=lambda e, t=team: choose(None if state.ui["drv_team"] == t else t),
@@ -93,49 +93,61 @@ def _build_search_and_filters(state, drivers, on_search):
 
 
 def _build_driver_card(state, d):
-    """Карточка пилота"""
-    color = get_team_color(d["team"])
+    """Карточка пилота: градиент команды, портрет справа, номер-водяной знак."""
+    top, bottom = get_team_gradient(d["team"])
     fav = d["driver_id"] in state.favorites
-    header = ft.Row([
-        DriverAvatar(d["code"], d["team"], size=48),
-        ft.Column([
-            ft.Text(d["name"], size=FONT_BODY_LARGE, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY,
-                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-            ft.Text(d["team"], size=FONT_BODY_SMALL, color=TEXT_SECONDARY, max_lines=1,
-                    overflow=ft.TextOverflow.ELLIPSIS),
-        ], spacing=2, expand=True),
-        ft.IconButton(
-            icon=ft.Icons.STAR_ROUNDED if fav else ft.Icons.STAR_BORDER_ROUNDED,
-            icon_color=TEAMS["ferrari"]["accent"] if fav else TEXT_DIM,
-            tooltip="Убрать из избранного" if fav else "В избранное",
-            on_click=lambda e, i=d["driver_id"]: state.toggle_favorite(i),
-        ),
-        PositionBadge(d["position"], size=36),
-    ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+    s = state.driver_stats(d["driver_id"])
+    flag_src, iso = state.flag(nationality=d.get("nationality"))
+    parts = d["name"].split()
+    first, last = " ".join(parts[:-1]), parts[-1] if parts else d["name"]
+    height = 184
 
-    stats = ft.Row([
-        _mini_stat("Очки", d["points"], ACCENT_PRIMARY),
-        create_divider(vertical=True),
-        _mini_stat("Победы", d["wins"], SUCCESS),
-        create_divider(vertical=True),
-        _mini_stat("Код", d["code"] or "—", TEXT_PRIMARY),
-    ], vertical_alignment=ft.CrossAxisAlignment.CENTER)
+    portrait = ft.Container(
+        image(state.photo(d, "portrait"), height=height, fit=ft.BoxFit.FIT_HEIGHT,
+              fallback=ft.Container()),
+        right=0, bottom=0, height=height,
+    )
+    number = ft.Text(d.get("number") or "", size=120, font_family=FONT_DISPLAY_ITALIC,
+                     color=ft.Colors.with_opacity(0.16, TEXT_PRIMARY))
+    info = ft.Column([
+        ft.Row([PositionBadge(d["position"], size=30), flag(flag_src, 14, iso)], spacing=SPACE_XS,
+               vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ft.Column([
+            ft.Text(first, size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, TEXT_PRIMARY), max_lines=1),
+            ft.Text(last.upper(), size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC, max_lines=1),
+            ft.Text(d["team"], size=FONT_CAPTION, color=ft.Colors.with_opacity(0.75, TEXT_PRIMARY), max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS),
+        ], spacing=0),
+        ft.Container(expand=True),
+        ft.Row([_mini_stat(d["points"], "очки"), _mini_stat(s["wins"], "победы"), _mini_stat(s["podiums"], "подиумы")],
+               spacing=SPACE_MD),
+    ], spacing=SPACE_XS, width=180)
 
     return AnimatedCard(
-        content=ft.Column([header, stats, ft.Container(height=3, bgcolor=color, border_radius=RADIUS_SM)],
-                          spacing=SPACE_SM),
+        content=ft.Stack([
+            ft.Container(number, right=8, top=-18),
+            portrait,
+            ft.Container(info, left=0, top=0, bottom=0),
+            ft.Container(star_button(fav, lambda e, i=d["driver_id"]: state.toggle_favorite(i)), right=-6, top=-6),
+        ], height=height - 2 * SPACE_SM, clip_behavior=ft.ClipBehavior.HARD_EDGE),
         on_click=lambda e, i=d["driver_id"]: state.open_driver(i),
-        padding=SPACE_MD,
+        padding=ft.Padding.only(left=SPACE_MD, top=SPACE_SM, bottom=SPACE_SM),
+        height=height,
+        gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
+                                   colors=[top, bottom, BG_DEEP], stops=[0.0, 0.55, 1.0]),
+        bgcolor=None,
+        border=ft.Border.all(1, ft.Colors.with_opacity(0.25, top)),
+        accent=top,
+        clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         col={"xs": 12, "md": 6, "xl": 4},
     )
 
 
-def _mini_stat(label, value, color):
-    """Мини-статистика"""
+def _mini_stat(value, label):
     return ft.Column([
-        ft.Text(str(value), size=FONT_H3, weight=ft.FontWeight.BOLD, color=color, font_family=FONT_HEADING),
-        ft.Text(label, size=FONT_CAPTION, color=TEXT_MUTED),
-    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0, expand=True)
+        ft.Text(str(value), size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC),
+        ft.Text(label, size=10, color=ft.Colors.with_opacity(0.75, TEXT_PRIMARY)),
+    ], spacing=0)
 
 
 def filter_drivers(drivers, query, team):

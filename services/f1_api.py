@@ -11,10 +11,11 @@ import json
 import threading
 import time
 
-from . import db, jolpica, log, seed
+from . import db, jolpica, log, media, seed
 
-LECLERC_ID = "leclerc"
 REFRESH_INTERVAL = 300   # сек. 2 запроса / 5 мин = 24 в час при лимите Jolpica ~200
+RESULTS_TTL = 6 * 3600   # результаты сезона перезапрашиваем при новом этапе или раз в 6 часов
+RESULTS_RETRY = 1800     # результаты отстают от зачёта (ещё не опубликованы) — повтор через 30 минут
 FAIL_COOLDOWN = 20       # сек. после сбоя не долбим сеть при обычных (не ручных) вызовах
 SCHEDULE_TTL = 6 * 3600  # календарь меняется редко — не чаще раза в 6 часов
 RACE_DURATION = 2 * 3600 # сколько считаем гонку «идущей» после старта
@@ -68,11 +69,29 @@ def refresh_constructors(force=False):
     return _refresh(job, force)
 
 
-def refresh_results(driver_id=LECLERC_ID, force=False):
+def refresh_season_results(force=False, ignore_ttl=False):
+    """Результаты гонок, квалификации и спринты всех пилотов (~10 запросов).
+    Один раз на каждый новый этап зачёта; если результаты отстают от зачёта (их ещё
+    не опубликовали) — повтор раз в RESULTS_RETRY; иначе — раз в RESULTS_TTL."""
+    standings_round = db.get_meta("standings_round")
+    ts = db.fetched_at("results_fetched_at")
+    age = time.time() - ts if ts is not None else float("inf")
+    complete = db.get_meta("results_round") == standings_round
+    if (not ignore_ttl and db.get_meta("results_for_round") == standings_round
+            and age < (RESULTS_TTL if complete else RESULTS_RETRY)):
+        return True
+
     def job():
-        season, rows = jolpica.fetch_driver_results(driver_id)
+        season, rnd, rows = jolpica.fetch_season_results()
+        q_season, quali = jolpica.fetch_qualifying()
+        s_season, sprints = jolpica.fetch_sprints()
         if rows:
-            db.save_results(season, driver_id, rows)
+            db.save_season_results(season, rnd, rows)
+        if quali:
+            db.save_qualifying(q_season, quali)
+        if sprints:
+            db.save_sprints(s_season, sprints)
+        db.set_meta("results_for_round", standings_round or "")
     return _refresh(job, force)
 
 
@@ -94,10 +113,21 @@ def refresh_all(force=False, manual=False):
     steps = (
         lambda: refresh_standings(force),
         lambda: refresh_constructors(force),
-        lambda: refresh_results(LECLERC_ID, force),
+        lambda: refresh_season_results(force, ignore_ttl=manual),
         lambda: refresh_schedule(force, ignore_ttl=manual),
     )
-    return all(step() for step in steps)  # all() останавливается на первом False
+    ok = all(step() for step in steps)  # all() останавливается на первом False
+    if ok:
+        refresh_media(force=manual)
+    return ok
+
+
+def refresh_media(force=False):
+    """Справочник фото (OpenF1) и скачивание картинок в кэш. Сбой не критичен: данные
+    остаются «свежими», а вместо фото будут инициалы."""
+    media.refresh_refs(force=force)
+    return media.prefetch(media.all_urls(db.load_standings(), db.load_constructors(),
+                                         db.load_schedule(), db.load_driver_media()))
 
 
 def bootstrap():
@@ -110,12 +140,24 @@ def get_cached_standings():
     return db.load_standings()
 
 
-def get_cached_leclerc_results():
-    return db.load_results(LECLERC_ID)
-
-
 def get_cached_results(driver_id):
     return db.load_results(driver_id)
+
+
+def get_season_results():
+    return db.load_season_results()
+
+
+def get_qualifying():
+    return db.load_qualifying()
+
+
+def get_sprints():
+    return db.load_sprints()
+
+
+def get_driver_media():
+    return db.load_driver_media()
 
 
 def get_cached_constructors():
@@ -142,32 +184,6 @@ def get_next_race(now=None):
         if race_state(race, now) != "past":
             return {**race, "state": race_state(race, now), "seconds_left": race["start_ts"] - now}
     return None
-
-
-# ---------- совместимость со старым main.py ----------
-def get_current_driver_standings(force_refresh=False):
-    """Кэш-first: если в БД есть данные — отдаём сразу; в сеть идём только при
-    пустой БД или force_refresh."""
-    rows = db.load_standings()
-    if force_refresh or not rows:
-        refresh_standings(force=force_refresh)
-        rows = db.load_standings()
-    return rows
-
-
-def get_leclerc_stats():
-    for d in get_current_driver_standings():
-        if d["driver_id"] == LECLERC_ID:
-            return d
-    return None
-
-
-def get_leclerc_race_results(force_refresh=False):
-    rows = db.load_results(LECLERC_ID)
-    if force_refresh or not rows:
-        refresh_results(LECLERC_ID, force=force_refresh)
-        rows = db.load_results(LECLERC_ID)
-    return rows
 
 
 # ---------- данные пользователя ----------
@@ -200,14 +216,11 @@ def get_status():
     return {"state": state, "updated_at": ts, "error": _state["error"]}
 
 
-def is_using_live_data():
-    return get_status()["state"] == "live"
-
-
 # ---------- фоновое обновление ----------
 def _signature():
     payload = json.dumps(
-        [db.load_standings(), db.load_results(LECLERC_ID), db.load_constructors(), db.load_schedule()],
+        [db.load_standings(), db.load_constructors(), db.load_schedule(),
+         db.get_meta("results_fetched_at"), db.get_meta("media_fetched_at")],
         sort_keys=True,
     )
     return get_status()["state"], hashlib.sha1(payload.encode()).hexdigest()

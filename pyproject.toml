@@ -1,0 +1,32 @@
+[project]
+name = "f1-analytics-hub"
+version = "2.0.0"
+description = "F1 Analytics Hub — статистика чемпионата Формулы-1: пилоты, команды, календарь, сравнение"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "flet>=1.0.5,<2",
+    "requests>=2.34.2",
+]
+
+[tool.flet]
+org = "com.f1hub"
+product = "F1 Analytics Hub"
+company = "F1 Hub"
+copyright = "MIT License"
+
+[tool.flet.app]
+path = "."
+exclude = ["venv", "tests", "build", "dist", "docs", ".github", "*.bat", "*.md"]
+
+[tool.flet.android]
+# Тёмный фон под адаптивную иконку и сплэш — в цвет приложения
+adaptive_icon_background = "#15151E"
+
+[tool.flet.android.permission]
+"android.permission.INTERNET" = true
+
+[tool.flet.splash]
+color = "#15151E"
+dark_color = "#15151E"

@@ -3,6 +3,7 @@ import flet as ft
 from design_system import *
 from ui.components import *
 from ui.fmt import plural
+from ui.screens.home import driver_row
 from ui.widgets import screen
 
 
@@ -18,26 +19,42 @@ def build(state):
                                     "Добавьте гонщиков, чтобы быстро отслеживать их результаты"))
     else:
         if favorite_drivers:
-            sections.append(_build_quick_stats(favorite_drivers))
+            sections.append(_build_quick_stats(state, favorite_drivers))
         sections.append(_build_favorites_list(state, favorite_drivers, missing))
+        if len(favorite_drivers) >= 2:
+            sections.append(GradientButton("Сравнить избранных", icon=ft.Icons.COMPARE_ARROWS_ROUNDED,
+                                           on_click=lambda e: _compare(state, favorite_drivers)))
 
     if state.standings:
-        sections.append(GradientButton("Добавить пилота", icon=ft.Icons.ADD_ROUNDED,
-                                       on_click=lambda e: _show_add_dialog(state)))
+        sections.append(ft.Container(
+            ft.Row([ft.Icon(ft.Icons.ADD_ROUNDED, color=TEXT_PRIMARY),
+                    ft.Text("Добавить пилота", color=TEXT_PRIMARY, weight=ft.FontWeight.W_600)],
+                   spacing=SPACE_XS, tight=True),
+            height=TOUCH, alignment=ft.Alignment.CENTER, border_radius=RADIUS_FULL, bgcolor=SURFACE_RAISED,
+            border=ft.Border.all(1, LINE_STRONG), ink=True, on_click=lambda e: _show_add_dialog(state)))
 
     n = len(state.favorites)
     return screen(state, "Избранное", sections, subtitle=f"{n} {plural(n, 'пилот', 'пилота', 'пилотов')}", back=True)
 
 
-def _build_quick_stats(drivers):
+def _compare(state, drivers):
+    state.ui["cmp"] = [d["driver_id"] for d in drivers][:4]
+    state.open_sub("compare")
+
+
+def _build_quick_stats(state, drivers):
     """Сводка по избранным"""
     total_points = sum(float(d["points"]) for d in drivers)
-    total_wins = sum(int(d["wins"]) for d in drivers)
+    total_wins = sum(state.driver_stats(d["driver_id"])["wins"] for d in drivers)
+    total_podiums = sum(state.driver_stats(d["driver_id"])["podiums"] for d in drivers)
     best_position = min(int(d["position"]) for d in drivers)
+    compact = is_narrow(state)
     return ft.Row([
-        StatCard("Очков", f"{total_points:g}", ft.Icons.EMOJI_EVENTS_ROUNDED, ACCENT_PRIMARY),
-        StatCard("Побед", str(total_wins), ft.Icons.MILITARY_TECH_ROUNDED, SUCCESS),
-        StatCard("Лучшее место", f"P{best_position}", ft.Icons.WORKSPACE_PREMIUM_ROUNDED, TEAMS["ferrari"]["primary"]),
+        StatCard("Очков", f"{total_points:g}", ft.Icons.EMOJI_EVENTS_ROUNDED, TEXT_PRIMARY, compact=compact),
+        StatCard("Побед", str(total_wins), ft.Icons.MILITARY_TECH_ROUNDED, GOLD, compact=compact),
+        StatCard("Подиумов", str(total_podiums), ft.Icons.WORKSPACE_PREMIUM_ROUNDED, POSITION_COLORS[3],
+                 compact=compact),
+        StatCard("Лучшее место", f"P{best_position}", ft.Icons.TRENDING_UP_ROUNDED, ACCENT_TEXT, compact=compact),
     ], spacing=SPACE_XS)
 
 
@@ -45,26 +62,10 @@ def _build_favorites_list(state, drivers, missing):
     """Список избранных пилотов"""
     cards = []
     for d in drivers:
+        trailing = star_button(True, lambda e, i=d["driver_id"]: state.toggle_favorite(i))
         points = float(d["points"])
-        cards.append(AnimatedCard(
-            content=ft.Row([
-                DriverAvatar(d["code"], d["team"], size=44),
-                ft.Column([
-                    ft.Text(d["name"], size=FONT_BODY, weight=ft.FontWeight.W_600, color=TEXT_PRIMARY,
-                            max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                    ft.Text(f"P{d['position']} · {points:g} {plural(points, 'очко', 'очка', 'очков')} · {d['team']}",
-                            size=FONT_CAPTION, color=TEXT_SECONDARY, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                ], spacing=2, expand=True),
-                ft.IconButton(
-                    icon=ft.Icons.STAR_ROUNDED,
-                    icon_color=TEAMS["ferrari"]["accent"],
-                    tooltip="Убрать из избранного",
-                    on_click=lambda e, i=d["driver_id"]: state.toggle_favorite(i),
-                ),
-            ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-            on_click=lambda e, i=d["driver_id"]: state.open_driver(i),
-            padding=SPACE_SM,
-        ))
+        cards.append(driver_row(state, d, trailing=trailing,
+                                subtitle=f"{points:g} {plural(points, 'очко', 'очка', 'очков')} · {d['team']}"))
     for driver_id in missing:
         cards.append(ft.Container(
             content=ft.Row([
@@ -82,7 +83,7 @@ def _show_add_dialog(state):
     page = state.page
     available = [d for d in state.standings if d["driver_id"] not in state.favorites]
     if not available:
-        show_snack(page, "Все пилоты уже в избранном!", INFO)
+        show_snack(page, "Все пилоты уже в избранном!", SURFACE_ELEVATED)
         return
 
     def add(driver_id):
@@ -92,12 +93,12 @@ def _show_add_dialog(state):
     items = [
         ft.Container(
             content=ft.Row([
-                DriverAvatar(d["code"], d["team"], size=36),
+                DriverAvatar(d["code"], d["team"], size=40, src=state.photo(d)),
                 ft.Column([
                     ft.Text(d["name"], size=FONT_BODY, weight=ft.FontWeight.W_600, color=TEXT_PRIMARY),
                     ft.Text(d["team"], size=FONT_CAPTION, color=TEXT_SECONDARY),
                 ], spacing=2, expand=True),
-                ft.Icon(ft.Icons.ADD_ROUNDED, color=ACCENT_PRIMARY),
+                ft.Icon(ft.Icons.STAR_BORDER_ROUNDED, color=GOLD),
             ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=SURFACE_RAISED,
             border_radius=RADIUS_SM,
@@ -108,8 +109,8 @@ def _show_add_dialog(state):
         for d in available
     ]
     page.show_dialog(ft.AlertDialog(
-        title=ft.Text("Добавить в избранное", size=FONT_H4, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-        content=ft.Column(items, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO, width=360, height=380),
+        title=ft.Text("Добавить в избранное", size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_HEADING),
+        content=ft.Column(items, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO, width=380, height=420),
         actions=[ft.TextButton("Закрыть", on_click=lambda e: page.pop_dialog())],
         bgcolor=SURFACE,
     ))

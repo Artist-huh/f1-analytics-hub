@@ -4,7 +4,7 @@ import time
 import flet as ft
 from design_system import *
 from ui.components import *
-from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_date, fmt_date_full, fmt_day, to_int
+from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_date, fmt_date_full, fmt_day, short_name, to_int
 from ui.widgets import empty_state, pill, screen
 from services import f1_api as api
 
@@ -42,7 +42,7 @@ def build_calendar(state):
         state.render()
 
     states = {r["round"]: api.race_state(r) for r in races}
-    results = {r["round"]: r for r in state.results}
+    podiums = state.podiums()
     done = sum(1 for s in states.values() if s == "past")
 
     body = [ft.Row([pill("Предстоящие", view == "upcoming", lambda e: choose("upcoming")),
@@ -62,7 +62,7 @@ def build_calendar(state):
             if len(shown) > 1:
                 body.append(SectionHeader("Дальше в сезоне", subtitle=f"{len(shown) - 1} этапов"))
         else:
-            body.append(_build_race_card(state, race, results.get(race["round"]), past=view == "past"))
+            body.append(_build_race_card(state, race, podiums.get(race["round"]), past=view == "past"))
 
     sub = f"Сезон {state.season or races[0]['season']} · пройдено {done} из {len(races)}"
     return screen(state, "Календарь", body, subtitle=sub)
@@ -73,14 +73,15 @@ def _build_next_race_card(state, race, race_state):
     live = race_state == "live"
     sprint = any(s["key"] == "Sprint" for s in race["sessions"])
     info = track_info(race)
+    flag_src, iso = state.flag(country=race["country"])
 
-    chips = [_chip("Идёт сейчас" if live else "Ближайшая", ACCENT_PRIMARY, BG_DEEP)]
+    chips = [_chip("Идёт сейчас" if live else "Ближайшая", F1_RED, ON_ACCENT)]
     if sprint:
         chips.append(_chip("Спринт", SURFACE_ELEVATED, WARNING))
 
     countdown = ft.Text(
         "Гонка идёт" if live else fmt_countdown(race["start_ts"] - time.time()),
-        size=FONT_H2, weight=ft.FontWeight.BOLD, color=ACCENT_PRIMARY, font_family=FONT_HEADING,
+        size=FONT_H2, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC,
     )
     specs = []
     if info:
@@ -88,8 +89,8 @@ def _build_next_race_card(state, race, race_state):
                  _spec("Кругов", str(info[1]), ft.Icons.REPLAY_ROUNDED)]
 
     items = [
-        ft.Row(chips, spacing=SPACE_XS),
-        ft.Text(race["race_name"], size=FONT_H3, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+        ft.Row(chips + [ft.Container(expand=True), flag(flag_src, 20, iso)], spacing=SPACE_XS),
+        ft.Text(race["race_name"], size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_HEADING),
         ft.Text(f"Этап {race['round']} · {race['circuit']}", size=FONT_BODY_SMALL, color=TEXT_SECONDARY),
         ft.Text(f"{race['locality']}, {race['country']}", size=FONT_BODY_SMALL, color=TEXT_MUTED),
         ft.Container(
@@ -98,7 +99,9 @@ def _build_next_race_card(state, race, race_state):
                           spacing=0, expand=True),
                 *specs,
             ], vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_SM),
-            bgcolor=SURFACE_RAISED, border_radius=RADIUS_MD, padding=SPACE_SM,
+            gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
+                                       colors=[ACCENT_SOFT, SURFACE_RAISED]),
+            border_radius=RADIUS_MD, padding=SPACE_SM,
         ),
         session_list(race),
     ]
@@ -108,39 +111,57 @@ def _build_next_race_card(state, race, race_state):
                                    colors=[SURFACE_RAISED, SURFACE]),
         border_radius=RADIUS_LG,
         padding=SPACE_MD,
-        border=ft.Border.all(1, ACCENT_DEEP),
+        border=ft.Border.all(1, F1_RED),
+        shadow=glow(strength=0.25),
     )
 
 
-def _build_race_card(state, race, result, past=False):
-    """Компактная карточка этапа"""
+def _mini_podium(state, podium):
+    """Три фото призёров внахлёст: P1 впереди."""
+    size = 34
+    avatars = []
+    for i, row in enumerate(podium):
+        d = state.driver(row["driver_id"])
+        avatars.append(ft.Container(
+            DriverAvatar(d["code"] if d else row["driver_id"][:3], row.get("team"), size=size,
+                         src=state.photo(d) if d else None),
+            left=i * (size - 12)))
+    return ft.Stack(list(reversed(avatars)), width=size + 2 * (size - 12), height=size)
+
+
+def _build_race_card(state, race, podium, past=False):
+    """Компактная карточка этапа: номер, флаг, название; у прошедших — подиум"""
     sprint = any(s["key"] == "Sprint" for s in race["sessions"])
     where = f"{race['locality']}, {race['country']}" + (" · спринт" if sprint else "")
-    if result:
-        right = _result_chip(result)
+    flag_src, iso = state.flag(country=race["country"])
+    if podium:
+        winner = state.driver(podium[0]["driver_id"])
+        right = _mini_podium(state, podium)
+        where = f"Победа: {short_name(winner['name']) if winner else podium[0]['driver_id']}"
     elif past:
         right = ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, color=SUCCESS, size=22)
     else:
-        right = ft.Text(fmt_date(race["start_ts"]), size=FONT_BODY_SMALL, color=TEXT_SECONDARY)
+        right = ft.Text(fmt_date(race["start_ts"]), size=FONT_BODY_SMALL, color=TEXT_SECONDARY,
+                        weight=ft.FontWeight.W_600)
 
     return AnimatedCard(
         content=ft.Row([
             ft.Container(
-                content=ft.Text(race["round"], size=FONT_BODY, weight=ft.FontWeight.BOLD,
-                                color=TEXT_MUTED if past else TEXT_PRIMARY, font_family=FONT_HEADING),
-                width=32, height=32, bgcolor=SURFACE_RAISED, border_radius=RADIUS_SM,
+                content=ft.Text(race["round"], size=FONT_BODY, color=TEXT_MUTED if past else TEXT_PRIMARY,
+                                font_family=FONT_DISPLAY_ITALIC),
+                width=34, height=34, bgcolor=SURFACE_RAISED, border_radius=RADIUS_SM,
                 alignment=ft.Alignment.CENTER,
             ),
+            flag(flag_src, 18, iso),
             ft.Column([
                 ft.Text(race["race_name"], size=FONT_BODY, weight=ft.FontWeight.W_600,
-                        color=TEXT_MUTED if past else TEXT_PRIMARY, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                        color=TEXT_SECONDARY if past else TEXT_PRIMARY, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                 ft.Text(where, size=FONT_CAPTION, color=TEXT_DIM, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
             ], spacing=2, expand=True),
             right,
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        on_click=lambda e, r=race, res=result: _show_race_details(state, r, res),
-        padding=SPACE_SM,
-        elevation_end=4,
+        on_click=lambda e, r=race, p=podium: _show_race_details(state, r, p),
+        padding=ft.Padding.symmetric(horizontal=SPACE_SM, vertical=SPACE_SM),
     )
 
 
@@ -155,46 +176,59 @@ def session_list(race, highlight="Race"):
                     weight=ft.FontWeight.BOLD if main else None, expand=True),
             ft.Text(fmt_day(s["ts"]), size=FONT_BODY_SMALL, color=TEXT_MUTED),
             ft.Container(
-                ft.Text(fmt_clock(s["ts"]), size=FONT_BODY, weight=ft.FontWeight.BOLD,
-                        color=ACCENT_PRIMARY if main else TEXT_PRIMARY, font_family=FONT_HEADING),
+                ft.Text(fmt_clock(s["ts"]), size=FONT_BODY, color=ACCENT_TEXT if main else TEXT_PRIMARY,
+                        font_family=FONT_HEADING),
                 width=48, alignment=ft.Alignment.CENTER_RIGHT,
             ),
         ], spacing=SPACE_XS))
     return ft.Column(rows, spacing=6)
 
 
-def _show_race_details(state, race, result):
-    """Модальное окно с расписанием этапа"""
+def _open_driver_from_dialog(state, driver_id):
+    state.page.pop_dialog()
+    state.open_driver(driver_id)
+
+
+def _show_race_details(state, race, podium):
+    """Окно этапа: трасса, подиум с фото, расписание"""
     info = track_info(race)
+    flag_src, iso = state.flag(country=race["country"])
     lines = [
-        ft.Text(f"{race['circuit']} · {race['locality']}, {race['country']}", size=FONT_BODY_SMALL,
-                color=TEXT_SECONDARY),
+        ft.Row([flag(flag_src, 16, iso),
+                ft.Text(f"{race['circuit']} · {race['locality']}, {race['country']}", size=FONT_BODY_SMALL,
+                        color=TEXT_SECONDARY, expand=True)], spacing=SPACE_XS),
         ft.Text(fmt_date_full(race["start_ts"]), size=FONT_BODY_SMALL, color=TEXT_MUTED),
     ]
     if info:
         lines.append(ft.Text(f"Круг {info[0]} · {info[1]} кругов", size=FONT_BODY_SMALL, color=TEXT_MUTED))
-    if result:
+    if podium:
         lines += [ft.Container(height=SPACE_XS),
-                  ft.Row([ft.Text("Леклер:", size=FONT_BODY_SMALL, color=TEXT_MUTED), _result_chip(result)],
-                         spacing=SPACE_XS)]
+                  ft.Text("ПОДИУМ", size=FONT_CAPTION, color=TEXT_MUTED, font_family=FONT_ITALIC)]
+        for i, row in enumerate(podium, start=1):
+            d = state.driver(row["driver_id"])
+            lines.append(ft.Container(
+                ft.Row([
+                    PositionBadge(i, size=28),
+                    DriverAvatar(d["code"] if d else "", row.get("team"), size=36, src=state.photo(d) if d else None),
+                    ft.Column([ft.Text(d["name"] if d else row["driver_id"], size=FONT_BODY_SMALL,
+                                       color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
+                               ft.Text(row.get("team", ""), size=FONT_CAPTION, color=TEXT_MUTED)],
+                              spacing=0, expand=True),
+                    ft.Text(f"+{row['points']}", size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC),
+                ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ink=True, border_radius=RADIUS_SM, padding=4,
+                on_click=(lambda e, i=row["driver_id"]: _open_driver_from_dialog(state, i)) if d else None,
+            ))
     lines += [ft.Container(height=SPACE_XS), session_list(race)]
 
     dialog = ft.AlertDialog(
-        title=ft.Text(f"{race['round']}. {race['race_name']}", size=FONT_H4, weight=ft.FontWeight.BOLD,
-                      color=TEXT_PRIMARY),
-        content=ft.Column(lines, spacing=SPACE_XXS, tight=True, width=360),
+        title=ft.Text(f"{race['round']}. {race['race_name']}", size=FONT_H4, color=TEXT_PRIMARY,
+                      font_family=FONT_HEADING),
+        content=ft.Column(lines, spacing=SPACE_XXS, tight=True, width=380, scroll=ft.ScrollMode.AUTO),
         actions=[ft.TextButton("Закрыть", on_click=lambda e: state.page.pop_dialog())],
         bgcolor=SURFACE,
     )
     state.page.show_dialog(dialog)
-
-
-def _result_chip(res):
-    pos = res["position"]
-    n = to_int(pos)
-    label = f"P{pos}" if n else pos
-    bg = POSITION_COLORS.get(n, SURFACE_ELEVATED)
-    return _chip(f"{label} · +{res['points']}", bg, BG_DEEP if n in POSITION_COLORS else TEXT_PRIMARY)
 
 
 def _chip(label, bg, fg):
@@ -207,7 +241,7 @@ def _chip(label, bg, fg):
 
 def _spec(label, value, icon):
     return ft.Column([
-        ft.Icon(icon, color=ACCENT_PRIMARY, size=18),
-        ft.Text(value, size=FONT_BODY, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY, font_family=FONT_HEADING),
+        ft.Icon(icon, color=ACCENT_TEXT, size=18),
+        ft.Text(value, size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_HEADING),
         ft.Text(label, size=FONT_CAPTION, color=TEXT_MUTED),
     ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0)
