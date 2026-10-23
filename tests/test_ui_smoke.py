@@ -459,6 +459,22 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.build("favorites"), "Добавить пилота")[0].on_click(Ctl())
         self.assertIn("Все пилоты уже в избранном!", texts(self.page.dialogs[-1]))   # уведомление
 
+    def test_title_fight_screen(self):
+        fill_db()
+        self.state.load()
+        self.assertEqual(self.state.season_left()[:2], (2, 0))      # этапы 4 и 5 впереди, спринтов нет
+        t = texts(self.build("title"))
+        self.assertIn("ЧЕМПИОН МИРА", t)                            # отрыв 78 > 50 оставшихся очков
+        self.assertIn("Остальные 2 уже не могут догнать лидера (204 очков).", t)
+        self.state.ui["title_kind"] = "teams"
+        t = texts(self.build("title"))
+        self.assertIn("МОЖЕТ ОФОРМИТЬ ТИТУЛ", t)                     # 358 против 285 при 86 оставшихся
+        self.assertIn("Для этого достаточно не уступить Ferrari.", t)
+        home = self.build("tab0")
+        self.assertIn("Antonelli — чемпион мира", texts(home))
+        clickable(home, "Antonelli — чемпион мира")[0].on_click(Ctl())
+        self.assertEqual(self.state.sub, "title")
+
     def test_settings_clear_requires_confirmation(self):
         fill_db()
         self.state.load()

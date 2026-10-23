@@ -25,6 +25,7 @@ def render(state):
         if podium:
             sections.append(_build_last_podium(state, last, podium, is_narrow(state)))
         sections.append(_build_season_stats(state, is_narrow(state)))
+        sections.append(_build_title_fight(state))
         sections.append(_build_top_drivers(state, standings[:5]))
         if constructors:
             sections.append(_build_top_constructors(state, constructors[:5]))
@@ -174,6 +175,29 @@ def _build_season_stats(state, compact):
         SectionHeader(f"Сезон {state.season}"),
         ft.Row(cards, spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.START),
     ], spacing=SPACE_SM)
+
+
+def _build_title_fight(state):
+    """Короткая сводка борьбы за титул -> экран прогноза."""
+    race = state.title_race("drivers")
+    contenders = race["contenders"]
+    if race["clinched"]:
+        title, hint = f"{short_name(state.standings[0]['name'])} — чемпион мира", "Титул оформлен досрочно"
+    else:
+        n = len(contenders)
+        title = f"В борьбе {n} {plural(n, 'пилот', 'пилота', 'пилотов')}"
+        hint = f"Разыгрывается ещё {race['available']} очков"
+        if race["next_clinch"] is not None:
+            hint += f" · {short_name(state.standings[0]['name'])} может стать чемпионом в ближайшей гонке"
+    faces = [DriverAvatar(r["code"], r["team"], size=32, src=state.photo(r)) for r, *_ in contenders[:5]]
+    return AnimatedCard(ft.Row([
+        ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD, size=28),
+        ft.Column([ft.Text(title, size=FONT_BODY, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
+                   ft.Text(hint, size=FONT_CAPTION, color=TEXT_MUTED, max_lines=2)], spacing=1, expand=True),
+        ft.Row(faces, spacing=-8, tight=True),
+        ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM),
+    ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=SPACE_SM, accent=GOLD, on_click=lambda e: state.open_sub("title"))
 
 
 def driver_row(state, d, trailing=None, subtitle=None):

@@ -4,6 +4,7 @@
 перерисовку (выбранная вкладка, пилоты в сравнении), хранится в state.ui.
 """
 import threading
+import time
 
 import design_system as ds
 from services import f1_api as api, log, media, stats
@@ -111,6 +112,20 @@ class AppState:
         rnd = max(podiums, key=int)
         race = next((r for r in self.schedule if r["round"] == rnd), None)
         return race or {"round": rnd, **podiums[rnd][0]}, podiums[rnd]
+
+    def season_left(self, now=None):
+        """(гонок осталось, спринтов осталось, у ближайшего уик-энда есть спринт)."""
+        now = time.time() if now is None else now
+        races = [r for r in self.schedule if api.race_state(r, now) != "past"]
+        sprints = [s for r in self.schedule for s in r["sessions"] if s["key"] == "Sprint" and s["ts"] > now]
+        next_sprint = bool(races) and any(s["key"] == "Sprint" and s["ts"] > now for s in races[0]["sessions"])
+        return len(races), len(sprints), next_sprint
+
+    def title_race(self, kind="drivers"):
+        races, sprints, next_sprint = self.season_left()
+        rows = self.standings if kind == "drivers" else self.constructors
+        return {**stats.title_race(rows, races, sprints, kind, next_sprint), "races_left": races,
+                "sprints_left": sprints}
 
     # ---------- картинки ----------
     def photo(self, driver, kind="avatar"):

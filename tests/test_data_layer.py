@@ -653,6 +653,21 @@ class StatsTest(unittest.TestCase):
         }
         self.assertEqual(stats.finishing_ahead(group), {"a": 0, "b": 0, "c": 1})
 
+    def test_title_race(self):
+        rows = [{"points": p} for p in ("340", "238", "229", "100")]
+        r = stats.title_race(rows, 6, 2)                   # 6×25 + 2×8 = 166 очков
+        self.assertEqual(r["available"], 166)
+        self.assertEqual([c[1] for c in r["contenders"]], [340, 238, 229])   # 100 + 166 < 340 — выбыл
+        self.assertFalse(r["clinched"])
+        self.assertIsNone(r["next_clinch"])                # за одну гонку отрыв до >141 не нарастить
+        r = stats.title_race(rows, 4, 1)                   # 108 очков, отрыв 102
+        self.assertEqual(r["next_clinch"], 0)              # достаточно не уступить второму
+        self.assertTrue(stats.title_race(rows, 1, 0)["clinched"])
+        r = stats.title_race([{"points": "300"}, {"points": "280"}], 2, 0)
+        self.assertEqual(r["next_clinch"], 6)              # после гонки останется 25: отрыв нужен 26
+        teams = stats.title_race([{"points": "358"}, {"points": "285"}], 2, 0, "teams")
+        self.assertEqual(teams["available"], 86)           # 2 × (25 + 18)
+
     def test_podiums_by_round(self):
         rows = [{"round": "1", "position": p, "driver_id": d} for p, d in (("2", "b"), ("1", "a"), ("3", "c"), ("4", "d"))]
         self.assertEqual([r["driver_id"] for r in stats.podiums_by_round(rows)["1"]], ["a", "b", "c"])
