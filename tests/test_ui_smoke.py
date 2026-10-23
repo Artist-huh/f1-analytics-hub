@@ -745,6 +745,9 @@ class UiSmokeTest(unittest.TestCase):
                 clickable(self.build("race_strategy"), "Перевести")[0].on_click(Ctl())
             req.assert_called_once()
             self.assertEqual(req.call_args[0][0], "https://r/2.mp3")
+            with mock.patch.object(radio, "request") as req:
+                clickable(self.build("race_strategy"), "Перевести все на экране (1)")[0].on_click(Ctl())
+            self.assertEqual([c[0][0] for c in req.call_args_list], ["https://r/2.mp3"])   # готовые — пропускаем
         clickable(self.build("race_strategy"), "ANT")[0].on_click(Ctl())        # только записи ANT
         self.assertIn("1 запись", texts(self.build("race_strategy")))
         fake_audio = types.SimpleNamespace(Audio=lambda **kw: Ctl(**kw), AudioState=Ctl())
@@ -752,6 +755,19 @@ class UiSmokeTest(unittest.TestCase):
             play = [n for n in walk(self.build("race_strategy")) if getattr(n, "tooltip", "") == "Слушать: радио ANT"]
             play[0].on_click(Ctl())
         self.assertEqual(self.state.ui["radio_playing"], "https://r/2.mp3")
+        with mock.patch.object(radio, "supported", return_value=True), \
+                mock.patch.object(radio, "download_models") as dl:
+            clickable(self.build("race_strategy"), "Лёгкая · ~350 МБ")[0].on_click(Ctl())
+        self.assertEqual(dl.call_args[0][1], "base.en")
+        with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}):
+            self.assertIsNone(radio.whisper_model())
+            for name in ("base.en", "small.en"):
+                (radio.models_dir() / f"whisper-{name}").mkdir(parents=True, exist_ok=True)
+                (radio.models_dir() / f"whisper-{name}" / "model.bin").write_bytes(b"x")
+            self.assertEqual(radio.whisper_model(), "small.en")                  # по умолчанию — точная
+            db.set_setting("radio_model", "base.en")
+            self.assertEqual(radio.whisper_model(), "base.en")                   # выбор пользователя
+            self.assertTrue(radio.models_ready())                                # перевод распакован выше
         with mock.patch.object(radio, "supported", return_value=False):          # Android: без перевода
             self.assertIn("Перевод радио работает в версии для компьютера. Здесь — запись в оригинале.",
                           texts(self.build("race_strategy")))

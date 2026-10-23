@@ -50,11 +50,23 @@ def radio_section(state, race):
         feed.append(button(f"Показать ещё ({len(messages) - shown})",
                            lambda e: (state.ui.__setitem__("radio_shown", shown + PAGE), state.render()),
                            primary=False))
+    count = ft.Text(f"{len(messages)} {plural(len(messages), 'запись', 'записи', 'записей')}", size=FONT_CAPTION,
+                    color=TEXT_MUTED, expand=True)
+    can_translate = radio.supported() and radio.models_ready()
+    waiting = [m["url"] for m in messages[:shown]
+               if can_translate and not radio.status(m["url"]) and not radio.cached(m["url"])]
+
+    def translate_all(e):
+        for url in waiting:
+            radio.request(url, state.render)
+        state.render()
+
     return [
         _translate_card(state),
         ft.Row(chips, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO),
-        ft.Text(f"{len(messages)} {plural(len(messages), 'запись', 'записи', 'записей')}", size=FONT_CAPTION,
-                color=TEXT_MUTED),
+        ft.Row([count] + ([ft.TextButton(f"Перевести все на экране ({len(waiting)})", icon=ft.Icons.TRANSLATE_ROUNDED,
+                                         on_click=translate_all)] if waiting else []),
+               vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Column(feed, spacing=SPACE_XS),
         ft.Text("Записи — OpenF1 (публикуются не все переговоры). Расшифровка и перевод — на этом устройстве, "
                 "моделями Whisper и Argos Translate; возможны неточности.", size=FONT_CAPTION, color=TEXT_DIM),
@@ -82,12 +94,16 @@ def _translate_card(state):
                 ft.Text(f"{round(100 * dl['progress'])} %", size=FONT_CAPTION, color=TEXT_MUTED)]
     else:
         body = [ft.Text("Перевод на русский", size=FONT_BODY, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
-                ft.Text("Расшифровка и перевод работают без интернета и бесплатно. Нужно один раз скачать "
-                        "модели (~340 МБ).", size=FONT_BODY_SMALL, color=TEXT_SECONDARY)]
+                ft.Text("Расшифровка и перевод работают без интернета и бесплатно. Модели скачиваются один раз: "
+                        "точная лучше разбирает шумное радио, лёгкая занимает меньше места.",
+                        size=FONT_BODY_SMALL, color=TEXT_SECONDARY)]
         if dl["state"] == "error":
             body.append(ft.Text(f"Не получилось: {dl['error']}", size=FONT_CAPTION, color=DANGER))
-        body.append(button("Скачать модели", lambda e: (radio.download_models(state.render), state.render()),
-                           icon=ft.Icons.DOWNLOAD_ROUNDED))
+        body.append(ft.Row([
+            button(f"{label} · ~{size} МБ", lambda e, m=model: (radio.download_models(state.render, m), state.render()),
+                   primary=model == radio.DEFAULT_WHISPER, icon=ft.Icons.DOWNLOAD_ROUNDED)
+            for model, (label, size) in radio.WHISPER_MODELS.items()], wrap=True, spacing=SPACE_XS,
+            run_spacing=SPACE_XS))
     return AnimatedCard(ft.Column(body, spacing=SPACE_XS), padding=SPACE_SM)
 
 

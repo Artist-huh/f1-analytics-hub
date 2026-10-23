@@ -2,7 +2,7 @@
 
 Всё бесплатно и без ключей:
   записи      — OpenF1 team_radio (во время сессий закрыт, как и остальной OpenF1);
-  расшифровка — faster-whisper, модель Whisper base.en (~145 МБ, Hugging Face);
+  расшифровка — faster-whisper: Whisper small.en (~465 МБ, точнее на шумном радио) или base.en (~145 МБ);
   перевод     — модель Argos Translate en→ru (~100 МБ), запускается напрямую через CTranslate2 + SentencePiece.
 Модели скачиваются один раз по кнопке и лежат в папке данных (models/). Только компьютер:
 на Android тяжёлые библиотеки не собираются — там лента и проигрывание без перевода.
@@ -20,7 +20,10 @@ import requests
 
 from . import db, live, log
 
-WHISPER_MODEL = "base.en"
+# Модель расшифровки на выбор: на настоящем радио small.en заметно точнее при почти той же скорости.
+# Размер — вместе с моделью перевода (~200 МБ).
+WHISPER_MODELS = {"small.en": ("Точная", 670), "base.en": ("Лёгкая", 350)}
+DEFAULT_WHISPER = "small.en"
 ARGOS_URL = "https://argos-net.com/v1/translate-en_ru-1_9.argosmodel"
 F1_PROMPT = "Formula 1 team radio. Box, box. Tyres, lap, pit, gap, push, copy, mode, delta, safety car."
 TIMEOUT = (5, 60)
@@ -75,20 +78,28 @@ def supported():
     return True
 
 
-def _whisper_dir():
-    return models_dir() / f"whisper-{WHISPER_MODEL}"
+def _whisper_dir(name):
+    return models_dir() / f"whisper-{name}"
+
+
+def whisper_model():
+    """Скачанная модель расшифровки (выбранная пользователем — в первую очередь) или None."""
+    order = [db.get_setting("radio_model")] + list(WHISPER_MODELS)
+    return next((n for n in order if n in WHISPER_MODELS and (_whisper_dir(n) / "model.bin").exists()), None)
 
 
 def models_ready():
-    return (_whisper_dir() / "model.bin").exists() and (argos_dir() / "model" / "model.bin").exists()
+    return bool(whisper_model()) and (argos_dir() / "model" / "model.bin").exists()
 
 
 def download_state():
     return dict(_download)
 
 
-def download_models(on_done=None):
-    """Скачать обе модели в фоне. on_done() — после окончания (успех или ошибка)."""
+def download_models(on_done=None, model=DEFAULT_WHISPER):
+    """Скачать модели расшифровки (model) и перевода в фоне. on_done() — после окончания (успех или ошибка)."""
+    model = model if model in WHISPER_MODELS else DEFAULT_WHISPER
+    db.set_setting("radio_model", model)
     with _lock:
         if _download["state"] == "running":
             return
@@ -97,9 +108,9 @@ def download_models(on_done=None):
     def job():
         try:
             models_dir().mkdir(parents=True, exist_ok=True)
-            if not (_whisper_dir() / "model.bin").exists():
+            if not (_whisper_dir(model) / "model.bin").exists():
                 from faster_whisper.utils import download_model
-                download_model(WHISPER_MODEL, output_dir=str(_whisper_dir()))
+                download_model(model, output_dir=str(_whisper_dir(model)))
             _download["progress"] = 0.5
             if not (argos_dir() / "model" / "model.bin").exists():
                 _download_argos()
@@ -148,11 +159,14 @@ def extract_argos(package):
 
 def _load_models():
     with _lock:
-        if "whisper" not in _models:
+        name = whisper_model()
+        if _models.get("whisper_name") != name:
+            from faster_whisper import WhisperModel
+            _models["whisper"] = WhisperModel(str(_whisper_dir(name)), device="cpu", compute_type="int8")
+            _models["whisper_name"] = name
+        if "translator" not in _models:
             import ctranslate2
             import sentencepiece
-            from faster_whisper import WhisperModel
-            _models["whisper"] = WhisperModel(str(_whisper_dir()), device="cpu", compute_type="int8")
             _models["translator"] = ctranslate2.Translator(str(argos_dir() / "model"), device="cpu",
                                                            compute_type="int8")
             _models["sp"] = sentencepiece.SentencePieceProcessor(model_file=str(argos_dir() / "sentencepiece.model"))
