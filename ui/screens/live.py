@@ -103,6 +103,13 @@ def _header(state, data):
         border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3))
 
 
+def _leader_text(r, data):
+    """У лидера отрыва нет: в гонке — «лидер», в практике и квалификации — его лучший круг (как на табло F1)."""
+    if r["position"] != 1:
+        return ""
+    return "лидер" if data["racing"] else (r.get("best") or "")
+
+
 def tyre_badge(letter, age):
     color = TYRE_COLORS_SHORT.get(letter, TEXT_DIM)
     return ft.Row([
@@ -131,7 +138,7 @@ def _table(state, data, mode):
                        ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1,
                                overflow=ft.TextOverflow.ELLIPSIS)],
                       spacing=0, expand=True),
-            ft.Text(gap or ("лидер" if r["position"] == 1 and data["racing"] else ""), size=FONT_BODY_SMALL,
+            ft.Text(gap or _leader_text(r, data), size=FONT_BODY_SMALL,
                     color=TEXT_PRIMARY if gap else ACCENT_TEXT, width=scaled(78), text_align=ft.TextAlign.RIGHT),
             tyre_badge(r["tyre"], r["tyre_age"]),
             ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY), width=scaled(22),
