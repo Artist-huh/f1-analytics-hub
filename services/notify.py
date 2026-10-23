@@ -14,8 +14,10 @@ from . import log
 
 try:   # статический импорт — чтобы PyInstaller (flet pack) включил пакет в .exe
     from desktop_notifier import DesktopNotifier
-except Exception:   # нет пакета (Android, тесты) — системных уведомлений на компьютере не будет
+    IMPORT_ERROR = None
+except Exception as _exc:   # нет пакета (Android) или неполная сборка — останется плашка в приложении
     DesktopNotifier = None
+    IMPORT_ERROR = repr(_exc)
 
 LEAD = 3600                    # за сколько секунд до старта напоминать
 REMIND_KEYS = {"Qualifying": "Квалификация", "SprintQualifying": "Спринт-квалификация",
@@ -112,6 +114,19 @@ def _android_send(title, text, nid):
     manager.notify(abs(hash(nid)) % 100000, builder.build())
 
 
+def _app_icon():
+    """Иконка приложения для системных уведомлений (в .exe — из распакованных ассетов)."""
+    import sys
+    from pathlib import Path
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    path = base / "assets" / "icon.png"
+    try:
+        from desktop_notifier import Icon
+        return Icon(path=path) if path.is_file() else None
+    except Exception:
+        return None
+
+
 class Notifier:
     """run_async(coroutine_function) — запустить корутину в цикле событий Flet (page.run_task);
     fallback(title, text) — показать плашку в приложении."""
@@ -120,6 +135,8 @@ class Notifier:
         self.run_async = run_async
         self.fallback = fallback
         self._desktop = None
+        if IMPORT_ERROR and not is_android():
+            logger.warning("системные уведомления недоступны: %s", IMPORT_ERROR)
 
     def send(self, nid, title, text):
         try:
@@ -128,7 +145,7 @@ class Notifier:
                 return "android"
             if DesktopNotifier is not None and self.run_async is not None:
                 if self._desktop is None:
-                    self._desktop = DesktopNotifier(app_name="F1 Analytics Hub")
+                    self._desktop = DesktopNotifier(app_name="F1 Analytics Hub", app_icon=_app_icon())
 
                 async def job():
                     try:

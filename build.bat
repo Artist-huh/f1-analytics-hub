@@ -31,7 +31,9 @@ echo [4/4] Building
     --pyinstaller-build-args=--exclude-module=PIL ^
     --pyinstaller-build-args=--exclude-module=psutil ^
     --pyinstaller-build-args=--exclude-module=tkinter ^
-    --pyinstaller-build-args=--exclude-module=tests || goto :fail
+    --pyinstaller-build-args=--exclude-module=tests ^
+    --pyinstaller-build-args=--collect-all=desktop_notifier ^
+    --pyinstaller-build-args=--collect-submodules=winrt || goto :fail
 
 echo.
 echo Done: dist\F1AnalyticsHub.exe
