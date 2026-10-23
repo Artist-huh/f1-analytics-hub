@@ -142,8 +142,11 @@ jobs:
         F1_HUB_LOG: "off"
       run: python -m unittest discover -s tests -t .
 
-    - name: Build APK (flet build installs Flutter itself; Android SDK is on the runner)
-      run: flet build apk --yes --no-rich-output --skip-flutter-doctor
+    - name: Build APKs per ABI (flet build installs Flutter itself; Android SDK is on the runner)
+      run: flet build apk --split-per-abi --yes --no-rich-output --skip-flutter-doctor
+
+    - name: List APKs
+      run: ls -la build/apk
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7
@@ -156,5 +159,47 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        cp build/apk/*.apk "F1AnalyticsHub-${{ github.event.release.tag_name }}-Android.apk"
-        gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-Android.apk" --clobber
+        for f in build/apk/*.apk; do
+          abi=$(basename "$f" .apk | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64).*/\1/')
+          cp "$f" "F1AnalyticsHub-${{ github.event.release.tag_name }}-Android-$abi.apk"
+        done
+        gh release upload "${{ github.event.release.tag_name }}" F1AnalyticsHub-*-Android-*.apk --clobber
+
+  test-android:
+    # Запуск APK на эмуляторе Android 14: главный экран, вкладки, «назад», уведомление, logcat
+    needs: build-android
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Download APKs
+      uses: actions/download-artifact@v8
+      with:
+        name: F1AnalyticsHub-Android
+        path: apk
+
+    - name: Enable KVM
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+
+    - name: Run on emulator
+      uses: ReactiveCircus/android-emulator-runner@v2.38.0
+      with:
+        api-level: 34
+        target: google_apis
+        arch: x86_64
+        profile: pixel_6
+        disable-animations: true
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        script: python3 tools/android_smoke.py "$(ls apk/*x86_64*.apk | head -1)" android-shots
+
+    - name: Upload screenshots and logcat
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: Android-emulator-check
+        path: android-shots/
