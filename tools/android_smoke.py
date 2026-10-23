@@ -2,7 +2,8 @@
 
     python tools/android_smoke.py build/apk/f1-analytics-hub.apk out_dir
 
-Ставит приложение, ждёт главный экран, проходит вкладки нижнего меню и делает скриншоты,
+Ставит приложение, проходит знакомство первого запуска (команда, пилоты, уведомления), ждёт главный
+экран, проходит вкладки нижнего меню и делает скриншоты,
 проверяет системную кнопку «назад» и тестовое уведомление, сохраняет logcat.
 Элементы ищутся по тексту в дереве доступности (uiautomator dump) — Flutter его заполняет,
 поэтому координаты не зашиты. Код выхода 1 — приложение не запустилось или упало.
@@ -54,6 +55,31 @@ def wait_for(label, timeout=240):
     return None
 
 
+def wait_any(labels, timeout=240):
+    """Первый из labels, появившийся на экране, и XML экрана (или None, None)."""
+    end = time.time() + timeout
+    while time.time() < end:
+        xml = dump()
+        for label in labels:
+            if find(xml, label):
+                return label, xml
+        time.sleep(3)
+    return None, None
+
+
+def onboarding(out, failures):
+    """Первый запуск: Ferrari -> «Дальше» (пилоты Ferrari отмечены сами) -> «Дальше» -> «Готово»."""
+    shot(out, "00a_welcome_team")
+    for step, label in (("команда", "Ferrari"), ("к пилотам", "Дальше"), ("к уведомлениям", "Дальше")):
+        if not tap(label):
+            failures.append(f"знакомство: не нажалось «{label}» ({step})")
+            return
+        time.sleep(3)
+    shot(out, "00b_welcome_notify")
+    if not tap("Готово"):
+        failures.append("знакомство: нет кнопки «Готово»")
+
+
 def tap(label, xml=None):
     point = find(xml or dump(), label)
     if not point:
@@ -81,7 +107,11 @@ def main():
     adb("logcat", "-c", check=False)
     adb("shell", "am", "start", "-n", ACTIVITY)
     started = time.time()
-    xml = wait_for("F1 Hub", timeout=300)                         # первый запуск распаковывает Python
+    first, xml = wait_any(["Добро пожаловать", "F1 Hub"], timeout=300)   # первый запуск распаковывает Python
+    print(f"первый экран: {first or 'НЕТ'} за {time.time() - started:.0f} с")
+    if first == "Добро пожаловать":
+        onboarding(out, failures)
+        xml = wait_for("F1 Hub", timeout=60)
     print(f"главный экран: {'да' if xml else 'НЕТ'} за {time.time() - started:.0f} с")
     shot(out, "01_home")
     if not xml:
