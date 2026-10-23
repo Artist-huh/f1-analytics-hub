@@ -133,7 +133,7 @@ def pace_section(state, race):
         active = driver_id in picked
         color = get_team_color(d["team"])
         chips.append(ft.Container(
-            ft.Text(code, size=FONT_CAPTION, color=ON_COLOR if active else TEXT_SECONDARY, font_family=FONT_ITALIC),
+            ft.Text(code, size=FONT_CAPTION, color=readable_on(color) if active else TEXT_SECONDARY, font_family=FONT_ITALIC),
             bgcolor=color if active else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
             padding=ft.Padding.symmetric(horizontal=12, vertical=8), on_click=lambda e, i=driver_id: toggle(i),
             tooltip=f"{d['name']}: показать на графике"))

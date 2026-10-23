@@ -91,7 +91,7 @@ def _drivers_step(state, w):
     for d in state.standings:
         chosen = d["driver_id"] in w["drivers"]
         chips.append(ft.Container(
-            ft.Text(d["name"], size=FONT_BODY_SMALL, color=ON_COLOR if chosen else TEXT_SECONDARY),
+            ft.Text(d["name"], size=FONT_BODY_SMALL, color=readable_on(get_team_color(d["team"])) if chosen else TEXT_SECONDARY),
             bgcolor=get_team_color(d["team"]) if chosen else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
             padding=ft.Padding.symmetric(horizontal=14, vertical=10), on_click=lambda e, i=d["driver_id"]: toggle(i),
             tooltip=f"{d['name']}, {d['team']}"))

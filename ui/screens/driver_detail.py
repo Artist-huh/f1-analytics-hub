@@ -87,7 +87,7 @@ def _build_hero(state, driver, is_mobile):
         content=ft.Stack([
             ft.Container(ft.Text(driver.get("number") or "", size=180, font_family=FONT_DISPLAY_ITALIC,
                                  color=ft.Colors.with_opacity(0.15, ON_COLOR)), right=10, top=-40),
-            ft.Container(image(state.photo(driver, "hero"), height=height, fit=ft.BoxFit.FIT_HEIGHT,
+            ft.Container(image(state.photo(driver, "hero"), height=height, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {driver['name']}",
                                fallback=ft.Container()), right=0, bottom=0),
             ft.Container(info, left=SPACE_MD, top=SPACE_MD, bottom=SPACE_MD),
         ], height=height),

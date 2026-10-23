@@ -106,7 +106,7 @@ def _picker(state, season, race, saved):
         slots.append(ft.Container(
             ft.Column([ft.Text(label, size=FONT_CAPTION, color=TEXT_MUTED),
                        ft.Text(d["code"] if d else "—", size=FONT_H3, font_family=FONT_ITALIC,
-                               color=get_team_color(d["team"]) if d else TEXT_DIM)],
+                               color=readable_text(get_team_color(d["team"]), 3.0) if d else TEXT_DIM)],
                       spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             expand=True, padding=SPACE_XS, border_radius=RADIUS_MD, ink=True,
             bgcolor=SURFACE_RAISED if active else None,
@@ -118,7 +118,7 @@ def _picker(state, season, race, saved):
         chosen = draft.get(slot) == d["driver_id"]
         color = get_team_color(d["team"])
         chips.append(ft.Container(
-            ft.Text(d["code"], size=FONT_CAPTION, color=ON_COLOR if chosen else TEXT_SECONDARY,
+            ft.Text(d["code"], size=FONT_CAPTION, color=readable_on(color) if chosen else TEXT_SECONDARY,
                     font_family=FONT_ITALIC),
             bgcolor=color if chosen else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
             padding=ft.Padding.symmetric(horizontal=12, vertical=8),

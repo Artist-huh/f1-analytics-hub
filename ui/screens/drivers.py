@@ -103,7 +103,7 @@ def _build_driver_card(state, d):
     height = 184
 
     portrait = ft.Container(
-        image(state.photo(d, "portrait"), height=height, fit=ft.BoxFit.FIT_HEIGHT,
+        image(state.photo(d, "portrait"), height=height, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {d['name']}",
               fallback=ft.Container()),
         right=0, bottom=0, height=height,
     )

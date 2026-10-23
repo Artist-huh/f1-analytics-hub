@@ -241,6 +241,27 @@ class UiSmokeTest(unittest.TestCase):
                     self.assertTrue(t)
                     self.assertFalse(any("Не удалось" in x for x in t))
 
+    def test_screen_reader_labels(self):
+        """Экранный диктор: у картинок — подпись (или пометка «декоративная»), у кнопок-иконок и
+        нажимаемых плашек без текста — подсказка, которую диктор и читает."""
+        fill_db()
+        add_podium()
+        self.state.load()
+        self.state.ui["driver_id"] = "leclerc"
+        self.state.ui["circuit"] = self.state.schedule[0]
+        with mock.patch.object(media, "source", side_effect=lambda url: url):   # картинки «есть»
+            for name, build in self.all_screens():
+                for n in walk(build(self.state)):
+                    kind = type(n).__name__
+                    with self.subTest(screen=name, control=kind):
+                        if kind == "Image":
+                            self.assertTrue(getattr(n, "semantics_label", None)
+                                            or getattr(n, "exclude_from_semantics", False))
+                        elif kind == "IconButton":
+                            self.assertTrue(getattr(n, "tooltip", None), f"кнопка {getattr(n, 'value', '')}")
+                        elif callable(getattr(n, "on_click", None)) and kind != "TextButton":
+                            self.assertTrue(texts(n) or getattr(n, "tooltip", None), f"{kind} без подписи")
+
     def test_no_driver_is_special(self):
         """Приложение одинаково для всех пилотов: нигде нет блоков «про Леклера» и дуэли с ним."""
         fill_db()

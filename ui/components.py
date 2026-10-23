@@ -133,8 +133,13 @@ class GradientButton(ft.Container):
 DECODE_SCALE = 3   # декодировать под экран до ×3 плотности — не в исходном размере (память и время)
 
 
-def image(src, width=None, height=None, fit=ft.BoxFit.CONTAIN, fallback=None, **kwargs):
-    """Картинка из кэша/сети; при ошибке или без источника — fallback."""
+def image(src, width=None, height=None, fit=ft.BoxFit.CONTAIN, fallback=None, label=None, **kwargs):
+    """Картинка из кэша/сети; при ошибке или без источника — fallback.
+    label — что на картинке, для экранного диктора (TalkBack, «Экранный диктор» Windows)."""
+    if label:
+        kwargs["semantics_label"] = label
+    else:
+        kwargs["exclude_from_semantics"] = True     # декоративная — диктор её пропускает
     if not src:
         return fallback or ft.Container(width=width, height=height)
     if height and not width:
@@ -162,7 +167,8 @@ class DriverAvatar(ft.Container):
         fallback = ft.Container(initials(driver_code, size), alignment=ft.Alignment.CENTER,
                                 width=size, height=size)
         super().__init__(
-            content=image(src, size, size, fit=ft.BoxFit.COVER, fallback=fallback) if src else fallback,
+            content=image(src, size, size, fit=ft.BoxFit.COVER, fallback=fallback,
+                          label=f"Фото пилота {driver_code}") if src else fallback,
             width=size,
             height=size,
             gradient=ft.LinearGradient(begin=ft.Alignment.TOP_CENTER, end=ft.Alignment.BOTTOM_CENTER,
@@ -185,7 +191,8 @@ def flag(src, height=14, code=""):
                             bgcolor=SURFACE_ELEVATED, border_radius=2)
     if not src:
         return fallback if code else ft.Container(width=0)
-    return ft.Container(image(src, width, height, fit=ft.BoxFit.COVER, fallback=fallback),
+    return ft.Container(image(src, width, height, fit=ft.BoxFit.COVER, fallback=fallback,
+                              label=f"Флаг {code.upper()}" if code else "Флаг"),
                         width=width, height=height, border_radius=3, clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
                         border=ft.Border.all(0.5, ft.Colors.with_opacity(0.25, TEXT_DIM)))
 
@@ -198,7 +205,8 @@ class TeamLogo(ft.Container):
         fallback = ft.Text((team_name or "?")[:1].upper(), size=size * 0.45, color=ON_COLOR,
                            weight=ft.FontWeight.BOLD, font_family=FONT_HEADING)
         super().__init__(
-            content=image(src, size * 0.72, size * 0.72, fallback=fallback) if src else fallback,
+            content=image(src, size * 0.72, size * 0.72, fallback=fallback,
+                          label=f"Логотип {team_name}") if src else fallback,
             width=size, height=size,
             gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
                                        colors=[top, bottom]),
@@ -219,7 +227,7 @@ class PositionBadge(ft.Container):
         podium = pos in POSITION_COLORS
         super().__init__(
             content=ft.Text(str(pos) if pos else "—", size=size * 0.5, color=INK if podium else TEXT_PRIMARY,
-                            font_family=FONT_DISPLAY_ITALIC),
+                            font_family=FONT_DISPLAY_ITALIC, semantics_label=f"{pos}-е место" if pos else "без места"),
             width=size,
             height=size,
             bgcolor=POSITION_COLORS[pos] if podium else SURFACE_RAISED,
@@ -235,8 +243,9 @@ class StatCard(ft.Container):
     def __init__(self, label: str, value: str, icon=None, color: str = TEXT_PRIMARY, subtitle: str = None,
                  compact: bool = False, **kwargs):
         items = []
+        color = readable_text(color, 3.0)              # крупная цифра: порог WCAG для крупного текста
         if icon:
-            items.append(ft.Icon(icon, color=color, size=18 if compact else 20))
+            items.append(ft.Icon(icon, color=color, size=18 if compact else 20, semantics_label=label))
         items += [
             ft.Text(str(value), size=FONT_H4 if compact else FONT_H3, color=color,
                     font_family=FONT_DISPLAY_ITALIC, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),

@@ -20,15 +20,15 @@ LINE_STRONG = "#41414F"
 # === ТЕКСТ ===
 TEXT_PRIMARY = "#FFFFFF"
 TEXT_SECONDARY = "#D2D2DC"
-TEXT_MUTED = "#9D9DAB"
-TEXT_DIM = "#6E6E7C"
+TEXT_MUTED = "#ABABB8"
+TEXT_DIM = "#8E8E9C"
 
 # === АКЦЕНТ: F1 RED ===
 F1_RED = "#E10600"
 ACCENT_PRIMARY = F1_RED
 ACCENT_GLOW = "#FF2A1F"      # ярче — hover, свечение
 ACCENT_DEEP = "#8E0400"      # темнее — конец градиента
-ACCENT_TEXT = "#FF4136"      # красный для мелкого текста (контраст ≥ 4.5:1 на тёмном)
+ACCENT_TEXT = "#FF5A4F"      # красный для мелкого текста (контраст ≥ 4.5:1 на тёмном)
 ACCENT_SOFT = "#3A1416"      # красноватая поверхность (выделение, избранное)
 ON_ACCENT = "#FFFFFF"        # текст и иконки на красном
 ON_COLOR = "#FFFFFF"         # текст на цветных фонах (градиенты команд, hero) — белый в любой теме
@@ -36,7 +36,7 @@ INK = "#15151E"              # тёмный текст на светлых пл�
 
 SUCCESS = "#22C55E"
 WARNING = "#F5A524"
-DANGER = "#FF4D4F"
+DANGER = "#FF5A5C"
 INFO = "#3B82F6"
 GOLD = "#FFC93C"             # звёздочка избранного
 
@@ -153,8 +153,17 @@ def get_team_color(team_name: str, variant: str = "color") -> str:
 
 
 def get_team_gradient(team_name: str) -> tuple[str, str]:
+    """Фон карточек пилота и команды под белым текстом. Светлые цвета (Mercedes, Sauber) сверху
+    притемняются до контраста 3:1 с белым — порог WCAG для крупного текста."""
     team = TEAMS.get(team_key(team_name))
-    return (team["color"], team["dark"]) if team else (SURFACE_RAISED, SURFACE)
+    if not team:
+        return SURFACE_RAISED, SURFACE
+    top = team["color"]
+    for step in range(1, 11):
+        if contrast(ON_COLOR, top) >= 3.0:
+            break
+        top = _mix(team["color"], team["dark"], step / 10)
+    return top, team["dark"]
 
 
 # === СТРАНЫ: флаги (ISO 3166-1 alpha-2 для flagcdn.com) ===
@@ -222,17 +231,21 @@ team_color = get_team_color
 # === ТЕМЫ ===
 # Значения меняются на месте функцией apply_theme(); модули интерфейса после этого
 # перезагружаются (ui/theming.py), потому что берут цвета через «from design_system import *».
+# Текст и статусные цвета — с контрастом не меньше 4.5:1 к фону, карточке и чипу в каждой теме
+# (WCAG AA для обычного текста; проверяется в tests/test_accessibility.py).
 _DARK = {
     "BG_DEEPEST": "#000000", "BG_DEEP": "#0B0B10", "BG": "#15151E", "SURFACE": "#1E1E29",
     "SURFACE_RAISED": "#272733", "SURFACE_ELEVATED": "#31313E",
     "LINE_SUBTLE": "#23232E", "LINE": "#2D2D3A", "LINE_STRONG": "#41414F",
-    "TEXT_PRIMARY": "#FFFFFF", "TEXT_SECONDARY": "#D2D2DC", "TEXT_MUTED": "#9D9DAB", "TEXT_DIM": "#6E6E7C",
+    "TEXT_PRIMARY": "#FFFFFF", "TEXT_SECONDARY": "#D2D2DC", "TEXT_MUTED": "#ABABB8", "TEXT_DIM": "#8E8E9C",
+    "SUCCESS": "#22C55E", "WARNING": "#F5A524", "DANGER": "#FF5A5C", "GOLD": "#FFC93C",
 }
 _LIGHT = {
     "BG_DEEPEST": "#FFFFFF", "BG_DEEP": "#E4E4EA", "BG": "#F3F3F6", "SURFACE": "#FFFFFF",
     "SURFACE_RAISED": "#ECECF1", "SURFACE_ELEVATED": "#E1E1E8",
     "LINE_SUBTLE": "#ECECF1", "LINE": "#DCDCE3", "LINE_STRONG": "#C3C3CD",
-    "TEXT_PRIMARY": "#15151E", "TEXT_SECONDARY": "#3A3A46", "TEXT_MUTED": "#666673", "TEXT_DIM": "#9696A2",
+    "TEXT_PRIMARY": "#15151E", "TEXT_SECONDARY": "#3A3A46", "TEXT_MUTED": "#4F4F5A", "TEXT_DIM": "#62626E",
+    "SUCCESS": "#0F7A35", "WARNING": "#9A4A00", "DANGER": "#C62828", "GOLD": "#8A5A00",
 }
 _RED = {"F1_RED": "#E10600", "ACCENT_GLOW": "#FF2A1F", "ACCENT_DEEP": "#8E0400"}
 THEME_NAMES = {"dark": "Тёмная", "light": "Светлая", "team": "Цвета команды"}
@@ -245,6 +258,45 @@ def _mix(a, b, t):
     """Смесь двух цветов #RRGGBB: t=0 — a, t=1 — b."""
     a, b = a.lstrip("#"), b.lstrip("#")
     return "#" + "".join(f"{round(int(a[i:i + 2], 16) * (1 - t) + int(b[i:i + 2], 16) * t):02X}" for i in (0, 2, 4))
+
+
+def _luminance(color):
+    c = color.lstrip("#")
+    ch = [int(c[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    ch = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in ch]
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+
+
+def contrast(a, b):
+    """Контраст двух цветов #RRGGBB по WCAG: 1 (нет) … 21 (чёрный на белом)."""
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _readable_accent(color, background, target=4.5):
+    """Акцент для мелкого текста: цвет команды, осветлённый настолько, чтобы читался на фоне."""
+    for step in range(3, 11):
+        candidate = _mix(color, "#FFFFFF", step / 10)
+        if contrast(candidate, background) >= target:
+            return candidate
+    return "#FFFFFF"
+
+
+def readable_text(color, target=4.5, background=None):
+    """Цветной текст на карточке (цвет команды, медали): смещается к основному цвету текста темы,
+    пока не наберёт нужный контраст. В тёмной теме яркие цвета обычно проходят как есть,
+    в светлой бирюзовый Mercedes или золото темнеют. target=3 — для крупных цифр."""
+    background = background or SURFACE
+    for step in range(0, 11):
+        candidate = _mix(color, TEXT_PRIMARY, step / 10)
+        if contrast(candidate, background) >= target:
+            return candidate
+    return TEXT_PRIMARY
+
+
+def readable_on(color):
+    """Цвет текста на цветной плашке (цвет команды и т. п.): белый или тёмный — что контрастнее."""
+    return ON_COLOR if contrast(ON_COLOR, color) >= contrast(INK, color) else INK
 
 
 def apply_theme(name="dark", team=None):
@@ -264,11 +316,12 @@ def apply_theme(name="dark", team=None):
         g["ACCENT_TEXT"] = "#C80500"
         g["ACCENT_SOFT"] = "#FDE3E1"
     else:
-        g["ACCENT_TEXT"] = _mix(g["F1_RED"], "#FFFFFF", 0.3) if team_colors else "#FF4136"
+        g["ACCENT_TEXT"] = _readable_accent(g["F1_RED"], base["SURFACE_RAISED"]) if team_colors else "#FF5A4F"
         g["ACCENT_SOFT"] = _mix(g["F1_RED"], base["BG"], 0.78)
     g["GRADIENT_RED"] = [g["ACCENT_GLOW"], g["F1_RED"], g["ACCENT_DEEP"]]
     g["GRADIENT_SURFACE"] = [g["SURFACE_RAISED"], g["SURFACE"]]
     g["RAISED"], g["TEXT"], g["MUTED"], g["DIM"] = g["SURFACE_RAISED"], g["TEXT_PRIMARY"], g["TEXT_MUTED"], g["TEXT_DIM"]
+    g["OK"], g["WARN"] = g["SUCCESS"], g["WARNING"]
     THEME, THEME_TEAM, IS_LIGHT = (name if name in THEME_NAMES else "dark"), (team if team_colors else None), name == "light"
     if name == "team" and not team_colors:
         THEME = "dark"

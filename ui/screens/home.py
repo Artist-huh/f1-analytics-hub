@@ -276,7 +276,7 @@ def team_row(state, c, leader_points, show_car=False):
     ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER)
     items = [top]
     if show_car:
-        items.append(ft.Container(image(state.team_car(c["name"]), height=64, fit=ft.BoxFit.CONTAIN),
+        items.append(ft.Container(image(state.team_car(c["name"]), height=64, fit=ft.BoxFit.CONTAIN, label=f"Болид {c['name']}"),
                                   alignment=ft.Alignment.CENTER, height=64))
     items.append(progress_bar(float(c["points"]) / leader_points if leader_points else 0, color))
     return AnimatedCard(

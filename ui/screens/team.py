@@ -61,7 +61,7 @@ def _hero(state, team, drivers):
                                        ft.Text(" · ".join(short_name(d["name"]) for d in drivers),
                                                size=FONT_BODY_SMALL, color=ON_COLOR)], spacing=6)],
                               spacing=2, expand=True)], spacing=SPACE_SM),
-            ft.Container(image(state.team_car(team["name"]), height=90, fit=ft.BoxFit.CONTAIN),
+            ft.Container(image(state.team_car(team["name"]), height=90, fit=ft.BoxFit.CONTAIN, label=f"Болид {team['name']}"),
                          alignment=ft.Alignment.CENTER, height=90),
             ft.Row([_hero_value(f"P{team['position']}", "в Кубке"),
                     _hero_value(team["points"], plural(float(team["points"]), "очко", "очка", "очков")),
@@ -107,12 +107,13 @@ def _duel(state, a, b):
     w1, w2, _ = st.head_to_head(ra, rb)
     q1, q2 = st.quali_head_to_head(state.driver_quali(a["driver_id"]), state.driver_quali(b["driver_id"]))
     color = get_team_color(a["team"])
+    digits = readable_text(color, 3.0)
 
     def score(title, x, y):
         total = x + y
         return AnimatedCard(ft.Column([
             ft.Text(title, size=FONT_CAPTION, color=TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
-            ft.Row([ft.Text(str(x), size=FONT_H1, color=color, font_family=FONT_DISPLAY_ITALIC, expand=True,
+            ft.Row([ft.Text(str(x), size=FONT_H1, color=digits, font_family=FONT_DISPLAY_ITALIC, expand=True,
                             text_align=ft.TextAlign.CENTER),
                     ft.Text(":", size=FONT_H2, color=TEXT_DIM),
                     ft.Text(str(y), size=FONT_H1, color=TEXT_SECONDARY, font_family=FONT_DISPLAY_ITALIC, expand=True,

@@ -78,7 +78,7 @@ def _hero(state, race):
                 ft.Column([ft.Text(race.get("race_name", ""), size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_HEADING),
                            ft.Text(f"{race.get('locality', '')}, {race.get('country', '')}", size=FONT_BODY_SMALL,
                                    color=TEXT_MUTED)], spacing=0, expand=True)], spacing=SPACE_SM),
-        ft.Container(image(track, height=200, fit=ft.BoxFit.CONTAIN,
+        ft.Container(image(track, height=200, fit=ft.BoxFit.CONTAIN, label=f"Схема трассы {race['circuit']}",
                            fallback=ft.Icon(ft.Icons.ROUTE_ROUNDED, size=80, color=TEXT_DIM)),
                      alignment=ft.Alignment.CENTER, height=200, padding=SPACE_XS),
         ft.Row([ft.Column([ft.Text(v, size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC),
