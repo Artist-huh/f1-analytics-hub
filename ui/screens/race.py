@@ -1,13 +1,15 @@
-"""Разбор прошедшей гонки: шины, позиции по кругам, темп, отставание в квалификации"""
+"""Разбор прошедшей гонки: шины, позиции по кругам, темп, отставание в квалификации, радио"""
 import flet as ft
 from design_system import *
 from services import archive, jolpica, stats as st
 from ui.components import *
 from ui.fmt import plural, short_name
+from ui.screens.race_radio import radio_section
 from ui.screens.race_strategy import finishing_order, tyres_section
 from ui.widgets import pill, retry_block, screen
 
-TABS = [("tyres", "Шины"), ("positions", "Позиции"), ("pace", "Темп"), ("quali", "Квалификация")]
+TABS = [("tyres", "Шины"), ("positions", "Позиции"), ("pace", "Темп"), ("quali", "Квалификация"),
+        ("radio", "Радио")]
 
 
 def laps_key(race):
@@ -32,7 +34,7 @@ def build(state):
     tabs = ft.Row([pill(label, view == key, lambda e, k=key: switch(k)) for key, label in TABS],
                   spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO)
     section = {"tyres": tyres_section, "positions": positions_section, "pace": pace_section,
-               "quali": quali_section}.get(view, tyres_section)(state, race)
+               "quali": quali_section, "radio": radio_section}.get(view, tyres_section)(state, race)
     return screen(state, "Разбор гонки", [tabs] + section, subtitle=f"{race['round']}. {race['race_name']}",
                   back=True)
 

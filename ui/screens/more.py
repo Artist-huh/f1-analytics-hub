@@ -202,6 +202,8 @@ def build_settings(state):
     body = [
         _theme_card(state),
         _notifications_card(state),
+        button("Пройти знакомство заново", lambda e: (state.ui.pop("welcome", None), state.open_sub("welcome")),
+               primary=False, icon=ft.Icons.WAVING_HAND_ROUNDED),
         card(ft.Column([
             txt("Обновление данных", 16, bold=True, head=True),
             dropdown(label="Автообновление", value=minutes,

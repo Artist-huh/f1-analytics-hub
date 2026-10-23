@@ -239,25 +239,33 @@ def _query(endpoint, query):
     return _check(endpoint, data)
 
 
-def fetch_strategy(year, race_date, session_name="Race"):
-    """Стинты и пит-стопы гонки (или спринта) по дате. -> данные для экрана стратегии.
-    Сессия ищется по дате старта: названия этапов у OpenF1 и Jolpica различаются."""
+def race_session(year, race_date, session_name="Race"):
+    """Сессия OpenF1 гонки (или спринта) по дате старта: названия этапов у OpenF1 и Jolpica различаются."""
     sessions = _query("sessions", f"year={year}&session_type=Race")
     match = [s for s in sessions if (s.get("date_start") or "")[:10] == race_date
              and s.get("session_name") == session_name]
     if not match:
         raise LiveError(f"нет сессии «{session_name}» за {race_date}")
-    key = match[0]["session_key"]
+    return match[0]
+
+
+def session_drivers(key):
+    """Номер -> {code, team, colour}."""
+    return {str(d["driver_number"]): {"code": d.get("name_acronym", ""), "team": d.get("team_name", ""),
+                                      "colour": d.get("team_colour")} for d in _query("drivers", f"session_key={key}")}
+
+
+def fetch_strategy(year, race_date, session_name="Race"):
+    """Стинты и пит-стопы гонки (или спринта) по дате. -> данные для экрана стратегии."""
+    key = race_session(year, race_date, session_name)["session_key"]
     stints = _query("stints", f"session_key={key}")
     if not stints:
         raise LiveError("OpenF1 ещё не опубликовал стинты этой гонки")
     pits = _query("pit", f"session_key={key}")
-    drivers = _query("drivers", f"session_key={key}")
     return {
         "session_key": key,
         "laps": max((s.get("lap_end") or s.get("lap_start") or 0) for s in stints),
-        "drivers": {str(d["driver_number"]): {"code": d.get("name_acronym", ""), "team": d.get("team_name", ""),
-                                              "colour": d.get("team_colour")} for d in drivers},
+        "drivers": session_drivers(key),
         "stints": [{"driver": str(s["driver_number"]), "n": s.get("stint_number") or 0,
                     "start": s.get("lap_start") or 1, "end": s.get("lap_end") or s.get("lap_start") or 1,
                     "tyre": TYRES.get((s.get("compound") or "").upper(), "?"),

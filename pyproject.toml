@@ -24,8 +24,9 @@ exclude = ["venv", "tests", "build", "dist", "docs", ".github", "*.bat", "*.md"]
 # Тёмный фон под адаптивную иконку и сплэш — в цвет приложения
 adaptive_icon_background = "#15151E"
 # Уведомления на Android: отправка — NotificationManager через pyjnius (есть в репозитории пакетов Flet),
-# запрос разрешения POST_NOTIFICATIONS — официальное расширение Flet (версия = версии Flet)
-dependencies = ["pyjnius", "flet-permission-handler==1.0.5"]
+# запрос разрешения POST_NOTIFICATIONS — официальное расширение Flet (версия = версии Flet).
+# Радио команд — проигрывание через flet-audio; расшифровки и перевода на Android нет (тяжёлые модели).
+dependencies = ["pyjnius", "flet-permission-handler==1.0.5", "flet-audio==1.0.5"]
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true

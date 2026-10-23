@@ -12,7 +12,7 @@ from ui import theming
 from ui.components import ResponsiveContainer, show_snack
 from ui.fmt import fmt_countdown
 from ui.screens import (home, season, calendar, circuit, drivers, driver_detail, compare, more, favorites, history,
-                        live, mini, predict, race, team, title)
+                        live, mini, predict, race, team, title, welcome)
 from ui.state import AppState
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -43,6 +43,7 @@ def refresh_screens():
         "race_strategy": race.build,
         "title": title.build,
         "predict": predict.build,
+        "welcome": welcome.build,
         "strategy": more.build_strategy,
         "settings": more.build_settings,
     })
@@ -159,6 +160,8 @@ def main(page: ft.Page):
     f1_api.bootstrap()
     state = AppState(page)
     state.load()
+    if welcome.needed(state):
+        state.sub = "welcome"       # первый запуск: команда, пилоты, уведомления
 
     # Тема оформления из настроек (до построения первого экрана)
     saved_theme = f1_api.get_setting("theme", "dark")
@@ -237,7 +240,7 @@ def main(page: ft.Page):
         switcher.duration = ft.Duration(milliseconds=SWITCH_MS if state.fresh else 0)
         switcher.content = ft.Container(build_screen(state), expand=True, key=str(time.monotonic()))
         nav.selected_index = state.tab
-        page.navigation_bar = None if state.mini else nav
+        page.navigation_bar = None if state.mini or state.sub == "welcome" else nav
         page.update()
 
     def render():
@@ -247,7 +250,7 @@ def main(page: ft.Page):
 
     state.render = render
     state.run_on_ui = lambda fn: run_on_ui(page, fn)
-    page.navigation_bar = nav
+    page.navigation_bar = None if state.sub == "welcome" else nav
     shown["key"] = state.screen_key()
     switcher.content = ft.Container(build_screen(state), expand=True)
     page.add(ft.SafeArea(content, expand=True, avoid_intrusions_bottom=False))

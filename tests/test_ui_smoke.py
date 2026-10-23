@@ -195,6 +195,7 @@ class UiSmokeTest(unittest.TestCase):
         live._state.update(data=None, error=None, loading=False, error_at=0.0, locked=False)
         api._state.update(error=None, fail_until=0.0)
         media.clear_memory()
+        db.set_setting("onboarded", "1")   # знакомство при первом запуске — в своём тесте
         self.page = FakePage()
         self.state = AppState(self.page)
         self.renders = []
@@ -661,6 +662,88 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(pr.season_stats(pr.load_season("2026"), {"3": ["leclerc", "antonelli", "lawson"]},
                                          {"3": "leclerc"})["points"], 14)
 
+    def test_team_radio_tab(self):
+        from services import live, radio
+        from ui.screens import race as race_screen
+        answers = {
+            "sessions": [{"session_key": 9001, "session_name": "Race", "date_start": "2026-01-01T13:00:00+00:00"}],
+            "team_radio": [{"driver_number": 12, "date": "2026-01-01T13:05:30+00:00", "recording_url": "https://r/2.mp3"},
+                           {"driver_number": 16, "date": "2026-01-01T13:01:00+00:00", "recording_url": "https://r/1.mp3"}],
+            "drivers": [{"driver_number": 12, "name_acronym": "ANT", "team_name": "Mercedes", "team_colour": "27F4D2"},
+                        {"driver_number": 16, "name_acronym": "LEC", "team_name": "Ferrari", "team_colour": "E8002D"}],
+        }
+        with mock.patch.object(live, "_query", lambda endpoint, query: answers[endpoint]):
+            data = radio.fetch_radio(2026, "2026-01-01")
+        self.assertEqual([m["url"] for m in data["messages"]], ["https://r/1.mp3", "https://r/2.mp3"])   # по времени
+        self.assertEqual(radio.split_sentences("Box box. Copy! OK"), ["Box box.", "Copy!", "OK"])
+        self.assertEqual(radio._plain_english("Box this lap, box this lap. Keep pushing."),
+                         "make a pit stop this lap. Keep attacking.")                   # жаргон и повтор
+        self.assertEqual(radio._fix_russian("машина безопасности."), "Сейфти-кар.")
+        import zipfile
+        pkg = os.path.join(self.tmp.name, "en_ru.argosmodel")
+        with zipfile.ZipFile(pkg, "w") as z:
+            for name in ("model/model.bin", "model/config.json", "sentencepiece.model", "stanza/en/x.pt", "README.md"):
+                z.writestr(f"translate-en_ru-1_9/{name}", b"x")
+        with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}):
+            radio.extract_argos(pkg)
+            got = sorted(str(p.relative_to(radio.argos_dir())).replace("\\", "/")
+                         for p in radio.argos_dir().rglob("*") if p.is_file())
+        self.assertEqual(got, ["model/config.json", "model/model.bin", "sentencepiece.model"])   # без stanza
+        fill_db()
+        self.state.load()
+        race = self.state.schedule[2]
+        self.state.open_race_strategy(race)
+        self.state.ui["race_view"] = "radio"
+        self.assertIn("Радио не загружено", texts(self.build("race_strategy")))
+        db.save_archive(radio.radio_key(race), data)
+        db.save_archive(radio.tx_key("https://r/1.mp3"), {"en": "Box this lap.", "ru": "Заезжай на этом круге."})
+        with mock.patch.object(radio, "supported", return_value=True),                 mock.patch.object(radio, "models_ready", return_value=True):
+            t = texts(self.build("race_strategy"))
+            self.assertIn("Заезжай на этом круге.", t)
+            self.assertIn("5:30", t)                                            # от старта гонки
+            with mock.patch.object(radio, "request") as req:
+                clickable(self.build("race_strategy"), "Перевести")[0].on_click(Ctl())
+            req.assert_called_once()
+            self.assertEqual(req.call_args[0][0], "https://r/2.mp3")
+        clickable(self.build("race_strategy"), "ANT")[0].on_click(Ctl())        # только записи ANT
+        self.assertIn("1 запись", texts(self.build("race_strategy")))
+        fake_audio = types.SimpleNamespace(Audio=lambda **kw: Ctl(**kw), AudioState=Ctl())
+        with mock.patch.dict(sys.modules, {"flet_audio": fake_audio}):
+            play = [n for n in walk(self.build("race_strategy")) if getattr(n, "tooltip", "") == "Слушать: радио ANT"]
+            play[0].on_click(Ctl())
+        self.assertEqual(self.state.ui["radio_playing"], "https://r/2.mp3")
+        with mock.patch.object(radio, "supported", return_value=False):          # Android: без перевода
+            self.assertIn("Перевод радио работает в версии для компьютера. Здесь — запись в оригинале.",
+                          texts(self.build("race_strategy")))
+
+    def test_first_run_onboarding(self):
+        from ui.screens import welcome
+        db.set_setting("onboarded", "0")
+        self.assertFalse(welcome.needed(self.state))                            # без данных выбирать некого
+        fill_db()
+        self.state.load()
+        self.assertTrue(welcome.needed(self.state))
+        themes = []
+        self.state.on_theme_change = lambda name, team: themes.append((name, team))
+        self.state.sub = "welcome"
+        clickable(self.build("welcome"), "Ferrari")[0].on_click(Ctl())
+        clickable(self.build("welcome"), "Дальше")[0].on_click(Ctl())
+        self.assertEqual(self.state.ui["welcome"]["drivers"], ["leclerc"])      # пилоты команды отмечены сами
+        clickable(self.build("welcome"), "Liam Lawson")[0].on_click(Ctl())
+        clickable(self.build("welcome"), "Дальше")[0].on_click(Ctl())
+        switches = [n for n in walk(self.build("welcome")) if getattr(n, "tooltip", "") == "Напоминания о сессиях"]
+        switches[0].on_change(Ctl(control=Ctl(value=False)))
+        clickable(self.build("welcome"), "Готово")[0].on_click(Ctl())
+        self.assertEqual(sorted(self.state.favorites), ["lawson", "leclerc"])
+        self.assertEqual(themes, [("team", "Ferrari")])
+        self.assertFalse(self.state.notifications_on("sessions"))
+        self.assertTrue(self.state.notifications_on("results"))
+        self.assertIsNone(self.state.sub)
+        self.assertFalse(welcome.needed(self.state))                            # второй раз не показываем
+        db.set_setting("onboarded", "0")
+        clickable(self.build("welcome"), "Пропустить — настрою потом")[0].on_click(Ctl())
+        self.assertEqual(db.get_setting("onboarded"), "1")
+
     def test_season_heatmap(self):
         from ui.screens import heatmap
         ds = design_system
@@ -1062,6 +1145,15 @@ class UiSmokeTest(unittest.TestCase):
         with open(snap, "w", encoding="utf-8") as f:
             json.dump(data, f)
         os.environ["F1_HUB_DB"] = os.path.join(self.tmp.name, "fresh.db")   # «первый запуск»
+        page = FakePage()
+        with mock.patch.dict(os.environ, {"F1_HUB_SEED": snap}), \
+             mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()):
+            app.main(page)
+        shown = texts(page.added[0])
+        self.assertIn("Добро пожаловать", shown)                  # сначала знакомство — команды уже из снимка
+        self.assertIn("Mercedes", shown)
+        self.assertIsNone(page.navigation_bar)
+        db.set_setting("onboarded", "1")
         page = FakePage()
         with mock.patch.dict(os.environ, {"F1_HUB_SEED": snap}), \
              mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()):
