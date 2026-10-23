@@ -75,3 +75,6 @@ release/
 
 # flet pack generates it on every build (see BUILD.md)
 F1AnalyticsHub.spec
+
+# Dart-код расширения виджета (lib/ выше — про Python-окружения)
+!packages/flet_home_widget/src/flutter/flet_home_widget/lib/
