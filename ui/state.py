@@ -38,6 +38,8 @@ class AppState:
         self._by_driver = {}
         self._live_watch = None         # поток обновления live-тайминга, пока открыт его экран
         self.notifier = None            # main.py: services.notify.Notifier
+        self.mini = False               # мини-виджет (компьютер): маленькое окно поверх остальных
+        self.on_mini_change = lambda enabled: None   # main.py: размер окна, «поверх всех»
 
     # ---------- данные ----------
     def load(self):
@@ -245,7 +247,7 @@ class AppState:
     def screen_key(self):
         detail = {"driver_detail": "driver_id", "team": "team", "circuit": "circuit"}.get(self.sub)
         value = self.ui.get(detail) if detail else None
-        return (self.tab, self.sub, value.get("round") if isinstance(value, dict) else value)
+        return (self.mini, self.tab, self.sub, value.get("round") if isinstance(value, dict) else value)
 
     # ---------- live-тайминг ----------
     def watch_live(self, period=3.0):
@@ -268,6 +270,12 @@ class AppState:
     def live_now(self):
         """Идёт ли сейчас сессия по календарю: (этап, ключ сессии) или None."""
         return live.session_is_live(self.schedule)
+
+    # ---------- мини-виджет ----------
+    def toggle_mini(self):
+        self.mini = not self.mini
+        self.on_mini_change(self.mini)
+        self.render()
 
     # ---------- уведомления ----------
     def notifications_on(self, kind):
@@ -324,7 +332,8 @@ class AppState:
 
     # ---------- клавиатура ----------
     def on_key(self, key, ctrl=False):
-        """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Esc — назад.
+        """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Ctrl+M — мини-виджет,
+        Esc — назад.
         Возвращает True, если клавиша обработана."""
         key = (key or "").upper()
         if key == "F5":
@@ -334,6 +343,8 @@ class AppState:
             self.open_tab(3)
         elif ctrl and key == "K":
             self.open_sub("compare")
+        elif ctrl and key == "M" and not notify.is_android():
+            self.toggle_mini()
         elif key == "ESCAPE" and self.sub:
             self.close_sub()
         else:

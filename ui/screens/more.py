@@ -3,7 +3,7 @@ import flet as ft
 
 from design_system import (ACCENT, ACCENT_DEEP, ACCENT_GLOW, ACCENT_TEXT, DANGER, DIM, F1_RED, MUTED, OK, ON_ACCENT,
                            RAISED, SURFACE, TEXT, WARN)
-from services import db, f1_api as api, log, media
+from services import db, f1_api as api, log, media, notify
 from ui.fmt import fmt_updated
 from ui.widgets import button, card, dropdown, screen, tyre_chip, txt
 
@@ -35,9 +35,12 @@ def build_menu(state):
               lambda e: state.open_sub("favorites")),
         _tile(ft.Icons.TIMELINE, "Стратегия", "Какие шины и сколько остановок на трассе",
               lambda e: state.open_sub("strategy")),
-        _tile(ft.Icons.SETTINGS, "Настройки", "Обновление данных, кэш, о приложении",
+        _tile(ft.Icons.SETTINGS, "Настройки", "Оформление, уведомления, обновление данных",
               lambda e: state.open_sub("settings")),
     ]
+    if not notify.is_android():
+        body.insert(-1, _tile(ft.Icons.PICTURE_IN_PICTURE_ALT, "Мини-виджет", "Окно поверх остальных: таймер и топ-3 (Ctrl+M)",
+                              lambda e: state.toggle_mini()))
     return screen(state, "Ещё", body)
 
 

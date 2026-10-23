@@ -12,7 +12,7 @@ from ui import theming
 from ui.components import ResponsiveContainer, show_snack
 from ui.fmt import fmt_countdown
 from ui.screens import (home, season, calendar, circuit, drivers, driver_detail, compare, more, favorites, history,
-                        live, team, title)
+                        live, mini, team, title)
 from ui.state import AppState
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -58,6 +58,8 @@ logger = log.get("main")
 def build_screen(state):
     """Построить экран с обработкой ошибок"""
     try:
+        if getattr(state, "mini", False):
+            return mini.build(state)
         return (SUBS[state.sub] if state.sub else TABS[state.tab])(state)
     except Exception as exc:
         logger.exception("ошибка построения экрана (tab=%s, sub=%s)", state.tab, state.sub)
@@ -189,6 +191,31 @@ def main(page: ft.Page):
 
     state.on_theme_change = on_theme_change
 
+    normal = {}
+
+    def on_mini_change(enabled):
+        """Мини-виджет: маленькое окно поверх остальных; обратно — прежний размер."""
+        try:
+            # ограничения и размер — отдельными обновлениями: иначе новый размер упирается в старый минимум
+            if enabled:
+                normal.update(width=page.window.width, height=page.window.height)
+                page.window.min_width, page.window.min_height = 300, 240
+                page.update()
+                page.window.width, page.window.height = 340, 300
+                page.window.always_on_top = True
+                content.padding = ft.Padding.all(SPACE_SM)
+            else:
+                page.window.always_on_top = False
+                page.window.width = normal.get("width") or 440
+                page.window.height = normal.get("height") or 880
+                page.update()
+                page.window.min_width, page.window.min_height = 360, 640
+                fit_width()
+        except Exception as exc:
+            logger.warning("мини-виджет: %r", exc)
+
+    state.on_mini_change = on_mini_change
+
     # Уведомления: системные (Windows/macOS/Linux, Android) или плашка в приложении
     state.notifier = notify.Notifier(
         run_async=getattr(page, "run_task", None),
@@ -208,6 +235,7 @@ def main(page: ft.Page):
         switcher.duration = ft.Duration(milliseconds=SWITCH_MS if state.fresh else 0)
         switcher.content = ft.Container(build_screen(state), expand=True, key=str(time.monotonic()))
         nav.selected_index = state.tab
+        page.navigation_bar = None if state.mini else nav
         page.update()
 
     def render():
@@ -274,7 +302,8 @@ def main(page: ft.Page):
         except Exception as exc:
             logger.warning("уведомления: %r", exc)
         try:
-            if state.sub is not None or state.tab != 0 or state.countdown is None:
+            on_home = state.sub is None and state.tab == 0
+            if state.countdown is None or not (on_home or state.mini):
                 return
             text, rnd = state.countdown
             race = state.next_race()

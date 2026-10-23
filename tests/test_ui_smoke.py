@@ -837,6 +837,27 @@ class UiSmokeTest(unittest.TestCase):
         asyncio.run(tasks.pop()())
         self.assertIn("Мои пилоты и их результаты", texts(app.TABS[4](AppState(page))))   # экраны собираются
 
+    def test_mini_widget(self):
+        page, tasks = self._main_with_loop()
+        page.window.width, page.window.height = 500, 900
+        page.navigation_bar.on_change(Ctl(control=Ctl(selected_index=4)))
+        asyncio.run(tasks.pop()())
+        nav = page.navigation_bar
+        clickable(page.added[0], "Мини-виджет")[0].on_click(Ctl())
+        asyncio.run(tasks.pop()())
+        self.assertEqual((page.window.width, page.window.height, page.window.always_on_top), (340, 300, True))
+        self.assertIsNone(page.navigation_bar)                    # без нижнего меню
+        t = texts(page.added[0])
+        for expected in ("Italian Grand Prix", "3 д 5 ч", "ANT", "LEC", "LAW"):
+            self.assertIn(expected, t)
+        clickable(page.added[0], "Развернуть")[0].on_click(Ctl())
+        asyncio.run(tasks.pop()())
+        self.assertEqual((page.window.width, page.window.height, page.window.always_on_top), (500, 900, False))
+        self.assertIs(page.navigation_bar, nav)
+        state = AppState(FakePage())
+        state.on_key("M", ctrl=True)
+        self.assertTrue(state.mini)                               # Ctrl+M
+
     def test_saved_theme_applied_on_start(self):
         from ui import theming
         self.addCleanup(theming.apply, "dark")
