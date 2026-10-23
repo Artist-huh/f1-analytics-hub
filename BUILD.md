@@ -23,7 +23,7 @@ build.bat
 ```bat
 venv\Scripts\flet.exe pack main.py -y --name F1AnalyticsHub --icon assets\icon.ico ^
     --add-data "assets;assets" "data;data" ^
-    --product-name "F1 Analytics Hub" --product-version "2.2.0" --file-version "2.2.0.0"
+    --product-name "F1 Analytics Hub" --product-version "2.3.0" --file-version "2.3.0.0"
 ```
 
 - `assets/` — шрифт заголовков (работает без сети) и иконка;
