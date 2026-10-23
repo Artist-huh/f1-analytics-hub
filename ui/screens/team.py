@@ -5,6 +5,7 @@ from design_system import *
 from services import stats as st
 from ui.components import *
 from ui.fmt import plural, short_name, to_int
+from ui.rows import driver_row
 from ui.widgets import screen
 
 
@@ -96,7 +97,6 @@ def _stats(team, s):
 
 
 def _drivers(state, drivers):
-    from ui.screens.home import driver_row
     rows = [driver_row(state, d) for d in drivers]
     actions = []
     if len(drivers) >= 2:

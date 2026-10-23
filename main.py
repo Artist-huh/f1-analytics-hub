@@ -27,6 +27,8 @@ from ui.screens import (
     predict,
     race,
     season,
+    settings,
+    strategy,
     team,
     title,
     welcome,
@@ -62,8 +64,8 @@ def refresh_screens():
         "title": title.build,
         "predict": predict.build,
         "welcome": welcome.build,
-        "strategy": more.build_strategy,
-        "settings": more.build_settings,
+        "strategy": strategy.build,
+        "settings": settings.build,
     })
 
 

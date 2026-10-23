@@ -4,7 +4,7 @@ import flet as ft
 from design_system import *
 from ui.components import *
 from ui.fmt import plural
-from ui.screens.home import driver_row
+from ui.rows import driver_row
 from ui.widgets import screen
 
 

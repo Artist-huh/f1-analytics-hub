@@ -3,8 +3,8 @@ import flet as ft
 
 from design_system import *
 from ui.components import *
+from ui.rows import driver_row, team_row
 from ui.screens import heatmap
-from ui.screens.home import driver_row, team_row
 from ui.widgets import empty_state, pill, screen
 
 

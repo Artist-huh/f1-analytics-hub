@@ -10,8 +10,8 @@ import sys
 
 import design_system as ds
 
-# Порядок важен: компоненты и виджеты — раньше экранов; home — раньше экранов, которые из него импортируют.
-FIRST = ["ui.components", "ui.widgets", "ui.screens.home"]
+# Порядок важен: компоненты, виджеты и общие строки — раньше экранов, которые из них импортируют.
+FIRST = ["ui.components", "ui.widgets", "ui.rows"]
 
 
 def _screen_modules():
