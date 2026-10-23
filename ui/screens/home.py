@@ -354,8 +354,5 @@ def _open_calendar_past(state):
 
 
 def open_team(state, team_name):
-    """Команда -> список её пилотов на экране «Пилоты»."""
-    drivers = state.team_drivers(team_name)
-    state.ui["drv_team"] = drivers[0]["team"] if drivers else None
-    state.ui["drv_q"] = ""
-    state.open_tab(3)
+    """Команда -> её страница."""
+    state.open_team(team_name)

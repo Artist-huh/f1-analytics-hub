@@ -296,8 +296,9 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Mercedes", t)
         self.assertIn("Antonelli", t)                     # пилоты команды под названием
         self.assertTrue([n for n in walk(tree) if type(n).__name__ == "TeamLogo"])
-        clickable(tree, "Ferrari")[0].on_click(Ctl())     # команда -> её пилоты
-        self.assertEqual((self.state.tab, self.state.ui["drv_team"]), (3, "Ferrari"))
+        clickable(tree, "Ferrari")[0].on_click(Ctl())     # команда -> её страница
+        self.assertEqual((self.state.sub, self.state.ui["team"]), ("team", "Ferrari"))
+        self.state.close_sub()
         self.state.ui["champ"] = "favs"
         self.assertIn("Нет избранных пилотов", texts(self.build("tab1")))
         api.toggle_favorite("leclerc")
@@ -458,6 +459,24 @@ class UiSmokeTest(unittest.TestCase):
         self.state.load()
         clickable(self.build("favorites"), "Добавить пилота")[0].on_click(Ctl())
         self.assertIn("Все пилоты уже в избранном!", texts(self.page.dialogs[-1]))   # уведомление
+
+    def test_team_page(self):
+        from ui.screens import team
+        fill_db()
+        self.state.load()
+        s = team.team_stats(self.state, "Mercedes")
+        self.assertEqual((s["wins"], s["podiums"], s["poles"], s["fastest_laps"], s["dnf"]), (2, 3, 2, 2, 0))
+        s = team.team_stats(self.state, "Ferrari")
+        self.assertEqual((s["wins"], s["podiums"], s["poles"], s["dnf"]), (0, 2, 1, 1))
+        self.assertEqual(team.team_points_by_round(self.state, "Mercedes", [1, 2, 3]), [25, 51, 76])   # + спринт 8
+        self.state.open_driver("leclerc")
+        clickable(self.build("driver_detail"), "Ferrari")[0].on_click(Ctl())   # логотип у пилота -> команда
+        self.assertEqual((self.state.sub, self.state.ui["team"]), ("team", "Ferrari"))
+        t = texts(self.build("team"))
+        for expected in ("FERRARI", "P2", "285", "СЕЗОН КОМАНДЫ", "Leclerc", "НАБОР ОЧКОВ"):
+            self.assertIn(expected, t)
+        self.state.ui["team"] = "Unknown"
+        self.assertIn("Команда не выбрана", texts(self.build("team")))
 
     def test_title_fight_screen(self):
         fill_db()

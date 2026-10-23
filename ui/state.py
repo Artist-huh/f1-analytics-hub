@@ -187,6 +187,10 @@ class AppState:
         self.ui["cmp"] = list(dict.fromkeys(ids))[:MAX_COMPARE]
         self.render()
 
+    def set_compare_and_open(self, ids):
+        self.ui["cmp"] = list(dict.fromkeys(ids))[:MAX_COMPARE]
+        self.open_sub("compare")
+
     def compare_with(self, driver_id):
         """«Сравнить» со страницы пилота: он и его напарник (или лидер)."""
         driver = self.driver(driver_id)
@@ -226,8 +230,13 @@ class AppState:
         self.ui["driver_id"] = driver_id
         self.open_sub("driver_detail")
 
+    def open_team(self, team_name):
+        self.ui["team"] = team_name
+        self.open_sub("team")
+
     def screen_key(self):
-        return (self.tab, self.sub, self.ui.get("driver_id") if self.sub == "driver_detail" else None)
+        detail = {"driver_detail": "driver_id", "team": "team"}.get(self.sub)
+        return (self.tab, self.sub, self.ui.get(detail) if detail else None)
 
     # ---------- клавиатура ----------
     def on_key(self, key, ctrl=False):

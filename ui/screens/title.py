@@ -92,7 +92,7 @@ def _next_clinch(state, rows, race, view):
     need = race["next_clinch"]
     rival = short_name(second["name"]) if view == "drivers" else second["name"]
     cond = (f"достаточно не уступить {rival}" if need == 0 else
-            f"нужно опередить {rival} минимум на {need} {plural(need, 'очко', 'очка', 'очков')}")
+            f"нужно опередить {rival} минимум на {need:g} {plural(int(need), 'очко', 'очка', 'очков')}")
     name = short_name(leader["name"]) if view == "drivers" else leader["name"]
     return AnimatedCard(ft.Row([
         _avatar(state, leader, view, 52),

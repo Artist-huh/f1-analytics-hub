@@ -9,7 +9,7 @@ from services import f1_api, log
 from design_system import *
 from ui.components import ResponsiveContainer
 from ui.fmt import fmt_countdown
-from ui.screens import home, season, calendar, drivers, driver_detail, compare, more, favorites, title
+from ui.screens import home, season, calendar, drivers, driver_detail, compare, more, favorites, team, title
 from ui.state import AppState
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -28,6 +28,7 @@ SUBS = {
     "driver_detail": driver_detail.build,
     "compare": compare.build,
     "favorites": favorites.build,
+    "team": team.build,
     "title": title.build,
     "strategy": more.build_strategy,
     "settings": more.build_settings,

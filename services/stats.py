@@ -187,5 +187,6 @@ def title_race(rows, races_left, sprints_left, kind="drivers", next_has_sprint=F
         weekend_max = RACE_MAX[kind] + (SPRINT_MAX[kind] if next_has_sprint else 0)
         need = after - lead + 1          # отрыв после уик-энда должен стать больше, чем останется очков
         if need <= weekend_max:
-            next_clinch = max(need, 0)
+            need = max(need, 0)
+            next_clinch = int(need) if float(need).is_integer() else need
     return {"available": available, "contenders": contenders, "clinched": clinched, "next_clinch": next_clinch}

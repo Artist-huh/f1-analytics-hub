@@ -71,9 +71,11 @@ def _build_hero(state, driver, is_mobile):
             ft.Text(last.upper(), size=FONT_H1 if not is_mobile else FONT_H2, color=TEXT_PRIMARY,
                     font_family=FONT_DISPLAY_ITALIC),
         ], spacing=0),
-        ft.Row([TeamLogo(team, state.team_logo(team), size=30),
-                ft.Text(team, size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600, expand=True,
-                        max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)], spacing=SPACE_XS),
+        ft.Container(ft.Row([TeamLogo(team, state.team_logo(team), size=30),
+                             ft.Text(team, size=FONT_BODY_SMALL, color=ON_COLOR, weight=ft.FontWeight.W_600, expand=True,
+                                     max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)], spacing=SPACE_XS),
+                     on_click=lambda e: _open_team_of(state, team), ink=True, border_radius=RADIUS_SM,
+                     tooltip="Страница команды"),
         ft.Container(expand=True),
         ft.Row([
             _hero_value(f"P{driver['position']}", "в зачёте"),
@@ -96,6 +98,13 @@ def _build_hero(state, driver, is_mobile):
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         shadow=glow(top, 0.3),
     )
+
+
+def _open_team_of(state, team_name):
+    """Название команды у пилота и в Кубке конструкторов может отличаться — ищем по ключу команды."""
+    key = team_key(team_name)
+    match = next((c["name"] for c in state.constructors if team_key(c["name"]) == key and key), team_name)
+    state.open_team(match)
 
 
 def _hero_value(value, label):
