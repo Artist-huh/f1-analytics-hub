@@ -124,7 +124,21 @@ def build_table(session, drivers, positions, intervals, stints, pits):
 
 
 def fetch(now=None):
-    """Снимок последней сессии. -> {session, live, rows, lap, messages, updated}"""
+    """Снимок текущей/последней сессии. Сначала — официальный поток F1 (работает и во время сессии),
+    при его ошибке — OpenF1 (во время сессии он закрыт для бесплатного доступа)."""
+    from . import f1live
+    try:
+        data = f1live.fetch(now)
+        if data["rows"]:
+            return data
+        logger.info("поток F1 без таблицы — берём OpenF1")
+    except f1live.F1LiveError as exc:
+        logger.warning("поток F1 недоступен (%s) — берём OpenF1", exc)
+    return fetch_openf1(now)
+
+
+def fetch_openf1(now=None):
+    """Снимок последней сессии из OpenF1. -> {session, live, rows, lap, messages, updated}"""
     now = time.time() if now is None else now
     sessions = _get("sessions")
     if not sessions:
@@ -154,6 +168,7 @@ def fetch(now=None):
         "lap": table["lap"],
         "messages": [{"time": _ts(m.get("date")), "text": m.get("message", ""), "flag": m.get("flag"),
                       "lap": m.get("lap_number")} for m in messages[-6:]][::-1],
+        "radio": [], "drivers": {}, "source": "OpenF1",
         "updated": now,
     }
 
@@ -161,7 +176,7 @@ def fetch(now=None):
 # ---------------------------------------------------------------- кэш и фоновое обновление
 _state = {"data": None, "error": None, "loading": False, "error_at": 0.0, "locked": False}
 _lock = threading.Lock()
-REFRESH_LIVE = 10           # сек. — пока сессия идёт
+REFRESH_LIVE = 5            # сек. — пока сессия идёт (снимок потока F1 — 1–2 с)
 REFRESH_DONE = 300          # после сессии снимок почти не меняется
 
 

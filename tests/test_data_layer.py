@@ -834,5 +834,63 @@ class StatsTest(unittest.TestCase):
         self.assertEqual(stats.podiums_by_round(rows[:2]), {})            # неполный подиум не показываем
 
 
+class F1LiveTest(unittest.TestCase):
+    STATE = {
+        "SessionInfo": {"Meeting": {"Name": "United States Grand Prix", "Location": "Austin",
+                                    "Country": {"Name": "United States"}, "Circuit": {"ShortName": "Austin"}},
+                        "Name": "Race", "Type": "Race", "SessionStatus": "Started",
+                        "StartDate": "2026-10-25T15:00:00", "EndDate": "2026-10-25T17:00:00", "GmtOffset": "-05:00:00",
+                        "Path": "2026/2026-10-25_United_States_Grand_Prix/2026-10-25_Race/"},
+        "DriverList": {"16": {"Tla": "LEC", "TeamName": "Ferrari", "TeamColour": "ED1131",
+                              "FullName": "Charles LECLERC"},
+                       "1": {"Tla": "NOR", "TeamName": "McLaren", "TeamColour": "F47600"}},
+        "TimingData": {"Lines": {"16": {"Position": "1", "GapToLeader": "", "NumberOfPitStops": 1,
+                                        "IntervalToPositionAhead": {"Value": ""}},
+                                 "1": {"Position": "2", "GapToLeader": "+2.345", "NumberOfPitStops": 1,
+                                       "IntervalToPositionAhead": {"Value": "+2.345"}, "InPit": True}}},
+        "TimingAppData": {"Lines": {"16": {"Stints": [{"Compound": "MEDIUM", "TotalLaps": 20},
+                                                      {"Compound": "HARD", "TotalLaps": 11}]},
+                                    "1": {"Stints": {"0": {"Compound": "SOFT", "TotalLaps": 3}}}}},
+        "LapCount": {"CurrentLap": 31, "TotalLaps": 56},
+        "TrackStatus": {"Status": "4"},
+        "RaceControlMessages": {"Messages": [{"Utc": "2026-10-25T20:40:00", "Message": "SAFETY CAR DEPLOYED"}]},
+        "TeamRadio": {"Captures": [{"Utc": "2026-10-25T20:41:02.5Z", "RacingNumber": "16",
+                                    "Path": "TeamRadio/CHALEC01_16_20261025_154102.mp3"}]},
+    }
+
+    def test_snapshot_from_f1_stream(self):
+        from services import f1live
+        now = datetime_ts("2026-10-25T20:45:00")
+        d = f1live.snapshot(self.STATE, now)
+        self.assertTrue(d["live"])                                    # 15:00 местного = 20:00 UTC
+        self.assertTrue(d["racing"])
+        self.assertEqual([r["code"] for r in d["rows"]], ["LEC", "NOR"])
+        self.assertEqual((d["rows"][0]["tyre"], d["rows"][0]["tyre_age"]), ("H", 11))   # последний стинт
+        self.assertEqual(d["rows"][1]["tyre"], "S")                    # стинты словарём {"0": ...}
+        self.assertEqual(d["rows"][1]["gap"], "+2.345")
+        self.assertEqual((d["lap"], d["total_laps"], d["track"]), (31, 56, "Сейфти-кар"))
+        self.assertEqual(d["radio"][0]["url"], "https://livetiming.formula1.com/static/2026/2026-10-25_United_States"
+                                               "_Grand_Prix/2026-10-25_Race/TeamRadio/CHALEC01_16_20261025_154102.mp3")
+        self.assertEqual(d["radio"][0]["ts"], datetime_ts("2026-10-25T20:41:02"))
+        finished = dict(self.STATE, SessionInfo=dict(self.STATE["SessionInfo"], SessionStatus="Finalised"))
+        self.assertFalse(f1live.snapshot(finished, now)["live"])
+
+    def test_live_falls_back_to_openf1(self):
+        from services import f1live, live
+        with mock.patch.object(f1live, "fetch", side_effect=f1live.F1LiveError("negotiate: HTTP 503")), \
+                mock.patch.object(live, "fetch_openf1", return_value={"rows": [1], "source": "OpenF1"}) as openf1:
+            self.assertEqual(live.fetch()["source"], "OpenF1")
+        openf1.assert_called_once()
+        with mock.patch.object(f1live, "fetch", return_value={"rows": [1], "source": "F1"}), \
+                mock.patch.object(live, "fetch_openf1") as openf1:
+            self.assertEqual(live.fetch()["source"], "F1")
+        openf1.assert_not_called()
+
+
+def datetime_ts(text):
+    from datetime import datetime, timezone
+    return datetime.fromisoformat(text).replace(tzinfo=timezone.utc).timestamp()
+
+
 if __name__ == "__main__":
     unittest.main()

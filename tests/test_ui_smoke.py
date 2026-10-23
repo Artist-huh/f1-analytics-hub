@@ -657,6 +657,26 @@ class UiSmokeTest(unittest.TestCase):
             self.assertIn(expected, t)
         clickable(tree, "Интервал")[0].on_click(Ctl())
         self.assertEqual(self.state.ui["live_gap"], "interval")
+        self.assertIn("Источник — OpenF1. Во время сессии бесплатный доступ закрыт; после сессии показан её итог.", t)
+        # поток F1: сейфти-кар, радио сессии
+        from services import radio
+        live._state["data"].update(source="F1", track="Сейфти-кар", drivers={"16": {"code": "LEC", "colour": "ED1131"}},
+                                   radio=[{"driver": "16", "url": "https://r/live1.mp3", "ts": 1030},
+                                          {"driver": "16", "url": "https://r/live2.mp3", "ts": 1095}])
+        live._state["data"]["session"]["start"] = 1000
+        tree = self.build("live")
+        self.assertIn("Сейфти-кар", texts(tree))
+        self.assertIn("Источник — официальный live timing F1: данные идут и во время сессии.", texts(tree))
+        clickable(tree, "Радио · 2")[0].on_click(Ctl())
+        with mock.patch.object(radio, "supported", return_value=True), \
+                mock.patch.object(radio, "models_ready", return_value=True), \
+                mock.patch.object(radio, "request") as req:
+            tree = self.build("live")
+            stamps = [x for x in texts(tree) if x in ("1:35", "0:30")]
+            self.assertEqual(stamps, ["1:35", "0:30"])                          # свежие — сверху
+            clickable(tree, "Перевести новые (2)")[0].on_click(Ctl())
+        self.assertEqual(req.call_count, 2)
+        self.state.ui["live_view"] = "table"
         clickable(self.build("live"), "LEC")[0].on_click(Ctl())     # строка -> страница пилота
         self.assertEqual(self.state.ui["driver_id"], "leclerc")
         self.state.sub = None                                       # поток наблюдения завершится сам

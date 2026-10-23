@@ -1,4 +1,4 @@
-"""Live-тайминг: позиции, отрывы, шины и пит-стопы последней сессии (OpenF1)"""
+"""Live-тайминг: позиции, отрывы, шины, пит-стопы и радио текущей сессии (поток F1, запасной — OpenF1)"""
 import flet as ft
 
 from design_system import *
@@ -36,15 +36,33 @@ def build(state):
         state.ui["live_gap"] = key
         state.render()
 
+    view = state.ui.get("live_view", "table")
+    radio_items = data.get("radio") or []
+
+    def show(key):
+        state.ui["live_view"] = key
+        state.render()
+
     body = [_header(state, data)]
-    if data["racing"]:
-        body.append(ft.Row([pill("До лидера", mode == "leader", lambda e: switch("leader")),
-                            pill("Интервал", mode == "interval", lambda e: switch("interval"))], spacing=SPACE_XS))
-    body.append(_table(state, data, mode))
-    if data["messages"]:
-        body.append(_messages(data["messages"]))
-    body.append(ft.Text("Источник — OpenF1. Во время сессии бесплатные данные приходят с задержкой; "
-                        "после сессии показан её итог.", size=FONT_CAPTION, color=TEXT_DIM))
+    if data.get("track"):
+        body.append(_track_status(data["track"]))
+    tabs = [pill("Таблица", view == "table", lambda e: show("table"))]
+    if radio_items:
+        tabs.append(pill(f"Радио · {len(radio_items)}", view == "radio", lambda e: show("radio")))
+    if data["racing"] and view == "table":
+        tabs += [pill("До лидера", mode == "leader", lambda e: switch("leader")),
+                 pill("Интервал", mode == "interval", lambda e: switch("interval"))]
+    body.append(ft.Row(tabs, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO))
+    if view == "radio" and radio_items:
+        body += _radio(state, data)
+    else:
+        body.append(_table(state, data, mode))
+        if data["messages"]:
+            body.append(_messages(data["messages"]))
+    source = ("Источник — официальный live timing F1: данные идут и во время сессии."
+              if data.get("source") == "F1" else
+              "Источник — OpenF1. Во время сессии бесплатный доступ закрыт; после сессии показан её итог.")
+    body.append(ft.Text(source, size=FONT_CAPTION, color=TEXT_DIM))
     s = data["session"]
     return screen(state, "Live-тайминг", body, subtitle=f"{s['country']} · {s['location']}", back=True)
 
@@ -59,7 +77,10 @@ def _header(state, data):
     if nxt:
         info = track_info(nxt)
         total = info[1] if info else None
+    total = data.get("total_laps") or total
     lap = f"Круг {data['lap']}" + (f" из {total}" if total else "") if data["lap"] and data["racing"] else ""
+    if not lap and data.get("remaining") and data["live"]:
+        lap = f"осталось {data['remaining']}"
     if data["live"]:
         badge = ft.Container(ft.Row([ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
                                      ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
@@ -128,6 +149,32 @@ def _table(state, data, mode):
                    ft.Text("Шины", size=FONT_TINY, color=TEXT_DIM, width=scaled(48), no_wrap=True),
                    ft.Text("Пит", size=FONT_TINY, color=TEXT_DIM, width=scaled(22), no_wrap=True)], spacing=SPACE_XS)
     return ft.Column([ft.Container(head, padding=ft.Padding.symmetric(horizontal=SPACE_XS))] + rows, spacing=SPACE_XXS)
+
+
+def _track_status(text):
+    """Сейфти-кар, жёлтый или красный флаг — крупной плашкой над таблицей."""
+    color = DANGER if "Красный" in text else WARNING
+    return ft.Container(ft.Row([ft.Icon(ft.Icons.FLAG_ROUNDED, color=INK, size=20),
+                                ft.Text(text, size=FONT_BODY, color=INK, weight=ft.FontWeight.BOLD)],
+                               spacing=SPACE_XS),
+                        bgcolor=color, border_radius=RADIUS_MD, padding=ft.Padding.symmetric(horizontal=SPACE_SM,
+                                                                                               vertical=SPACE_XS))
+
+
+def _radio(state, data):
+    """Радио текущей сессии: свежие записи сверху; проигрывание и перевод — как в разборе гонки."""
+    from services import radio
+    from ui.screens.race_radio import _message, _translate_card
+    items = list(reversed(data["radio"]))[:20]
+    start = data["session"].get("start")
+    feed = [_message(state, m, data["drivers"].get(m["driver"], {}), start) for m in items]
+    if radio.supported() and radio.models_ready():
+        waiting = [m["url"] for m in items if not radio.status(m["url"]) and not radio.cached(m["url"])]
+        if waiting:
+            feed.insert(0, ft.TextButton(f"Перевести новые ({len(waiting)})", icon=ft.Icons.TRANSLATE_ROUNDED,
+                                         on_click=lambda e: ([radio.request(u, state.render) for u in waiting],
+                                                             state.render())))
+    return [_translate_card(state), ft.Column(feed, spacing=SPACE_XS)]
 
 
 FLAG_COLORS = {"GREEN": SUCCESS, "YELLOW": WARNING, "DOUBLE YELLOW": WARNING, "RED": DANGER, "CHEQUERED": TEXT_PRIMARY,

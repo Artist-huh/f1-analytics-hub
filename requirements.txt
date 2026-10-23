@@ -1,5 +1,6 @@
 flet[all]>=1.0.5,<2  # Flet 1.x API (field borders via border=OutlineInputBorder)
 requests>=2.34.2
+websockets>=15     # live timing: официальный поток F1 (SignalR Core)
 flet-audio==1.0.5       # проигрывание радио команд (версия = версии Flet)
 faster-whisper>=1.2.1   # радио: офлайн-расшифровка речи (только компьютер)
 sentencepiece>=0.2.1    # радио: токенизатор модели перевода Argos en->ru (CTranslate2 ставится с faster-whisper)
