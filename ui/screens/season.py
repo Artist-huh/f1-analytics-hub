@@ -2,6 +2,7 @@
 import flet as ft
 from design_system import *
 from ui.components import *
+from ui.screens import heatmap
 from ui.screens.home import driver_row, team_row
 from ui.widgets import empty_state, pill, screen
 
@@ -20,6 +21,7 @@ def render(state):
         pill("Пилоты", view == "drivers", lambda e: switch_view("drivers")),
         pill("Команды", view == "teams", lambda e: switch_view("teams")),
         pill(f"Избранные · {favs}" if favs else "Избранные", view == "favs", lambda e: switch_view("favs")),
+        pill("Карта сезона", view == "heat", lambda e: switch_view("heat")),
     ], spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO)
 
     body = [tabs]
@@ -28,6 +30,8 @@ def render(state):
                                 "Подключись к интернету и нажми «Обновить» — данные сохранятся и дальше будут доступны без сети."))
     elif view == "teams":
         body += _build_constructor_standings(state, is_mobile)
+    elif view == "heat":
+        body += heatmap.build_section(state)
     else:
         rows = state.standings
         if view == "favs":

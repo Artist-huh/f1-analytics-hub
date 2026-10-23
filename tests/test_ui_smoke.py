@@ -598,6 +598,30 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.ui["driver_id"], "leclerc")
         self.state.sub = None                                       # поток наблюдения завершится сам
 
+    def test_season_heatmap(self):
+        from ui.screens import heatmap
+        ds = design_system
+        self.assertEqual(heatmap.cell_color("1"), (ds.POSITION_COLORS[1], ds.INK))
+        self.assertEqual(heatmap.cell_color("4")[0], heatmap.POINTS_GREENS[0])
+        self.assertEqual(heatmap.cell_color("15")[0], ds.SURFACE_ELEVATED)
+        self.assertEqual(heatmap.cell_color("R")[0], ds.DANGER)
+        self.assertIsNone(heatmap.cell_color("W")[0])                    # не стартовал — пустая клетка
+        fill_db()
+        self.state.load()
+        rows, rounds = heatmap.season_grid(self.state)
+        self.assertEqual(rounds, ["1", "2", "3"])
+        self.assertEqual([d["driver_id"] for d, _ in rows], ["antonelli", "leclerc", "lawson"])
+        self.assertEqual(rows[1][1], {"1": "3", "2": "R", "3": "2"})
+        self.state.ui["champ"] = "heat"
+        tree = self.build("tab1")
+        t = texts(tree)
+        for expected in ("ANT", "LEC", "R", "P1", "сход"):
+            self.assertIn(expected, t)
+        clickable(tree, "Квалификации")[0].on_click(Ctl())
+        self.assertEqual(heatmap.season_grid(self.state, "quali")[0][1][1], {"1": "4", "2": "1", "3": "3"})
+        clickable(self.build("tab1"), "LEC")[0].on_click(Ctl())             # пилот -> его страница
+        self.assertEqual(self.state.ui["driver_id"], "leclerc")
+
     def test_race_strategy(self):
         from services import archive, live
         from ui.screens import race_strategy

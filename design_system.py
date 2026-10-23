@@ -176,6 +176,8 @@ COUNTRY_ISO = {
     "Mexico": "mx", "Brazil": "br", "Qatar": "qa", "UAE": "ae", "United Arab Emirates": "ae",
     "Portugal": "pt", "France": "fr", "Germany": "de", "Turkey": "tr", "Russia": "ru",
     "Vietnam": "vn", "South Africa": "za", "Argentina": "ar", "Korea": "kr", "India": "in",
+    "Malaysia": "my", "Thailand": "th", "Morocco": "ma", "Sweden": "se", "Switzerland": "ch",
+    "Rwanda": "rw", "Indonesia": "id", "Swiss": "ch",
 }
 
 
