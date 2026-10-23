@@ -223,7 +223,7 @@ def main(page: ft.Page):
         fallback=lambda title, text: show_snack(page, f"{title}: {text}"),
     )
     if notify.is_android() and (state.notifications_on("sessions") or state.notifications_on("results")):
-        notify.android_request_permission()
+        notify.android_request_permission(page)
     shown = {"key": None}
     pending = threading.Event()   # перерисовка уже запланирована — повторные запросы сливаются
 

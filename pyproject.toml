@@ -1,6 +1,6 @@
 [project]
 name = "f1-analytics-hub"
-version = "2.1.0"
+version = "2.2.0"
 description = "F1 Analytics Hub — статистика чемпионата Формулы-1: пилоты, команды, календарь, сравнение"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,8 +23,9 @@ exclude = ["venv", "tests", "build", "dist", "docs", ".github", "*.bat", "*.md"]
 [tool.flet.android]
 # Тёмный фон под адаптивную иконку и сплэш — в цвет приложения
 adaptive_icon_background = "#15151E"
-# Уведомления на Android — через NotificationManager (pyjnius есть в репозитории пакетов Flet)
-dependencies = ["pyjnius"]
+# Уведомления на Android: отправка — NotificationManager через pyjnius (есть в репозитории пакетов Flet),
+# запрос разрешения POST_NOTIFICATIONS — официальное расширение Flet (версия = версии Flet)
+dependencies = ["pyjnius", "flet-permission-handler==1.0.5"]
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true

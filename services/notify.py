@@ -79,26 +79,28 @@ def _android_context():
     return autoclass("android.app.ActivityThread").currentApplication()
 
 
-def _android_activity():
-    """Текущая активность Flet — через загрузчик классов приложения и рефлексию (нужна для запроса разрешения)."""
-    from jnius import cast
-    host = os.environ.get("MAIN_ACTIVITY_HOST_CLASS_NAME") or "com.flet.serious_python_android.PythonActivity"
-    cls = _android_context().getClassLoader().loadClass(host)
-    field = cls.getDeclaredField("mActivity")
-    field.setAccessible(True)
-    return cast("android.app.Activity", field.get(None))
+def android_request_permission(page):
+    """Android 13+: разрешение POST_NOTIFICATIONS спрашивается во время работы.
 
-
-def android_request_permission():
-    """Android 13+: разрешение POST_NOTIFICATIONS спрашивается во время работы."""
+    Через официальное расширение flet-permission-handler (Flutter-плагин работает в основном
+    потоке Android). Из Python напрямую нельзя: активность Flet недоступна через pyjnius из
+    рабочего потока, а рефлексия Java в pyjnius урезана."""
     try:
-        from jnius import autoclass
-        if autoclass("android.os.Build$VERSION").SDK_INT >= 33:
-            _android_activity().requestPermissions(["android.permission.POST_NOTIFICATIONS"], 1301)
-        return True
-    except Exception as exc:
+        import flet_permission_handler as fph
+    except ImportError as exc:
         logger.warning("разрешение на уведомления не запрошено: %r", exc)
         return False
+    handler = fph.PermissionHandler()        # регистрируется на текущей странице
+
+    async def ask():
+        try:
+            status = await handler.request(fph.Permission.NOTIFICATION)
+            logger.info("разрешение на уведомления: %s", status)
+        except Exception as exc:
+            logger.warning("разрешение на уведомления не запрошено: %r", exc)
+
+    page.run_task(ask)
+    return True
 
 
 def _android_send(title, text, nid):

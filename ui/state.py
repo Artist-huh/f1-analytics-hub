@@ -290,7 +290,7 @@ class AppState:
     def set_notifications(self, kind, on):
         api.set_setting(f"notif_{kind}", "1" if on else "0")
         if on and notify.is_android():
-            notify.android_request_permission()
+            notify.android_request_permission(self.page)
         self.render()
 
     def _sent(self):
