@@ -1175,6 +1175,22 @@ class UiSmokeTest(unittest.TestCase):
         state.on_key("L", ctrl=True)
         self.assertEqual((state.mini, state.sub), (False, "live"))   # Ctrl+L — Live Timing
 
+    def test_background_pauses_live_polling(self):
+        page, _ = self._main_with_loop()
+        self.state.load()
+        race = self.state.schedule[3]
+        self.state.sub = "live"
+        with mock.patch.object(self.state, "live_now", return_value=(race, "Race")):
+            self.assertTrue(self.state.live_watched())
+            self.state.set_background(True)
+            self.assertFalse(self.state.live_watched())               # в фоне — не опрашиваем
+            renders = len(self.renders)
+            with mock.patch.object(self.state, "watch_live") as watch:
+                self.state.set_background(False)
+            watch.assert_called_once()                                # вернулись — сразу свежие данные
+            self.assertEqual(len(self.renders), renders + 1)
+        page.on_app_lifecycle_state_change(Ctl(state="pause"))          # обработчик окна подключён и не падает
+
     def test_mini_widget_during_session(self):
         from services import live
         from ui.screens import mini

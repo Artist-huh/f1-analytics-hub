@@ -42,6 +42,7 @@ class AppState:
         self.mini = False               # мини-виджет (компьютер): маленькое окно поверх остальных
         self.on_mini_change = lambda enabled: None   # main.py: размер окна, «поверх всех»
         self.on_minimize = lambda: None              # main.py: свернуть окно
+        self.background = False         # приложение Android свёрнуто — живые данные не опрашиваем
 
     # ---------- данные ----------
     def load(self):
@@ -258,7 +259,10 @@ class AppState:
 
     # ---------- live-тайминг ----------
     def live_watched(self):
-        """Кому сейчас нужны живые данные: экрану Live, а во время сессии — ещё мини-виджету и «Главной»."""
+        """Кому сейчас нужны живые данные: экрану Live, а во время сессии — ещё мини-виджету и «Главной».
+        В фоне — никому: на Android это экономит батарею и трафик (уведомления и виджет работают дальше)."""
+        if self.background:
+            return False
         if self.sub == "live":
             return True
         return (self.mini or (self.tab == 0 and not self.sub)) and bool(self.live_now())
@@ -283,6 +287,14 @@ class AppState:
     def live_now(self):
         """Идёт ли сейчас сессия по календарю: (этап, ключ сессии) или None."""
         return live.session_is_live(self.schedule)
+
+    def set_background(self, hidden):
+        """Жизненный цикл приложения: ушло в фон / вернулось. При возврате — свежие данные и перерисовка."""
+        was, self.background = self.background, hidden
+        if was and not hidden:
+            if self.live_watched():
+                self.watch_live()
+            self.render()
 
     # ---------- окно (компьютер) ----------
     def minimize(self):

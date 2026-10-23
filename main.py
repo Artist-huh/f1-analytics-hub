@@ -247,6 +247,17 @@ def main(page: ft.Page):
 
     state.on_minimize = on_minimize
 
+    def on_lifecycle(e):
+        """Фон / возврат. HIDE/PAUSE присылает Android, когда приложение свёрнуто. На компьютере сворачивание
+        даёт лишь INACTIVE — как и потеря фокуса (мини-виджет поверх окон), поэтому его фоном не считаем."""
+        logger.info("жизненный цикл: %s", e.state)
+        if e.state in (ft.AppLifecycleState.PAUSE, ft.AppLifecycleState.HIDE):
+            state.set_background(True)
+        elif e.state in (ft.AppLifecycleState.RESUME, ft.AppLifecycleState.SHOW):
+            state.set_background(False)
+
+    page.on_app_lifecycle_state_change = on_lifecycle
+
     # Уведомления: системные (Windows/macOS/Linux, Android) или плашка в приложении
     state.notifier = notify.Notifier(
         run_async=getattr(page, "run_task", None),
@@ -342,6 +353,8 @@ def main(page: ft.Page):
             state.check_notifications()
         except Exception as exc:
             logger.warning("уведомления: %r", exc)
+        if state.background:                   # в фоне окно не перерисовываем
+            return
         try:
             on_home = state.sub is None and state.tab == 0
             if state.countdown is None or not (on_home or state.mini):
