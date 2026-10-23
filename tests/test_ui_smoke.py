@@ -633,6 +633,34 @@ class UiSmokeTest(unittest.TestCase):
         self.state.ui["race_view"] = "quali"
         self.assertIn("Поул: Andrea Kimi Antonelli — 1:30.000", texts(self.build("race_strategy")))
 
+    def test_predictions_game(self):
+        from services import predictions as pr
+        full = pr.score({"pole": "ver", "p1": "ver", "p2": "lec", "p3": "ant"}, "ver", ["ver", "lec", "ant"])
+        self.assertEqual(full["total"], pr.MAX_POINTS)
+        swapped = pr.score({"pole": "lec", "p1": "lec", "p2": "ver", "p3": "nor"}, "ver", ["ver", "lec", "ant"])
+        self.assertEqual(swapped["total"], 2 * pr.PODIUM_POINTS)               # двое на подиуме, но не на своих
+        self.assertFalse(pr.score({"p1": "ver"}, None, None)["complete"])
+        fill_db()
+        add_podium()
+        db.save_qualifying("2026", [{"driver_id": "leclerc", "round": "3", "position": "1"}])
+        self.state.load()
+        pr.save("2026", "3", {"pole": "leclerc", "p1": "leclerc", "p2": "lawson", "p3": "antonelli"})
+        t = " ".join(texts(self.build("predict")))
+        self.assertIn("14 из 25", t)                                            # 5 + 5 + 2 + 2
+        self.assertIn("Italian Grand Prix", t)                                  # ближайший открытый этап
+        for code in ("LEC", "ANT", "LAW", "ANT"):                                # поул, P1, P2, P3
+            clickable(self.build("predict"), code)[-1].on_click(Ctl())
+        draft = self.state.ui["predict_draft"]
+        self.assertEqual([draft[k] for k in ("pole", "p1", "p2", "p3")], ["leclerc", None, "lawson", "antonelli"])
+        self.assertEqual(self.state.ui["predict_slot"], "p1")                   # ANT ушёл с P1 — он и выбран
+        clickable(self.build("predict"), "LEC")[-1].on_click(Ctl())
+        self.assertEqual(draft["p1"], "leclerc")
+        clickable(self.build("predict"), "Сохранить")[0].on_click(Ctl())
+        self.assertEqual(pr.load("2026", "4")["p3"], "antonelli")
+        self.assertIn("Прогноз сохранён", texts(self.build("predict")))
+        self.assertEqual(pr.season_stats(pr.load_season("2026"), {"3": ["leclerc", "antonelli", "lawson"]},
+                                         {"3": "leclerc"})["points"], 14)
+
     def test_season_heatmap(self):
         from ui.screens import heatmap
         ds = design_system

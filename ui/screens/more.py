@@ -29,6 +29,8 @@ def build_menu(state):
               lambda e: state.open_sub("live")),
         _tile(ft.Icons.EMOJI_EVENTS, "Борьба за титул", "Кто ещё может стать чемпионом и что нужно лидеру",
               lambda e: state.open_sub("title")),
+        _tile(ft.Icons.SPORTS_SCORE, "Прогнозы", "Угадай поул и подиум — очки за точность и итог сезона",
+              lambda e: state.open_sub("predict")),
         _tile(ft.Icons.HISTORY_EDU, "История сезонов", "Чемпионы, зачёты и победители с 1950 года",
               lambda e: state.open_sub("history")),
         _tile(ft.Icons.STAR_ROUNDED, "Избранное", "Мои пилоты и их результаты",

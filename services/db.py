@@ -4,7 +4,7 @@
   meta, standings, constructor_standings, race_results, qualifying, sprint_results,
   schedule, driver_media
 Данные пользователя (clear_cache их не трогает):
-  favorites — избранные пилоты, settings — настройки
+  favorites — избранные пилоты, settings — настройки, predictions — прогнозы игры
 """
 import json
 import os
@@ -106,6 +106,16 @@ CREATE TABLE IF NOT EXISTS driver_media (
     number   TEXT,
     team     TEXT,
     headshot TEXT
+);
+CREATE TABLE IF NOT EXISTS predictions (
+    season  TEXT    NOT NULL,
+    round   INTEGER NOT NULL,
+    pole    TEXT,
+    p1      TEXT,
+    p2      TEXT,
+    p3      TEXT,
+    saved   REAL    NOT NULL,
+    PRIMARY KEY (season, round)
 );
 CREATE TABLE IF NOT EXISTS favorites (
     driver_id TEXT PRIMARY KEY,
