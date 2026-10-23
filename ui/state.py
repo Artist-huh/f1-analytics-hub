@@ -236,6 +236,10 @@ class AppState:
         self.ui["driver_id"] = driver_id
         self.open_sub("driver_detail")
 
+    def open_race_strategy(self, race):
+        self.ui["strat_race"] = race
+        self.open_sub("race_strategy")
+
     def open_circuit(self, race):
         self.ui["circuit"] = race
         self.open_sub("circuit")
@@ -245,7 +249,8 @@ class AppState:
         self.open_sub("team")
 
     def screen_key(self):
-        detail = {"driver_detail": "driver_id", "team": "team", "circuit": "circuit"}.get(self.sub)
+        detail = {"driver_detail": "driver_id", "team": "team", "circuit": "circuit",
+                  "race_strategy": "strat_race"}.get(self.sub)
         value = self.ui.get(detail) if detail else None
         return (self.mini, self.tab, self.sub, value.get("round") if isinstance(value, dict) else value)
 

@@ -185,7 +185,8 @@ class UiSmokeTest(unittest.TestCase):
         seed_env.start()   # снимок и встроенные картинки из data/ тестам не видны
         self.addCleanup(seed_env.stop)
         from services import archive
-        offline = mock.patch.object(archive, "get", lambda key, fetch, ttl=None, on_done=None: db.load_archive(key)[0])
+        offline = mock.patch.object(archive, "get",
+                                    lambda key, fetch, ttl=None, on_done=None, force=False: db.load_archive(key)[0])
         offline.start()    # история и трассы: только кэш, без фоновых запросов в сеть
         self.addCleanup(offline.stop)
         from services import live
@@ -596,6 +597,32 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.build("live"), "LEC")[0].on_click(Ctl())     # строка -> страница пилота
         self.assertEqual(self.state.ui["driver_id"], "leclerc")
         self.state.sub = None                                       # поток наблюдения завершится сам
+
+    def test_race_strategy(self):
+        from services import archive, live
+        from ui.screens import race_strategy
+        data = {"session_key": 1, "laps": 53,
+                "drivers": {"16": {"code": "LEC", "team": "Ferrari", "colour": "ED1131"},
+                            "12": {"code": "ANT", "team": "Mercedes", "colour": "00D7B6"}},
+                "stints": [{"driver": "16", "n": 1, "start": 1, "end": 20, "tyre": "M", "age": 0},
+                           {"driver": "16", "n": 2, "start": 21, "end": 53, "tyre": "H", "age": 3},
+                           {"driver": "12", "n": 1, "start": 1, "end": 53, "tyre": "H", "age": 0}],
+                "pits": [{"driver": "16", "lap": 20, "duration": 22.1}]}
+        rows = live.strategy_rows(data, ["ANT", "LEC"])
+        self.assertEqual([r["code"] for r in rows], ["ANT", "LEC"])          # порядок финиша
+        self.assertEqual([s["laps"] for s in rows[1]["stints"]], [20, 33])
+        self.assertEqual([p["lap"] for p in rows[1]["pits"]], [20])
+        fill_db()
+        self.state.load()
+        race = self.state.schedule[2]                                         # Японский этап (прошёл)
+        db.save_archive(race_strategy.strategy_key(race), data)
+        self.state.open_race_strategy(race)
+        t = texts(self.build("race_strategy"))
+        for expected in ("53 круга · чаще всего — 0 пит-стопов", "средние", "жёсткие", "пит: 20", "без пит-стопов"):
+            self.assertIn(expected, t)
+        self.assertEqual(race_strategy.finishing_order(self.state, race), ["ANT", "LEC", "LAW"])
+        self.state.ui["strat_race"] = self.state.schedule[1]                  # нет данных -> повтор загрузки
+        self.assertIn("Стратегия не загружена", texts(self.build("race_strategy")))
 
     def test_live_banner_when_session_runs(self):
         from services import live

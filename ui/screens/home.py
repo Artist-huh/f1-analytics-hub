@@ -158,7 +158,9 @@ def _build_last_podium(state, race, podium, compact):
     flag_src, iso = state.flag(country=race.get("country")) if race else (None, "")
     return ft.Column([
         SectionHeader("Последняя гонка", subtitle=f"Этап {race['round']} · {name}" if race else None,
-                      action_text="Календарь", on_action=lambda e: _open_calendar_past(state)),
+                      action_text="Шины" if race and race.get("date") else "Календарь",
+                      on_action=(lambda e: state.open_race_strategy(race)) if race and race.get("date")
+                      else (lambda e: _open_calendar_past(state))),
         AnimatedCard(
             ft.Column([
                 ft.Row([flag(flag_src, 16, iso), ft.Text(name, size=FONT_BODY_SMALL, color=TEXT_MUTED, expand=True,

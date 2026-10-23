@@ -188,3 +188,71 @@ def session_is_live(schedule, now=None):
             if s["ts"] <= now <= s["ts"] + 2 * 3600:
                 return race, s["key"]
     return None
+
+
+# ---------------------------------------------------------------- стратегия шин прошедшей гонки
+def _query(endpoint, query):
+    """Запрос к OpenF1 с произвольными параметрами (не только последняя сессия)."""
+    with _throttle:
+        pause = MIN_INTERVAL - (time.monotonic() - _last[0])
+        if pause > 0:
+            time.sleep(pause)
+        _last[0] = time.monotonic()
+    try:
+        resp = _session.get(f"{API}/{endpoint}?{query}", timeout=TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise LiveError(f"{endpoint}: {exc}") from exc
+    if not isinstance(data, list):
+        raise LiveError(f"{endpoint}: {data}")
+    return data
+
+
+def fetch_strategy(year, race_date, session_name="Race"):
+    """Стинты и пит-стопы гонки (или спринта) по дате. -> данные для экрана стратегии.
+    Сессия ищется по дате старта: названия этапов у OpenF1 и Jolpica различаются."""
+    sessions = _query("sessions", f"year={year}&session_type=Race")
+    match = [s for s in sessions if (s.get("date_start") or "")[:10] == race_date
+             and s.get("session_name") == session_name]
+    if not match:
+        raise LiveError(f"нет сессии «{session_name}» за {race_date}")
+    key = match[0]["session_key"]
+    stints = _query("stints", f"session_key={key}")
+    if not stints:
+        raise LiveError("OpenF1 ещё не опубликовал стинты этой гонки")
+    pits = _query("pit", f"session_key={key}")
+    drivers = _query("drivers", f"session_key={key}")
+    return {
+        "session_key": key,
+        "laps": max((s.get("lap_end") or s.get("lap_start") or 0) for s in stints),
+        "drivers": {str(d["driver_number"]): {"code": d.get("name_acronym", ""), "team": d.get("team_name", ""),
+                                              "colour": d.get("team_colour")} for d in drivers},
+        "stints": [{"driver": str(s["driver_number"]), "n": s.get("stint_number") or 0,
+                    "start": s.get("lap_start") or 1, "end": s.get("lap_end") or s.get("lap_start") or 1,
+                    "tyre": TYRES.get((s.get("compound") or "").upper(), "?"),
+                    "age": s.get("tyre_age_at_start") or 0} for s in stints],
+        "pits": [{"driver": str(p["driver_number"]), "lap": p.get("lap_number"),
+                  "duration": p.get("pit_duration")} for p in pits],
+    }
+
+
+def strategy_rows(data, order=()):
+    """Полосы стратегии (чистая функция): [{code, team, colour, stints:[{tyre, start, end, laps, age}], pits}].
+    order — коды пилотов по местам финиша; остальные — в конце по номеру."""
+    by_driver = {}
+    for s in sorted(data["stints"], key=lambda s: (s["driver"], s["n"])):
+        by_driver.setdefault(s["driver"], []).append(s)
+    pits = {}
+    for p in data["pits"]:
+        pits.setdefault(p["driver"], []).append(p)
+    rows = []
+    for number, stints in by_driver.items():
+        info = data["drivers"].get(number, {})
+        rows.append({"number": number, "code": info.get("code") or number, "team": info.get("team", ""),
+                     "colour": f"#{info['colour']}" if info.get("colour") else None,
+                     "stints": [{**s, "laps": max(1, s["end"] - s["start"] + 1)} for s in stints],
+                     "pits": sorted((p for p in pits.get(number, []) if p["lap"]), key=lambda p: p["lap"])})
+    rank = {code: i for i, code in enumerate(order)}
+    rows.sort(key=lambda r: (rank.get(r["code"], 999), int(r["number"]) if r["number"].isdigit() else 999))
+    return rows

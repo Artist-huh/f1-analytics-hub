@@ -61,7 +61,7 @@ def build(state):
     else:
         sections.append(retry_block("История трассы не загружена",
                                     "Нужен интернет: данные загружаются один раз и дальше доступны без сети.",
-                                    lambda e: (archive.circuit(cid, on_done=state.render), state.render()) if cid else None))
+                                    lambda e: (archive.circuit(cid, on_done=state.render, force=True), state.render()) if cid else None))
     return screen(state, race.get("locality") or "Трасса", sections, subtitle=race.get("circuit"), back=True)
 
 

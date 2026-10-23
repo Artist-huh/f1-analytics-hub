@@ -13,6 +13,7 @@ from collections import Counter
 from . import db, jolpica, log, seed
 
 CURRENT_TTL = 6 * 3600
+RETRY_AFTER = 60            # после ошибки сам не повторяем раньше (иначе ошибка -> перерисовка -> запрос по кругу)
 CIRCUIT_TTL = 7 * 86400     # статистика трассы меняется раз в год — после гонки на ней
 FIRST_SEASON = 1950
 
@@ -37,11 +38,15 @@ def _fresh(key, ttl):
     return data, ttl is None or time.time() - fetched < ttl
 
 
-def get(key, fetch, ttl=None, on_done=None):
+def get(key, fetch, ttl=None, on_done=None, force=False):
     """Данные из кэша (или None) и запуск фоновой загрузки, если их нет или они устарели.
-    on_done() вызывается из фонового потока, когда загрузка закончилась (успешно или нет)."""
+    on_done() вызывается из фонового потока, когда загрузка закончилась (успешно или нет).
+    После ошибки повтор — не раньше RETRY_AFTER секунд; force=True (кнопка «Повторить») — сразу."""
     data, fresh = _fresh(key, ttl)
     if fresh:
+        return data
+    failed = _errors.get(key)
+    if failed and not force and time.time() - failed[1] < RETRY_AFTER:
         return data
     with _lock:
         if key in _pending:
@@ -53,7 +58,7 @@ def get(key, fetch, ttl=None, on_done=None):
             db.save_archive(key, fetch())
             _errors.pop(key, None)
         except Exception as exc:       # сеть, лимит API, формат — показываем сохранённое или сообщение
-            _errors[key] = str(exc)
+            _errors[key] = (str(exc), time.time())
             logger.warning("архив %s не загружен: %s", key, exc)
         finally:
             with _lock:
@@ -70,16 +75,17 @@ def loading(key):
 
 
 def error(key):
-    return _errors.get(key)
+    failed = _errors.get(key)
+    return failed[0] if failed else None
 
 
-def season(year, current_season, on_done=None):
+def season(year, current_season, on_done=None, force=False):
     ttl = CURRENT_TTL if str(year) == str(current_season) else None
-    return get(season_key(year), lambda: jolpica.fetch_season_archive(year), ttl, on_done)
+    return get(season_key(year), lambda: jolpica.fetch_season_archive(year), ttl, on_done, force)
 
 
-def circuit(circuit_id, on_done=None):
-    return get(circuit_key(circuit_id), lambda: jolpica.fetch_circuit_stats(circuit_id), CIRCUIT_TTL, on_done)
+def circuit(circuit_id, on_done=None, force=False):
+    return get(circuit_key(circuit_id), lambda: jolpica.fetch_circuit_stats(circuit_id), CIRCUIT_TTL, on_done, force)
 
 
 # ---------------------------------------------------------------- чемпионы

@@ -74,7 +74,7 @@ def _season_view(state):
                                    spacing=SPACE_SM)]
         return [picker, retry_block(f"Сезон {year} не загружен",
                                     "Нужен интернет: архив загружается один раз и дальше доступен без сети.",
-                                    lambda e: (archive.season(year, state.season, on_done=state.render), state.render()))]
+                                    lambda e: (archive.season(year, state.season, on_done=state.render, force=True), state.render()))]
     sections = [picker]
     if data["standings"]:
         sections.append(_champion_hero(state, data, year))

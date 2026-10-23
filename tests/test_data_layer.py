@@ -669,6 +669,12 @@ class ArchiveTest(unittest.TestCase):
         self._wait("e")
         self.assertIn("offline", archive.error("e"))
         self.assertIsNone(db.load_archive("e")[0])
+        calls = []
+        archive.get("e", lambda: calls.append(1) or {})            # сразу после ошибки — без нового запроса
+        self.assertEqual((calls, archive.loading("e")), ([], False))
+        archive.get("e", lambda: calls.append(1) or {"ok": 1}, force=True)   # кнопка «Повторить»
+        self._wait("e")
+        self.assertEqual((calls, archive.error("e")), ([1], None))
 
     def test_season_archive_parsing(self):
         winners = {"MRData": {"total": "2", "RaceTable": {"season": "2010", "Races": [
