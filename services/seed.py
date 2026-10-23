@@ -133,6 +133,10 @@ def main(argv=None):
             if not f1_api.refresh_all(force=True, manual=True):
                 _say("Не удалось скачать данные — проверь подключение к интернету.")
                 return 1
+            import threading
+            for t in threading.enumerate():     # картинки качаются в фоне — дождаться, чтобы попали в снимок
+                if t.name == "f1-media-prefetch":
+                    t.join(300)
         out = export_snapshot(args.path)
         _say(f"Снимок записан: {out}" if out else "В базе нет данных — сначала запусти с --refresh.")
         return 0 if out else 1

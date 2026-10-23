@@ -64,6 +64,28 @@ def team_url(season, team_name, kind="logo"):
     return f"{F1_MEDIA}/{SIZES[kind]}/q_auto/v1740000000/common/f1/{season}/{slug}/{season}{slug}{suffix}.webp"
 
 
+# Идентификатор трассы Jolpica -> имя схемы на formula1.com (остальные совпадают без «_»)
+TRACK_SLUGS = {
+    "albert_park": "melbourne", "villeneuve": "montreal", "monaco": "montecarlo",
+    "red_bull_ring": "spielberg", "spa": "spafrancorchamps", "sepang": "kualalumpur",
+    "marina_bay": "singapore", "americas": "austin", "rodriguez": "mexicocity", "vegas": "lasvegas",
+    "losail": "lusail", "yas_marina": "yasmarina", "bahrain": "sakhir",
+}
+
+
+def track_url(season, circuit_id, dark_lines=False):
+    """Схема трассы: белый контур (для тёмной темы) или чёрный (для светлой)."""
+    if not (season and circuit_id):
+        return None
+    slug = TRACK_SLUGS.get(circuit_id, circuit_id.replace("_", ""))
+    style = "blackoutline" if dark_lines else "whiteoutline"
+    return f"{F1_MEDIA}/c_fit,w_720/q_auto/v1740000000/common/f1/{season}/track/{season}track{slug}{style}.webp"
+
+
+def track(season, circuit_id, dark_lines=False):
+    return source(track_url(season, circuit_id, dark_lines))
+
+
 def flag_url(iso):
     return f"{FLAGS}/w80/{iso}.png" if iso else None
 
@@ -223,6 +245,8 @@ def all_urls(standings, constructors, schedule, refs):
                   (team_url(c.get("season"), c["name"], "car"), None)]
     for r in schedule:
         items.append((flag_url(ds.country_iso(r.get("country"))), None))
+        for dark_lines in (False, True):
+            items.append((track_url(r.get("season"), r.get("circuit_id"), dark_lines), None))
     return list({url: (url, fb) for url, fb in items if url}.values())
 
 

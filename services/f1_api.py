@@ -97,7 +97,8 @@ def refresh_season_results(force=False, ignore_ttl=False):
 
 def refresh_schedule(force=False, ignore_ttl=False):
     ts = db.fetched_at("schedule_fetched_at")
-    if not ignore_ttl and ts is not None and time.time() - ts < SCHEDULE_TTL:
+    complete = all(r.get("circuit_id") for r in db.load_schedule())   # старый снимок — без идентификаторов трасс
+    if not ignore_ttl and complete and ts is not None and time.time() - ts < SCHEDULE_TTL:
         return True  # свежий календарь уже есть
 
     def job():

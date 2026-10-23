@@ -115,6 +115,16 @@ def empty_state(state, title, hint):
     )
 
 
+def retry_block(title, hint, on_retry):
+    """Данные по запросу не загрузились — сообщение и кнопка повтора именно этой загрузки."""
+    return ft.Column(
+        [ft.Container(height=24), txt(title, 18, bold=True, head=True, text_align=ft.TextAlign.CENTER),
+         txt(hint, 13, MUTED, text_align=ft.TextAlign.CENTER), ft.Container(height=8),
+         button("Повторить загрузку", on_retry, icon=ft.Icons.REFRESH_ROUNDED)],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6,
+    )
+
+
 def banner(state):
     """Понятное сообщение о проблемах с данными (None, если всё в порядке).
     Технический текст ошибки не показываем — он есть в «Настройках» и в журнале."""

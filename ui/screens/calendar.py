@@ -104,6 +104,7 @@ def _build_next_race_card(state, race, race_state):
             border_radius=RADIUS_MD, padding=SPACE_SM,
         ),
         session_list(race),
+        _circuit_button(state, race),
     ]
     return ft.Container(
         content=ft.Column(items, spacing=SPACE_XS),
@@ -219,7 +220,8 @@ def _show_race_details(state, race, podium):
                 ink=True, border_radius=RADIUS_SM, padding=4,
                 on_click=(lambda e, i=row["driver_id"]: _open_driver_from_dialog(state, i)) if d else None,
             ))
-    lines += [ft.Container(height=SPACE_XS), session_list(race)]
+    lines += [ft.Container(height=SPACE_XS), session_list(race), ft.Container(height=SPACE_XS),
+              _circuit_button(state, race, close_dialog=True)]
 
     dialog = ft.AlertDialog(
         title=ft.Text(f"{race['round']}. {race['race_name']}", size=FONT_H4, color=TEXT_PRIMARY,
@@ -229,6 +231,21 @@ def _show_race_details(state, race, podium):
         bgcolor=SURFACE,
     )
     state.page.show_dialog(dialog)
+
+
+def _circuit_button(state, race, close_dialog=False):
+    def go(e):
+        if close_dialog:
+            state.page.pop_dialog()
+        state.open_circuit(race)
+
+    return ft.Container(
+        ft.Row([ft.Icon(ft.Icons.ROUTE_ROUNDED, color=ACCENT_TEXT, size=18),
+                ft.Text("Трасса и история", size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
+                ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM, size=18)], spacing=SPACE_XS, tight=True),
+        height=TOUCH, padding=ft.Padding.symmetric(horizontal=SPACE_SM), border_radius=RADIUS_MD,
+        bgcolor=SURFACE_RAISED, ink=True, on_click=go, alignment=ft.Alignment.CENTER_LEFT,
+    )
 
 
 def _chip(label, bg, fg):

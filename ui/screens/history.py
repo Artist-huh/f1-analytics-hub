@@ -4,7 +4,7 @@ from design_system import *
 from services import archive
 from ui.components import *
 from ui.fmt import plural, short_name
-from ui.widgets import button, dropdown, empty_state, pill, screen
+from ui.widgets import dropdown, pill, retry_block, screen
 
 
 def build(state):
@@ -72,8 +72,9 @@ def _season_view(state):
             return [picker, ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
                                     ft.Text(f"Загружаем сезон {year}…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
                                    spacing=SPACE_SM)]
-        return [picker, empty_state(state, f"Сезон {year} не загружен",
-                                    "Нужен интернет: архив загружается один раз и дальше доступен без сети.")]
+        return [picker, retry_block(f"Сезон {year} не загружен",
+                                    "Нужен интернет: архив загружается один раз и дальше доступен без сети.",
+                                    lambda e: (archive.season(year, state.season, on_done=state.render), state.render()))]
     sections = [picker]
     if data["standings"]:
         sections.append(_champion_hero(state, data, year))

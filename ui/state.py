@@ -231,13 +231,18 @@ class AppState:
         self.ui["driver_id"] = driver_id
         self.open_sub("driver_detail")
 
+    def open_circuit(self, race):
+        self.ui["circuit"] = race
+        self.open_sub("circuit")
+
     def open_team(self, team_name):
         self.ui["team"] = team_name
         self.open_sub("team")
 
     def screen_key(self):
-        detail = {"driver_detail": "driver_id", "team": "team"}.get(self.sub)
-        return (self.tab, self.sub, self.ui.get(detail) if detail else None)
+        detail = {"driver_detail": "driver_id", "team": "team", "circuit": "circuit"}.get(self.sub)
+        value = self.ui.get(detail) if detail else None
+        return (self.tab, self.sub, value.get("round") if isinstance(value, dict) else value)
 
     # ---------- оформление ----------
     def set_theme(self, name, team=None):

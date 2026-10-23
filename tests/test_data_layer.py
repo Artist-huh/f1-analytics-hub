@@ -93,7 +93,8 @@ def constructors_json():
 def schedule_json():
     def race(rnd, name, date, with_sprint=False):
         r = {"round": rnd, "raceName": name, "date": date, "time": "13:00:00Z",
-             "Circuit": {"circuitName": "C" + rnd, "Location": {"locality": "L", "country": "Italy"}},
+             "Circuit": {"circuitId": "c" + rnd, "circuitName": "C" + rnd,
+                         "Location": {"locality": "L", "country": "Italy"}},
              "FirstPractice": {"date": date, "time": "11:30:00Z"},
              "Qualifying": {"date": date, "time": "12:00:00Z"}}
         if with_sprint:

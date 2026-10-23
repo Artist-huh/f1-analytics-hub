@@ -517,6 +517,37 @@ class UiSmokeTest(unittest.TestCase):
             clickable(tree, "Max Verstappen")[0].on_click(Ctl())       # год -> сезон
             self.assertEqual((self.state.ui["hist_view"], self.state.ui["hist_year"]), ("season", 2024))
 
+    def test_circuit_screen(self):
+        from services import archive
+        from ui.screens import circuit
+        self.assertAlmostEqual(circuit.lap_seconds("1:21.046"), 81.046)
+        self.assertIsNone(circuit.lap_seconds(""))
+        data = {"winners": [{"season": "2004", "name": "Rubens Barrichello", "team": "Ferrari"},
+                            {"season": "2019", "name": "Charles Leclerc", "team": "Ferrari", "driver_id": "leclerc"},
+                            {"season": "2024", "name": "Charles Leclerc", "team": "Ferrari", "driver_id": "leclerc"}],
+                "poles": [{"season": "2024", "name": "Lando Norris", "team": "McLaren", "time": "1:19.327"}],
+                "fastest": [{"season": "2004", "name": "Rubens Barrichello", "time": "1:21.046"},
+                            {"season": "2024", "name": "Lewis Hamilton", "time": "1:21.432"}]}
+        s = circuit.circuit_summary(data)
+        self.assertEqual((s["races"], s["first"], s["top_driver"], s["top_team"]),
+                         (3, 2004, ("Charles Leclerc", 2), ("Ferrari", 3)))
+        self.assertEqual(s["record"]["name"], "Rubens Barrichello")       # самый быстрый круг — по времени
+        fill_db()
+        db.save_schedule("2026", [dict(r, circuit_id="monza" if r["round"] == "4" else "x")
+                                  for r in db.load_schedule()])
+        db.save_archive(archive.circuit_key("monza"), data)
+        self.state.load()
+        clickable(self.build("tab2"), "Трасса и история")[0].on_click(Ctl())   # из карточки ближайшей гонки
+        self.assertEqual((self.state.sub, self.state.ui["circuit"]["round"]), ("circuit", "4"))
+        tree = self.build("circuit")
+        t = texts(tree)
+        for expected in ("Italian Grand Prix", "5,793 км", "53", "Первый Гран-при", "2004",
+                         "Charles Leclerc — 2", "1:21.046 — Rubens Barrichello, 2004", "ПОСЛЕДНИЕ ПОБЕДИТЕЛИ",
+                         "ПОСЛЕДНИЕ ПОУЛЫ", "РАСПИСАНИЕ УИК-ЭНДА"):
+            self.assertIn(expected, t)
+        track = [str(n.src) for n in walk(tree) if type(n).__name__ == "Image"]
+        self.assertTrue(any("2026trackmonzawhiteoutline.webp" in src for src in track))
+
     def test_title_fight_screen(self):
         fill_db()
         self.state.load()
