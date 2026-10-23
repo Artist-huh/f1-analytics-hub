@@ -1,0 +1,21 @@
+[project]
+name = "flet-home-widget"
+version = "0.1.0"
+description = "Виджет F1 Analytics Hub на главный экран Android (расширение Flet)"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["flet>=1.0.5,<2"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+# Python-часть (flet_home_widget) и Flutter-пакет (flutter/flet_home_widget) — в одном колесе:
+# flet build находит flutter/<имя>/pubspec.yaml в site-packages и подключает его к приложению.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["flet_home_widget*", "flutter*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"*" = ["*", "**/*"]

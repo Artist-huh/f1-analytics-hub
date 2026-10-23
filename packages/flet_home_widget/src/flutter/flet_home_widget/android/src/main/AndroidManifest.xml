@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Виджет F1 Hub на главный экран: данные пишет приложение, отсчёт ведёт Chronometer -->
+        <receiver
+            android:name="com.f1hub.flet_home_widget.F1WidgetProvider"
+            android:exported="false"
+            android:label="@string/f1hw_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/f1hw_widget_info" />
+        </receiver>
+    </application>
+</manifest>

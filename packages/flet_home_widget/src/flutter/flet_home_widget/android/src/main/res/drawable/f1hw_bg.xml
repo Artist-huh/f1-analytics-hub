@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Фирменный фон: красный градиент F1 к угольно-чёрному -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:centerColor="#8E0400"
+        android:endColor="#15151E"
+        android:startColor="#E10600" />
+    <corners android:radius="20dp" />
+</shape>

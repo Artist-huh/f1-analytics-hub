@@ -887,6 +887,48 @@ class F1LiveTest(unittest.TestCase):
         openf1.assert_not_called()
 
 
+class HomeWidgetTest(unittest.TestCase):
+    SCHEDULE = [{"round": "17", "race_name": "Singapore Grand Prix", "start_ts": 1000.0},
+                {"round": "18", "race_name": "United States Grand Prix", "start_ts": 5000.0},
+                {"round": "19", "race_name": "Mexico City Grand Prix", "start_ts": 9000.0}]
+    STANDINGS = [{"position": "1", "name": "Andrea Kimi Antonelli", "points": "340"},
+                 {"position": "2", "name": "George Russell", "points": "238"},
+                 {"position": "3", "name": "Lewis Hamilton", "points": "229"},
+                 {"position": "4", "name": "Max Verstappen", "points": "221"}]
+
+    def test_widget_data(self):
+        from services import widget
+        d = widget.widget_data(self.SCHEDULE, self.STANDINGS, now=2000)
+        self.assertEqual((d["title"], d["start_ms"], d["live"]), ("United States Grand Prix", 5_000_000, False))
+        self.assertEqual(d["top"].splitlines(), ["1. Antonelli — 340", "2. Russell — 238", "3. Hamilton — 229"])
+        live_data = {"racing": True, "lap": 31, "total_laps": 56, "track": "Сейфти-кар",
+                     "rows": [{"position": 1, "code": "LEC"}, {"position": 2, "code": "NOR"}]}
+        d = widget.widget_data(self.SCHEDULE, self.STANDINGS, (self.SCHEDULE[1], "Race"), live_data, now=5100)
+        self.assertEqual((d["title"], d["live"], d["top"]), ("Гонка", True, "1. LEC   2. NOR"))
+        self.assertEqual(d["subtitle"], "United States Grand Prix · круг 31/56 · Сейфти-кар")
+        self.assertEqual(widget.widget_data(self.SCHEDULE, [], now=99999)["title"], "Сезон завершён")
+
+    def test_widget_push_only_on_android_and_on_change(self):
+        from services import widget
+        page = mock.Mock()
+        with mock.patch.object(notify, "is_android", return_value=False):
+            self.assertFalse(widget.Widget(page).push({"title": "x"}))       # компьютер — ничего
+        fake = mock.Mock()
+        with mock.patch.object(notify, "is_android", return_value=True), \
+                mock.patch.dict("sys.modules", {"flet_home_widget": mock.Mock(HomeWidget=lambda: fake)}):
+            w = widget.Widget(page)
+            data = widget.widget_data(self.SCHEDULE, self.STANDINGS, now=2000)
+            self.assertTrue(w.push(data))
+            self.assertFalse(w.push(dict(data, status="обновлено в 23:59")))   # изменилось только время
+            self.assertTrue(w.push(dict(data, top="другое")))
+        self.assertEqual(page.run_task.call_count, 2)
+        with mock.patch.object(notify, "is_android", return_value=True), \
+                mock.patch.dict("sys.modules", {"flet_home_widget": None}):          # расширения нет
+            w = widget.Widget(page)
+            self.assertFalse(w.push({"title": "x"}))
+            self.assertFalse(w.enabled)
+
+
 def datetime_ts(text):
     from datetime import datetime, timezone
     return datetime.fromisoformat(text).replace(tzinfo=timezone.utc).timestamp()

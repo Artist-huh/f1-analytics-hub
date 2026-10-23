@@ -1,0 +1,22 @@
+name: flet_home_widget
+description: Виджет F1 Analytics Hub на главный экран Android
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.2.3 <4.0.0'
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flet:
+    path: ../../../../../../../packages/flet
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.f1hub.flet_home_widget
+        pluginClass: FletHomeWidgetPlugin

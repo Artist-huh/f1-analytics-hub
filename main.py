@@ -8,7 +8,8 @@ import flet as ft
 
 import design_system as ds
 from design_system import *
-from services import f1_api, log, notify
+from services import f1_api, log, notify, widget
+from services import live as live_service
 from ui import theming
 from ui.components import ResponsiveContainer, show_snack
 from ui.fmt import fmt_countdown
@@ -326,7 +327,17 @@ def main(page: ft.Page):
     state.start_refresher()
     page.on_close = lambda e: state._stop and state._stop.set()
 
+    home_widget = widget.Widget(page)          # виджет на главный экран Android
+
+    def update_widget():
+        try:
+            home_widget.push(widget.widget_data(state.schedule, state.standings, state.live_now(),
+                                                live_service.snapshot()[0]))
+        except Exception as exc:
+            logger.warning("виджет: %r", exc)
+
     def tick():
+        update_widget()
         try:
             state.check_notifications()
         except Exception as exc:
@@ -353,6 +364,7 @@ def main(page: ft.Page):
             run_on_ui(page, tick)
 
     threading.Thread(target=ticker, name="f1-ticker", daemon=True).start()
+    update_widget()                            # сразу после запуска — данные из кэша
 
 
 if __name__ == "__main__":
