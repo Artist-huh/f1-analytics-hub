@@ -3,7 +3,7 @@ import flet as ft
 from design_system import *
 from services import stats as st
 from ui.components import *
-from ui.fmt import short_name, to_int
+from ui.fmt import plural, short_name, to_int
 from ui.state import MAX_COMPARE
 from ui.widgets import empty_state, screen
 
@@ -61,7 +61,9 @@ def build(state):
         _build_chart(state, drivers),
         _build_head_to_head(state, drivers),
     ]
-    return screen(state, "Сравнение", sections, subtitle=f"{len(drivers)} пилота · сезон {state.season}", back=True)
+    n = len(drivers)
+    return screen(state, "Сравнение", sections,
+                  subtitle=f"{n} {plural(n, 'пилот', 'пилота', 'пилотов')} · сезон {state.season}", back=True)
 
 
 # ---------------------------------------------------------------- выбор пилотов
