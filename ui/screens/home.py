@@ -1,10 +1,12 @@
 """Главный экран: ближайшая гонка, подиум последней гонки, лидеры чемпионата, быстрый доступ"""
+import time
+
 import flet as ft
 
 from design_system import *
 from services import f1_api as api
 from ui.components import *
-from ui.fmt import fmt_clock, fmt_countdown, fmt_day, plural, short_name
+from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_day, plural, short_name
 from ui.rows import driver_row, team_row
 from ui.widgets import empty_state, screen
 
@@ -14,10 +16,8 @@ def render(state):
     is_mobile = ResponsiveContainer.is_mobile(page_width(state))
     standings, constructors = state.standings, state.constructors
 
-    sections = []
-    now_live = state.live_now()
-    if now_live:
-        sections.append(_build_live_banner(state, *now_live))
+    # Live Timing и быстрый доступ — первыми: самые частые действия всегда под рукой
+    sections = [_build_live_card(state), _build_quick_actions(state)]
     race = state.next_race()
     if race:
         sections.append(_build_next_race_hero(race, state, is_mobile))
@@ -38,8 +38,6 @@ def render(state):
         favs = [d for d in standings if d["driver_id"] in state.favorites]
         if favs:
             sections.append(_build_favorites_strip(state, favs))
-
-    sections.append(_build_quick_actions(state))
 
     subtitle = f"Сезон {state.season}" if state.season else None
     return screen(state, "F1 Hub", sections, subtitle=subtitle)
@@ -118,19 +116,49 @@ def _build_next_race_hero(race, state, is_mobile):
     )
 
 
-def _build_live_banner(state, race, session_key):
-    """Сессия идёт прямо сейчас -> live-тайминг."""
-    from ui.fmt import SESSION_NAMES
-    name = SESSION_NAMES.get(session_key, session_key)
+def next_session(schedule, now=None):
+    """Ближайшая будущая сессия: (этап, ключ, время) или None."""
+    now = time.time() if now is None else now
+    upcoming = [(s["ts"], race, s["key"]) for race in schedule for s in race["sessions"] if s["ts"] > now]
+    if not upcoming:
+        return None
+    ts, race, key = min(upcoming, key=lambda x: x[0])
+    return race, key, ts
+
+
+def _build_live_card(state):
+    """Live Timing — всегда наверху главной: во время сессии — красная карточка LIVE,
+    в остальное время — что дальше и когда, плюс вход в итог последней сессии."""
+    now_live = state.live_now()
+    if now_live:
+        race, key = now_live
+        badge = ft.Container(ft.Row([ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
+                                     ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
+                                    spacing=6, tight=True),
+                             bgcolor=DANGER, border_radius=RADIUS_FULL,
+                             padding=ft.Padding.symmetric(horizontal=10, vertical=4))
+        title = f"Сейчас: {SESSION_NAMES.get(key, key)}"
+        hint = f"{race['race_name']} · позиции, отрывы, шины, радио"
+    else:
+        badge = ft.Container(ft.Icon(ft.Icons.SENSORS_ROUNDED, color=ON_COLOR, size=20), width=40, height=40,
+                             border_radius=20, alignment=ft.Alignment.CENTER,
+                             gradient=ft.LinearGradient(colors=[ACCENT_GLOW, ACCENT_DEEP],
+                                                        begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT))
+        upcoming = next_session(state.schedule)
+        title = "Live Timing"
+        hint = (f"{SESSION_NAMES.get(upcoming[1], upcoming[1])} · через {fmt_countdown(upcoming[2] - time.time())} · "
+                "сейчас — итог последней сессии" if upcoming else "Итог последней сессии")
     return AnimatedCard(ft.Row([
-        ft.Container(ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC), bgcolor=DANGER,
-                     border_radius=RADIUS_FULL, padding=ft.Padding.symmetric(horizontal=10, vertical=4)),
-        ft.Column([ft.Text(f"Сейчас: {name}", size=FONT_BODY, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
-                   ft.Text(f"{race['race_name']} · позиции, отрывы, шины", size=FONT_CAPTION, color=TEXT_MUTED)],
+        badge,
+        ft.Column([ft.Text(title, size=FONT_BODY_LARGE, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600,
+                           font_family=FONT_HEADING),
+                   ft.Text(hint, size=FONT_CAPTION, color=TEXT_MUTED, max_lines=2,
+                           overflow=ft.TextOverflow.ELLIPSIS)],
                   spacing=0, expand=True),
         ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM),
     ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=SPACE_SM, accent=DANGER, on_click=lambda e: state.open_sub("live"))
+        padding=SPACE_SM, accent=DANGER if now_live else F1_RED, on_click=lambda e: state.open_sub("live"),
+        tooltip="Live Timing: открыть", **({"border": ft.Border.all(1, DANGER)} if now_live else {}))
 
 
 def _build_last_podium(state, race, podium, compact):
@@ -263,10 +291,10 @@ def _build_favorites_strip(state, favs):
 
 def _build_quick_actions(state):
     actions = [
-        (ft.Icons.PERSON_ROUNDED, "Пилоты", lambda e: state.open_tab(3)),
+        (ft.Icons.FLAG_ROUNDED, "Разбор", lambda e: _open_last_race(state)),
         (ft.Icons.COMPARE_ARROWS_ROUNDED, "Сравнение", lambda e: state.open_sub("compare")),
+        (ft.Icons.SPORTS_SCORE, "Прогнозы", lambda e: state.open_sub("predict")),
         (ft.Icons.STAR_ROUNDED, "Избранное", lambda e: state.open_sub("favorites")),
-        (ft.Icons.CALENDAR_MONTH_ROUNDED, "Календарь", lambda e: state.open_tab(2)),
     ]
     cards = [
         AnimatedCard(
@@ -284,10 +312,7 @@ def _build_quick_actions(state):
         )
         for icon, label, handler in actions
     ]
-    return ft.Column([
-        SectionHeader("Быстрый доступ"),
-        ft.Row(cards, spacing=SPACE_XS),
-    ], spacing=SPACE_SM)
+    return ft.Row(cards, spacing=SPACE_XS)
 
 
 # ========================================
@@ -302,6 +327,15 @@ def _points(points):
 def _open_championship(state, view):
     state.ui["champ"] = view
     state.open_tab(1)
+
+
+def _open_last_race(state):
+    """«Разбор» — последняя прошедшая гонка (шины, позиции, темп, радио)."""
+    last, _ = state.last_race()
+    if last:
+        state.open_race_strategy(last)
+    else:
+        _open_calendar_past(state)
 
 
 def _open_calendar_past(state):

@@ -91,9 +91,9 @@ def _build_hero(state, driver, is_mobile):
                                  color=ft.Colors.with_opacity(0.15, ON_COLOR)), right=10, top=-40),
             ft.Container(image(state.photo(driver, "hero"), height=height, fit=ft.BoxFit.FIT_HEIGHT,
                                label=f"Фото: {driver['name']}",
-                               fallback=ft.Container()), right=0, bottom=0),
+                               fallback=ft.Container()), right=SPACE_LG, top=PHOTO_DROP + 4),   # голова не у края
             ft.Container(info, left=SPACE_MD, top=SPACE_MD, bottom=SPACE_MD),
-        ], height=height),
+        ], height=height, clip_behavior=ft.ClipBehavior.HARD_EDGE),
         height=height,
         gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
                                    colors=[top, bottom, BG_DEEP], stops=[0.0, 0.6, 1.0]),

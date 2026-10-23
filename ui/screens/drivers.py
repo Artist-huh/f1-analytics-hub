@@ -102,11 +102,14 @@ def _build_driver_card(state, d):
     parts = d["name"].split()
     first, last = " ".join(parts[:-1]), parts[-1] if parts else d["name"]
     height = scaled(184)
+    inner = height - 2 * SPACE_SM                       # высота содержимого карточки (без отступов)
 
+    # Портрет — во всю высоту карточки и опущен на PHOTO_DROP: над головой остаётся воздух,
+    # обрезаются только плечи (раньше фото было выше карточки и срезалась макушка).
     portrait = ft.Container(
-        image(state.photo(d, "portrait"), height=height, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {d['name']}",
+        image(state.photo(d, "portrait"), height=inner, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {d['name']}",
               fallback=ft.Container()),
-        right=0, bottom=0, height=height,
+        right=SPACE_MD, top=PHOTO_DROP, height=inner,
     )
     number = ft.Text(d.get("number") or "", size=120, font_family=FONT_DISPLAY_ITALIC,
                      color=ft.Colors.with_opacity(0.16, ON_COLOR))
@@ -130,7 +133,7 @@ def _build_driver_card(state, d):
             portrait,
             ft.Container(info, left=0, top=0, bottom=0),
             ft.Container(star_button(fav, lambda e, i=d["driver_id"]: state.toggle_favorite(i)), right=-6, top=-6),
-        ], height=height - 2 * SPACE_SM, clip_behavior=ft.ClipBehavior.HARD_EDGE),
+        ], height=inner, clip_behavior=ft.ClipBehavior.HARD_EDGE),
         on_click=lambda e, i=d["driver_id"]: state.open_driver(i),
         padding=ft.Padding.only(left=SPACE_MD, top=SPACE_SM, bottom=SPACE_SM),
         height=height,

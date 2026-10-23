@@ -184,7 +184,8 @@ class UiSmokeTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         os.environ["F1_HUB_DB"] = os.path.join(self.tmp.name, "ui.db")
-        seed_env = mock.patch.dict(os.environ, {"F1_HUB_SEED": os.path.join(self.tmp.name, "no-seed.json")})
+        seed_env = mock.patch.dict(os.environ, {"F1_HUB_SEED": os.path.join(self.tmp.name, "no-seed.json"),
+                                                "FLET_APP_STORAGE_DATA": self.tmp.name})   # модели радио и т. п.
         seed_env.start()   # снимок и встроенные картинки из data/ тестам не видны
         self.addCleanup(seed_env.stop)
         from services import archive
@@ -192,6 +193,8 @@ class UiSmokeTest(unittest.TestCase):
                                     lambda key, fetch, ttl=None, on_done=None, force=False: db.load_archive(key)[0])
         offline.start()    # история и трассы: только кэш, без фоновых запросов в сеть
         self.addCleanup(offline.stop)
+        from services import radio
+        mock.patch.object(radio, "download_models").start()             # «Скачать модели» — без сети и диска
         from services import live
         self.live_refresh = mock.patch.object(live, "refresh").start()   # live-тайминг: без запросов к OpenF1
         self.addCleanup(mock.patch.stopall)
@@ -264,6 +267,22 @@ class UiSmokeTest(unittest.TestCase):
                             self.assertTrue(getattr(n, "tooltip", None), f"кнопка {getattr(n, 'value', '')}")
                         elif callable(getattr(n, "on_click", None)) and kind != "TextButton":
                             self.assertTrue(texts(n) or getattr(n, "tooltip", None), f"{kind} без подписи")
+
+    def test_live_timing_always_on_home(self):
+        from ui.screens import home
+        fill_db()
+        self.state.load()
+        t = texts(self.build("tab0"))
+        self.assertLess(t.index("Live Timing"), t.index("Сравнение"))            # первым, выше быстрого доступа
+        self.assertTrue(any(x.startswith("Квалификация · через") for x in t))    # ближайшая сессия
+        race = self.state.schedule[3]
+        with mock.patch.object(self.state, "live_now", return_value=(race, "Qualifying")):
+            tree = self.build("tab0")
+        self.assertIn("LIVE", texts(tree))
+        self.assertIn("Сейчас: Квалификация", texts(tree))
+        clickable(tree, "Сейчас: Квалификация")[0].on_click(Ctl())
+        self.assertEqual(self.state.sub, "live")
+        self.assertIsNone(home.next_session([], now=0))
 
     def test_font_scale_setting(self):
         self.addCleanup(design_system.apply_font_scale, 1.0)
