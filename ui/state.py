@@ -41,6 +41,7 @@ class AppState:
         self.notifier = None            # main.py: services.notify.Notifier
         self.mini = False               # мини-виджет (компьютер): маленькое окно поверх остальных
         self.on_mini_change = lambda enabled: None   # main.py: размер окна, «поверх всех»
+        self.on_minimize = lambda: None              # main.py: свернуть окно
 
     # ---------- данные ----------
     def load(self):
@@ -256,8 +257,14 @@ class AppState:
         return (self.mini, self.tab, self.sub, value.get("round") if isinstance(value, dict) else value)
 
     # ---------- live-тайминг ----------
+    def live_watched(self):
+        """Кому сейчас нужны живые данные: экрану Live, а во время сессии — ещё мини-виджету и «Главной»."""
+        if self.sub == "live":
+            return True
+        return (self.mini or (self.tab == 0 and not self.sub)) and bool(self.live_now())
+
     def watch_live(self, period=3.0):
-        """Пока открыт экран live-тайминга — обновлять снимок (во время сессии раз в 10 с).
+        """Пока живые данные кому-то нужны (live_watched) — обновлять снимок (во время сессии раз в 5 с).
         Поток сам завершается, когда пользователь уходит с экрана."""
         if live.stale() and not live.snapshot()[2]:
             live.refresh(on_done=self.render)
@@ -265,9 +272,9 @@ class AppState:
             return
 
         def loop():
-            while self.sub == "live":
+            while self.live_watched():
                 time.sleep(period)
-                if self.sub == "live" and live.stale():
+                if self.live_watched() and live.stale():
                     live.refresh(on_done=self.render)
 
         self._live_watch = threading.Thread(target=loop, name="f1-live-watch", daemon=True)
@@ -276,6 +283,11 @@ class AppState:
     def live_now(self):
         """Идёт ли сейчас сессия по календарю: (этап, ключ сессии) или None."""
         return live.session_is_live(self.schedule)
+
+    # ---------- окно (компьютер) ----------
+    def minimize(self):
+        """Свернуть окно в панель задач (кнопка в мини-виджете, Ctrl+H)."""
+        self.on_minimize()
 
     # ---------- мини-виджет ----------
     def toggle_mini(self):
@@ -346,7 +358,7 @@ class AppState:
     # ---------- клавиатура ----------
     def on_key(self, key, ctrl=False):
         """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Ctrl+M — мини-виджет,
-        Esc — назад.
+        Ctrl+L — Live Timing, Ctrl+H — свернуть окно, Esc — назад.
         Возвращает True, если клавиша обработана."""
         key = (key or "").upper()
         if key == "F5":
@@ -358,6 +370,12 @@ class AppState:
             self.open_sub("compare")
         elif ctrl and key == "M" and not notify.is_android():
             self.toggle_mini()
+        elif ctrl and key == "L":
+            if self.mini:
+                self.toggle_mini()
+            self.open_sub("live")
+        elif ctrl and key == "H" and not notify.is_android():
+            self.minimize()
         elif key == "ESCAPE" and self.sub:
             self.close_sub()
         else:

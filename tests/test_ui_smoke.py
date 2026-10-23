@@ -1156,13 +1156,43 @@ class UiSmokeTest(unittest.TestCase):
         t = texts(page.added[0])
         for expected in ("Italian Grand Prix", "3 д 5 ч", "ANT", "LEC", "LAW"):
             self.assertIn(expected, t)
-        clickable(page.added[0], "Развернуть")[0].on_click(Ctl())
+
+        def button(tip):
+            return next(n for n in walk(page.added[0]) if str(getattr(n, "tooltip", "")).startswith(tip))
+        button("Свернуть").on_click(Ctl())
+        self.assertTrue(page.window.minimized)                    # окно уходит в панель задач
+        page.window.minimized = False
+        button("Развернуть").on_click(Ctl())
         asyncio.run(tasks.pop()())
         self.assertEqual((page.window.width, page.window.height, page.window.always_on_top), (500, 900, False))
         self.assertIs(page.navigation_bar, nav)
         state = AppState(FakePage())
         state.on_key("M", ctrl=True)
         self.assertTrue(state.mini)                               # Ctrl+M
+        state.on_minimize = mock.Mock()
+        state.on_key("H", ctrl=True)
+        state.on_minimize.assert_called_once()                    # Ctrl+H — свернуть
+        state.on_key("L", ctrl=True)
+        self.assertEqual((state.mini, state.sub), (False, "live"))   # Ctrl+L — Live Timing
+
+    def test_mini_widget_during_session(self):
+        from services import live
+        from ui.screens import mini
+        fill_db()
+        self.state.load()
+        race = self.state.schedule[3]
+        live._state["data"] = {"session": {"name": "Race", "start": 0}, "live": True, "racing": True, "lap": 31,
+                               "total_laps": 56, "track": "Сейфти-кар", "messages": [], "updated": time.time(),
+                               "rows": [{"position": i, "code": c, "colour": None, "gap": g, "interval": g,
+                                         "tyre": "M"} for i, (c, g) in
+                                        enumerate([("LEC", ""), ("NOR", "+1.2"), ("VER", "+0.8"), ("ANT", "+3.1"),
+                                                   ("RUS", "+0.4"), ("HAM", "+2.0")], start=1)]}
+        self.state.mini = True
+        with mock.patch.object(self.state, "live_now", return_value=(race, "Race")):
+            t = texts(mini.build(self.state))
+        for expected in ("LIVE · Гонка", "круг 31/56", "Сейфти-кар", "LEC", "лидер", "RUS", "+0.4"):
+            self.assertIn(expected, t)
+        self.assertNotIn("HAM", t)                                # только пятёрка
 
     def test_saved_theme_applied_on_start(self):
         from ui import theming

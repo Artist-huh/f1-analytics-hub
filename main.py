@@ -240,6 +240,12 @@ def main(page: ft.Page):
 
     state.on_mini_change = on_mini_change
 
+    def on_minimize():
+        page.window.minimized = True
+        page.update()
+
+    state.on_minimize = on_minimize
+
     # Уведомления: системные (Windows/macOS/Linux, Android) или плашка в приложении
     state.notifier = notify.Notifier(
         run_async=getattr(page, "run_task", None),

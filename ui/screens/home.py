@@ -5,6 +5,7 @@ import flet as ft
 
 from design_system import *
 from services import f1_api as api
+from services import live
 from ui.components import *
 from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_day, plural, short_name
 from ui.rows import driver_row, team_row
@@ -139,6 +140,13 @@ def _build_live_card(state):
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
         title = f"Сейчас: {SESSION_NAMES.get(key, key)}"
         hint = f"{race['race_name']} · позиции, отрывы, шины, радио"
+        state.watch_live()                                  # во время сессии — живая тройка прямо на главной
+        data = live.snapshot()[0]
+        if data and data["live"] and data["rows"]:
+            top = " · ".join(f"{r['position']}. {r['code']}" for r in data["rows"][:3])
+            when = (f"круг {data['lap']}" if data["racing"] and data.get("lap") else
+                    f"осталось {data['remaining']}" if data.get("remaining") else "")
+            hint = " · ".join(x for x in (top, when, data.get("track") or "") if x)
     else:
         badge = ft.Container(ft.Icon(ft.Icons.SENSORS_ROUNDED, color=ON_COLOR, size=20), width=40, height=40,
                              border_radius=20, alignment=ft.Alignment.CENTER,
