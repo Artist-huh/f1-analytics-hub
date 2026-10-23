@@ -23,9 +23,12 @@ exclude = ["venv", "tests", "build", "dist", "docs", ".github", "*.bat", "*.md"]
 [tool.flet.android]
 # Тёмный фон под адаптивную иконку и сплэш — в цвет приложения
 adaptive_icon_background = "#15151E"
+# Уведомления на Android — через NotificationManager (pyjnius есть в репозитории пакетов Flet)
+dependencies = ["pyjnius"]
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true
+"android.permission.POST_NOTIFICATIONS" = true
 
 [tool.flet.splash]
 color = "#15151E"

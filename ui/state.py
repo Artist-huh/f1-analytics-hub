@@ -3,11 +3,12 @@
 Экраны только читают state и вызывают его методы. Всё, что должно пережить
 перерисовку (выбранная вкладка, пилоты в сравнении), хранится в state.ui.
 """
+import json
 import threading
 import time
 
 import design_system as ds
-from services import f1_api as api, live, log, media, stats
+from services import f1_api as api, live, log, media, notify, stats
 
 logger = log.get("ui")
 
@@ -36,6 +37,7 @@ class AppState:
         self._back = []                 # стек подэкранов для кнопки «назад»
         self._by_driver = {}
         self._live_watch = None         # поток обновления live-тайминга, пока открыт его экран
+        self.notifier = None            # main.py: services.notify.Notifier
 
     # ---------- данные ----------
     def load(self):
@@ -266,6 +268,52 @@ class AppState:
     def live_now(self):
         """Идёт ли сейчас сессия по календарю: (этап, ключ сессии) или None."""
         return live.session_is_live(self.schedule)
+
+    # ---------- уведомления ----------
+    def notifications_on(self, kind):
+        """kind: 'sessions' — за час до квалификации/спринта/гонки, 'results' — итоги избранных."""
+        return api.get_setting(f"notif_{kind}", "1") == "1"
+
+    def set_notifications(self, kind, on):
+        api.set_setting(f"notif_{kind}", "1" if on else "0")
+        if on and notify.is_android():
+            notify.android_request_permission()
+        self.render()
+
+    def _sent(self):
+        try:
+            return json.loads(api.get_setting("notified", "[]"))
+        except ValueError:
+            return []
+
+    def _mark_sent(self, nid):
+        api.set_setting("notified", json.dumps((self._sent() + [nid])[-100:]))
+
+    def check_notifications(self, now=None):
+        """Отправить то, что пора (зовётся раз в 30 с из main). -> список отправленных id."""
+        if self.notifier is None:
+            return []
+        sent, done = set(self._sent()), []
+        if self.notifications_on("sessions"):
+            for nid, title, text in notify.due_reminders(self.schedule, now, sent=sent):
+                self.notifier.send(nid, title, text)
+                self._mark_sent(nid)
+                done.append(nid)
+        result = notify.favorites_result(self.favorites, self.standings, self.season_results)
+        if result:
+            seen = api.get_setting("notif_results_seen")
+            if not seen:                      # первый запуск: старый итог не присылаем
+                api.set_setting("notif_results_seen", result[0])
+            elif result[0] != seen:
+                api.set_setting("notif_results_seen", result[0])
+                if self.notifications_on("results"):
+                    self.notifier.send(*result)
+                    done.append(result[0])
+        return done
+
+    def test_notification(self):
+        if self.notifier:
+            self.notifier.send("test", "F1 Analytics Hub", "Уведомления работают: напомним за час до старта")
 
     # ---------- оформление ----------
     def set_theme(self, name, team=None):

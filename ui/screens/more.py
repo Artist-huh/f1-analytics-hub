@@ -156,6 +156,24 @@ def _theme_card(state):
     return card(ft.Column(items, spacing=10))
 
 
+def _notifications_card(state):
+    def switch(kind, title, hint):
+        return ft.Row([
+            ft.Column([txt(title, 14, bold=True), txt(hint, 11, MUTED)], spacing=1, expand=True),
+            ft.Switch(value=state.notifications_on(kind), active_color=ACCENT,
+                      on_change=lambda e, k=kind: state.set_notifications(k, bool(e.control.value))),
+        ], vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+    return card(ft.Column([
+        txt("Уведомления", 16, bold=True, head=True),
+        switch("sessions", "О сессиях", "За час до квалификации, спринта и гонки"),
+        switch("results", "Итоги избранных", "Места и очки избранных пилотов после гонки"),
+        button("Проверить уведомление", lambda e: state.test_notification(), primary=False,
+               icon=ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED),
+        txt("Приходят, пока приложение запущено (свёрнутое — тоже).", 11, DIM),
+    ], spacing=10))
+
+
 def build_settings(state):
     minutes = str(state.refresh_minutes())
     if minutes not in INTERVALS:
@@ -178,6 +196,7 @@ def build_settings(state):
 
     body = [
         _theme_card(state),
+        _notifications_card(state),
         card(ft.Column([
             txt("Обновление данных", 16, bold=True, head=True),
             dropdown(label="Автообновление", value=minutes,

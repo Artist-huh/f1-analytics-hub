@@ -6,10 +6,10 @@ import time
 import flet as ft
 
 import design_system as ds
-from services import f1_api, log
+from services import f1_api, log, notify
 from design_system import *
 from ui import theming
-from ui.components import ResponsiveContainer
+from ui.components import ResponsiveContainer, show_snack
 from ui.fmt import fmt_countdown
 from ui.screens import (home, season, calendar, circuit, drivers, driver_detail, compare, more, favorites, history,
                         live, team, title)
@@ -188,6 +188,14 @@ def main(page: ft.Page):
         state.render()
 
     state.on_theme_change = on_theme_change
+
+    # Уведомления: системные (Windows/macOS/Linux, Android) или плашка в приложении
+    state.notifier = notify.Notifier(
+        run_async=getattr(page, "run_task", None),
+        fallback=lambda title, text: show_snack(page, f"{title}: {text}"),
+    )
+    if notify.is_android() and (state.notifications_on("sessions") or state.notifications_on("results")):
+        notify.android_request_permission()
     shown = {"key": None}
     pending = threading.Event()   # перерисовка уже запланирована — повторные запросы сливаются
 
@@ -261,6 +269,10 @@ def main(page: ft.Page):
     page.on_close = lambda e: state._stop and state._stop.set()
 
     def tick():
+        try:
+            state.check_notifications()
+        except Exception as exc:
+            logger.warning("уведомления: %r", exc)
         try:
             if state.sub is not None or state.tab != 0 or state.countdown is None:
                 return

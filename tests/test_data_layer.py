@@ -10,7 +10,7 @@ from unittest import mock
 
 import requests
 
-from services import archive, db, f1_api, jolpica, media, seed, stats
+from services import archive, db, f1_api, jolpica, media, notify, seed, stats
 
 
 def standings_json(points_lec="126", season="2026", rnd="10", empty=False):
@@ -712,6 +712,46 @@ class ArchiveTest(unittest.TestCase):
         self.assertEqual(seasons, list(range(1950, seasons[-1] + 1)))
         self.assertTrue(all(r["name"] and r["team"] for r in rows))
         self.assertEqual(next(r for r in rows if r["season"] == "1950")["name"], "Nino Farina")
+
+
+class NotifyTest(unittest.TestCase):
+    def _race(self, start):
+        return {"season": "2026", "round": "18", "race_name": "United States Grand Prix",
+                "sessions": [{"key": "FirstPractice", "ts": start - 2 * 86400},
+                             {"key": "Qualifying", "ts": start - 86400}, {"key": "Race", "ts": start}]}
+
+    def test_due_reminders(self):
+        now = time.time()
+        race = self._race(now + 86400 + 1800)            # квалификация через 30 минут
+        due = notify.due_reminders([race], now)
+        self.assertEqual([d[0] for d in due], ["2026:18:Qualifying"])
+        self.assertIn("Квалификация через 30 мин", due[0][1])
+        self.assertEqual(notify.due_reminders([race], now, sent={"2026:18:Qualifying"}), [])   # уже напомнили
+        self.assertEqual(notify.due_reminders([self._race(now + 3 * 86400)], now), [])         # ещё рано
+        practice = self._race(now + 2 * 86400 + 600)
+        self.assertEqual(notify.due_reminders([practice], now), [])                            # о практике — нет
+
+    def test_favorites_result(self):
+        standings = [{"driver_id": "leclerc", "name": "Charles Leclerc"}, {"driver_id": "lawson", "name": "Liam Lawson"}]
+        results = [{"round": "17", "race_name": "Singapore GP", "season": "2026", "driver_id": "leclerc",
+                    "position": "2", "points": "18"},
+                   {"round": "17", "race_name": "Singapore GP", "season": "2026", "driver_id": "lawson",
+                    "position": "R", "points": "0"},
+                   {"round": "16", "race_name": "Old GP", "season": "2026", "driver_id": "leclerc",
+                    "position": "1", "points": "25"}]
+        nid, title, text = notify.favorites_result(["leclerc", "lawson"], standings, results)
+        self.assertEqual((nid, title, text), ("2026:17:result", "Итоги: Singapore GP", "Leclerc — P2 (+18), Lawson — сход"))
+        self.assertIsNone(notify.favorites_result(["norris"], standings, results))
+
+    def test_notifier_falls_back_to_in_app(self):
+        shown = []
+        n = notify.Notifier(run_async=None, fallback=lambda t, b: shown.append(t))
+        self.assertEqual(n.send("x", "Заголовок", "Текст"), "in-app")
+        self.assertEqual(shown, ["Заголовок"])
+        tasks = []
+        with mock.patch.object(notify, "DesktopNotifier", mock.Mock()):
+            self.assertEqual(notify.Notifier(run_async=tasks.append).send("y", "T", "B"), "desktop")
+        self.assertEqual(len(tasks), 1)                    # корутина отдана в цикл событий Flet
 
 
 class StatsTest(unittest.TestCase):

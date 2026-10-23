@@ -612,6 +612,29 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.sub, "live")
         self.state.sub = None
 
+    def test_notifications_flow(self):
+        fill_db()
+        self.state.load()
+        sent = []
+        self.state.notifier = mock.Mock(send=lambda *a: sent.append(a))
+        race = self.state.schedule[3]                          # Италия: квалификация за сутки до гонки
+        quali = next(s for s in race["sessions"] if s["key"] == "Qualifying")
+        self.assertEqual(self.state.check_notifications(now=quali["ts"] - 1200), ["2026:4:Qualifying"])
+        self.assertEqual(self.state.check_notifications(now=quali["ts"] - 600), [])   # повторно не шлём
+        api.toggle_favorite("leclerc")
+        self.state.load()
+        self.state.check_notifications()                       # первый раз: старый итог только запоминаем
+        self.assertEqual(len(sent), 1)
+        api.set_setting("notif_results_seen", "2026:2:result")  # «вышли» новые результаты
+        self.assertEqual(self.state.check_notifications(), ["2026:3:result"])
+        self.assertEqual(sent[-1][1], "Итоги: Japanese GP")
+        t = texts(self.build("settings"))
+        self.assertIn("УВЕДОМЛЕНИЯ".lower(), " ".join(t).lower())
+        switches = [n for n in walk(self.build("settings")) if type(n).__name__ == "Switch"]
+        switches[0].on_change(Ctl(control=Ctl(value=False)))
+        self.assertFalse(self.state.notifications_on("sessions"))
+        self.assertEqual(self.state.check_notifications(now=quali["ts"] - 100), [])  # выключено
+
     def test_title_fight_screen(self):
         fill_db()
         self.state.load()

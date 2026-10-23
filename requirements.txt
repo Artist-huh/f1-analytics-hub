@@ -1,2 +1,3 @@
 flet[all]>=1.0.5,<2  # Flet 1.x API (field borders via border=OutlineInputBorder)
 requests>=2.34.2
+desktop-notifier>=6.2   # системные уведомления на компьютере (на Android — pyjnius, см. pyproject.toml)
