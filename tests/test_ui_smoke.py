@@ -767,6 +767,15 @@ class UiSmokeTest(unittest.TestCase):
             got = sorted(str(p.relative_to(radio.argos_dir())).replace("\\", "/")
                          for p in radio.argos_dir().rglob("*") if p.is_file())
         self.assertEqual(got, ["model/config.json", "model/model.bin", "sentencepiece.model"])   # без stanza
+        # модель токенизатора — байтами: по пути с кириллицей (C:\Users\Андрей) SentencePiece её не открывает
+        fake_sp = mock.Mock()
+        with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}), \
+                mock.patch.dict(sys.modules, {"sentencepiece": fake_sp, "ctranslate2": mock.Mock(),
+                                              "faster_whisper": mock.Mock()}), \
+                mock.patch.object(radio, "whisper_model", return_value="small.en"), \
+                mock.patch.dict(radio._models, clear=True):
+            radio._load_models()
+        self.assertEqual(fake_sp.SentencePieceProcessor.call_args.kwargs, {"model_proto": b"x"})
         fill_db()
         self.state.load()
         race = self.state.schedule[2]

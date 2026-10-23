@@ -169,7 +169,10 @@ def _load_models():
             import sentencepiece
             _models["translator"] = ctranslate2.Translator(str(argos_dir() / "model"), device="cpu",
                                                            compute_type="int8")
-            _models["sp"] = sentencepiece.SentencePieceProcessor(model_file=str(argos_dir() / "sentencepiece.model"))
+            # байтами, а не путём: SentencePiece на Windows не открывает файл по пути с кириллицей
+            # (папка пользователя «Андрей») — NOT_FOUND при существующем файле
+            proto = (argos_dir() / "sentencepiece.model").read_bytes()
+            _models["sp"] = sentencepiece.SentencePieceProcessor(model_proto=proto)
     return _models
 
 
