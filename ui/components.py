@@ -130,10 +130,20 @@ class GradientButton(ft.Container):
 
 
 # ---------------------------------------------------------------- картинки
+DECODE_SCALE = 3   # декодировать под экран до ×3 плотности — не в исходном размере (память и время)
+
+
 def image(src, width=None, height=None, fit=ft.BoxFit.CONTAIN, fallback=None, **kwargs):
     """Картинка из кэша/сети; при ошибке или без источника — fallback."""
     if not src:
         return fallback or ft.Container(width=width, height=height)
+    if height and not width:
+        kwargs.setdefault("cache_height", int(height * DECODE_SCALE))
+    elif width and not height:
+        kwargs.setdefault("cache_width", int(width * DECODE_SCALE))
+    elif width and height:
+        side = "cache_width" if width >= height else "cache_height"   # одна сторона — пропорции сохраняются
+        kwargs.setdefault(side, int(max(width, height) * DECODE_SCALE))
     return ft.Image(src=src, width=width, height=height, fit=fit, error_content=fallback,
                     gapless_playback=True, filter_quality=ft.FilterQuality.HIGH, **kwargs)
 

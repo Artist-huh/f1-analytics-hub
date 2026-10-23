@@ -69,12 +69,24 @@ def favorites_result(favorites, standings, season_results):
 
 
 # ---------------------------------------------------------------- как отправлять
-def _android_activity():
+def _android_context():
+    """Контекст приложения через системный класс ActivityThread.
+
+    autoclass() для классов самого приложения (например, PythonActivity у Flet) из рабочего
+    потока Python не находит их: JNI ищет системным загрузчиком (ClassNotFoundException).
+    Классы Android SDK видны всегда — их и используем."""
     from jnius import autoclass
-    host = os.environ.get("MAIN_ACTIVITY_HOST_CLASS_NAME")
-    if not host:
-        raise RuntimeError("MAIN_ACTIVITY_HOST_CLASS_NAME не задан")
-    return autoclass(host).mActivity
+    return autoclass("android.app.ActivityThread").currentApplication()
+
+
+def _android_activity():
+    """Текущая активность Flet — через загрузчик классов приложения и рефлексию (нужна для запроса разрешения)."""
+    from jnius import cast
+    host = os.environ.get("MAIN_ACTIVITY_HOST_CLASS_NAME") or "com.flet.serious_python_android.PythonActivity"
+    cls = _android_context().getClassLoader().loadClass(host)
+    field = cls.getDeclaredField("mActivity")
+    field.setAccessible(True)
+    return cast("android.app.Activity", field.get(None))
 
 
 def android_request_permission():
@@ -91,7 +103,7 @@ def android_request_permission():
 
 def _android_send(title, text, nid):
     from jnius import autoclass, cast
-    activity = _android_activity()
+    activity = _android_context()      # для уведомления достаточно контекста приложения
     Context = autoclass("android.content.Context")
     NotificationManager = autoclass("android.app.NotificationManager")
     Builder = autoclass("android.app.Notification$Builder")

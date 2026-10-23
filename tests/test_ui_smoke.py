@@ -373,7 +373,10 @@ class UiSmokeTest(unittest.TestCase):
         self.state.load()
         lec = self.state.driver("leclerc")
         self.assertIn("/ferrari/chalec01/2026ferrarichalec01right.webp", self.state.photo(lec))
-        self.assertIn("c_fill,g_north,w_480,h_600", self.state.photo(lec, "portrait"))
+        self.assertIn("c_fill,g_north,w_300,h_375/q_auto:eco", self.state.photo(lec, "portrait"))
+        self.assertIn("c_fill,g_north,w_480,h_600/q_auto:eco", self.state.photo(lec, "hero"))
+        img = components.image("https://x/y.webp", height=184)
+        self.assertEqual(img.cache_height, 184 * components.DECODE_SCALE)   # декодируется под экран
         self.assertIsNone(self.state.photo(self.state.driver("lawson")))      # нет в справочнике -> инициалы
         images = [str(n.src) for n in walk(self.build("tab1")) if type(n).__name__ == "Image"]
         self.assertTrue(any("chalec01" in src for src in images))

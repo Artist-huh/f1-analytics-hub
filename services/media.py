@@ -29,11 +29,15 @@ REFS_TTL = 24 * 3600     # состав пилотов меняется редк
 TIMEOUT = (3.05, 10)
 
 # Размеры с запасом под экраны высокой плотности (×2)
+# Размер — под отображение на экранах высокой плотности; q_auto:eco вдвое легче q_auto без видимой
+# разницы. Важно: картинки уходят в окно байтами при каждой перерисовке (так они работают без сети),
+# поэтому лишние килобайты — это задержка на каждом экране со списком пилотов.
 SIZES = {
-    "avatar": "c_fill,g_north,w_192,h_192",     # круглый аватар (голова и плечи)
-    "portrait": "c_fill,g_north,w_480,h_600",   # крупный портрет на странице пилота
-    "logo": "c_fit,h_96",
-    "car": "c_fit,w_720",
+    "avatar": "c_fill,g_north,w_128,h_128/q_auto:eco",     # круглый аватар 32–72 px (голова и плечи)
+    "portrait": "c_fill,g_north,w_300,h_375/q_auto:eco",   # карточка в «Пилотах» (~184 px по высоте)
+    "hero": "c_fill,g_north,w_480,h_600/q_auto:eco",       # крупный портрет на странице пилота
+    "logo": "c_fit,h_96/q_auto",
+    "car": "c_fit,w_600/q_auto:eco",
 }
 
 logger = log.get("media")
@@ -52,7 +56,7 @@ def portrait_url(season, team_name, ref, kind="avatar"):
     slug = ds.team_slug(team_name)
     if not (season and slug and ref):
         return None
-    return f"{F1_MEDIA}/{SIZES[kind]}/q_auto/v1740000000/common/f1/{season}/{slug}/{ref}/{season}{slug}{ref}right.webp"
+    return f"{F1_MEDIA}/{SIZES[kind]}/v1740000000/common/f1/{season}/{slug}/{ref}/{season}{slug}{ref}right.webp"
 
 
 def team_url(season, team_name, kind="logo"):
@@ -61,7 +65,7 @@ def team_url(season, team_name, kind="logo"):
     if not (season and slug):
         return None
     suffix = "logowhite" if kind == "logo" else "carright"
-    return f"{F1_MEDIA}/{SIZES[kind]}/q_auto/v1740000000/common/f1/{season}/{slug}/{season}{slug}{suffix}.webp"
+    return f"{F1_MEDIA}/{SIZES[kind]}/v1740000000/common/f1/{season}/{slug}/{season}{slug}{suffix}.webp"
 
 
 # Идентификатор трассы Jolpica -> имя схемы на formula1.com (остальные совпадают без «_»)
@@ -79,7 +83,7 @@ def track_url(season, circuit_id, dark_lines=False):
         return None
     slug = TRACK_SLUGS.get(circuit_id, circuit_id.replace("_", ""))
     style = "blackoutline" if dark_lines else "whiteoutline"
-    return f"{F1_MEDIA}/c_fit,w_720/q_auto/v1740000000/common/f1/{season}/track/{season}track{slug}{style}.webp"
+    return f"{F1_MEDIA}/c_fit,w_600/q_auto:eco/v1740000000/common/f1/{season}/track/{season}track{slug}{style}.webp"
 
 
 def track(season, circuit_id, dark_lines=False):
@@ -236,7 +240,7 @@ def all_urls(standings, constructors, schedule, refs):
     items = []
     for d in standings:
         ref, headshot = driver_urls(d, refs)
-        for kind in ("avatar", "portrait"):
+        for kind in ("avatar", "portrait", "hero"):
             url = portrait_url(d.get("season"), d.get("team"), ref, kind)
             items.append((url, headshot) if url else (headshot, None))
         items.append((flag_url(ds.nationality_iso(d.get("nationality"))), None))

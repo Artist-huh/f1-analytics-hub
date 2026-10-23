@@ -131,6 +131,10 @@ def main():
     crashes = [l for l in log.splitlines() if "FATAL EXCEPTION" in l or "Traceback" in l]
     if crashes:
         failures.append(f"в logcat ошибки: {crashes[:3]}")
+    app_warnings = [l for l in log.splitlines() if "flet.python" in l and
+                    ("не запрошено" in l or "не отправлено" in l)]
+    if app_warnings:
+        failures.append(f"уведомления на Android: {app_warnings[:2]}")
     if failures:
         print("ПРОБЛЕМЫ:\n  " + "\n  ".join(failures))
         return 1
