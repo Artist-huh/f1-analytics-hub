@@ -262,6 +262,18 @@ class UiSmokeTest(unittest.TestCase):
                         elif callable(getattr(n, "on_click", None)) and kind != "TextButton":
                             self.assertTrue(texts(n) or getattr(n, "tooltip", None), f"{kind} без подписи")
 
+    def test_font_scale_setting(self):
+        self.addCleanup(design_system.apply_font_scale, 1.0)
+        calls = []
+        self.state.on_theme_change = lambda name, team: calls.append(name)
+        self.state.sub = "settings"
+        clickable(self.build("settings"), "Очень крупный")[0].on_click(Ctl())
+        self.assertEqual(db.get_setting("font_scale"), "1.3")
+        self.assertEqual(design_system.FONT_BODY, 18)
+        self.assertEqual(calls, ["dark"])                                      # модули перезагружаются
+        design_system.apply_font_scale("мусор")
+        self.assertEqual(design_system.FONT_BODY, 14)
+
     def test_no_driver_is_special(self):
         """Приложение одинаково для всех пилотов: нигде нет блоков «про Леклера» и дуэли с ним."""
         fill_db()
@@ -1059,7 +1071,7 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(page.bgcolor, "#F3F3F6")
         self.assertEqual(api.get_setting("theme"), "light")
         asyncio.run(tasks.pop()())
-        clickable(page.added[0], "Цвета команды")[0].on_click(Ctl())
+        clickable(page.added[0], "Команда")[0].on_click(Ctl())
         asyncio.run(tasks.pop()())
         self.assertEqual((design_system.THEME, design_system.THEME_TEAM), ("team", "Mercedes"))   # лидер Кубка
         self.assertEqual(design_system.F1_RED, design_system.TEAMS["mercedes"]["color"])

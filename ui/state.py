@@ -335,6 +335,13 @@ class AppState:
         api.set_setting("theme_team", team or "")
         self.on_theme_change(name, team)
 
+    def set_font_scale(self, scale):
+        """Размер текста: «Обычный» / «Крупный» / «Очень крупный»."""
+        import design_system as ds
+        api.set_setting("font_scale", str(scale))
+        ds.apply_font_scale(scale)
+        self.on_theme_change(ds.THEME, ds.THEME_TEAM)    # перезагрузка модулей с новыми размерами
+
     # ---------- клавиатура ----------
     def on_key(self, key, ctrl=False):
         """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Ctrl+M — мини-виджет,

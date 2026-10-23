@@ -87,7 +87,7 @@ def _stats(team, s):
              ("Сходы", s["dnf"], ft.Icons.CANCEL_ROUNDED, TEXT_MUTED),
              ("Гонок", len({r["round"] for r in s["races"]}), ft.Icons.FLAG_ROUNDED, INFO)]
     cards = [ft.Container(StatCard(label, value, icon, color, compact=True, expand=False),
-                          col={"xs": 4, "md": 2}) for label, value, icon, color in items]
+                          col={"xs": 6 if large_text() else 4, "md": 2}) for label, value, icon, color in items]
     return ft.Column([SectionHeader("Сезон команды"), ft.ResponsiveRow(cards, spacing=SPACE_XS, run_spacing=SPACE_XS)],
                      spacing=SPACE_SM)
 

@@ -5,7 +5,7 @@ from design_system import (ACCENT, ACCENT_DEEP, ACCENT_GLOW, ACCENT_TEXT, DANGER
                            RAISED, SURFACE, TEXT, WARN)
 from services import db, f1_api as api, log, media, notify
 from ui.fmt import fmt_updated
-from ui.widgets import button, card, dropdown, screen, tyre_chip, txt
+from ui.widgets import button, card, dropdown, pill, screen, tyre_chip, txt
 
 
 # ---------------------------------------------------------------- меню
@@ -133,10 +133,11 @@ def _theme_card(state):
         active = current == key
         return ft.Container(
             ft.Column([ft.Icon(icon, color=ON_ACCENT if active else TEXT, size=22),
-                       txt(ds.THEME_NAMES[key], 12, ON_ACCENT if active else TEXT, bold=True),
+                       txt({"team": "Команда"}.get(key, ds.THEME_NAMES[key]), 12, ON_ACCENT if active else TEXT, bold=True,
+                           no_wrap=True),
                        txt(hint, 10, ON_ACCENT if active else MUTED, text_align=ft.TextAlign.CENTER)],
                       horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
-            expand=True, padding=10, border_radius=12, ink=True,
+            expand=True, padding=ft.Padding.symmetric(horizontal=4, vertical=10), border_radius=12, ink=True,
             bgcolor=ACCENT if active else RAISED,
             on_click=lambda e, k=key: state.set_theme(k, chosen_team or (state.constructors[0]["name"]
                                                                          if k == "team" and state.constructors else None)),
@@ -158,6 +159,10 @@ def _theme_card(state):
                 padding=ft.Padding.symmetric(horizontal=12, vertical=8),
                 on_click=lambda e, n=c["name"]: state.set_theme("team", n)))
         items.append(ft.Row(chips, wrap=True, spacing=6, run_spacing=6))
+    current_scale = f"{ds.FONT_SCALE:g}" if ds.FONT_SCALE != 1 else "1.0"
+    items += [txt("Размер текста", 14, bold=True),
+              ft.Row([pill(label, key == current_scale, lambda e, k=key: state.set_font_scale(float(k)))
+                      for key, label in ds.FONT_SCALES.items()], wrap=True, spacing=6, run_spacing=6)]
     return card(ft.Column(items, spacing=10))
 
 

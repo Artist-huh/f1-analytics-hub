@@ -82,16 +82,17 @@ def _header(state, data):
 def tyre_badge(letter, age):
     color = TYRE_COLORS_SHORT.get(letter, TEXT_DIM)
     return ft.Row([
-        ft.Container(ft.Text(letter or "—", size=11, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
-                     width=24, height=24, border_radius=12, border=ft.Border.all(3, color),
+        ft.Container(ft.Text(letter or "—", size=FONT_CAPTION, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
+                     width=scaled(24), height=scaled(24), border_radius=12, border=ft.Border.all(3, color),
                      alignment=ft.Alignment.CENTER),
-        ft.Text(f"{age}" if age is not None else "", size=FONT_CAPTION, color=TEXT_MUTED, width=20),
+        ft.Text(f"{age}" if age is not None else "", size=FONT_CAPTION, color=TEXT_MUTED, width=scaled(20)),
     ], spacing=4, tight=True)
 
 
 def _table(state, data, mode):
     by_code = {d["code"]: d for d in state.standings}
     rows = []
+    avatars = not (large_text() and is_narrow(state))     # крупный текст на телефоне: место — под код пилота
     for r in data["rows"]:
         d = by_code.get(r["code"])
         color = r["colour"] or (get_team_color(d["team"]) if d else TEXT_DIM)
@@ -99,25 +100,26 @@ def _table(state, data, mode):
         rows.append(ft.Container(ft.Row([
             PositionBadge(r["position"], size=28),
             ft.Container(width=3, height=30, bgcolor=color, border_radius=2),
-            DriverAvatar(r["code"], d["team"] if d else r["team"], size=32, src=state.photo(d) if d else None),
-            ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC),
-                       ft.Text(r["team"], size=10, color=TEXT_MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)],
+            *([DriverAvatar(r["code"], d["team"] if d else r["team"], size=32, src=state.photo(d) if d else None)]
+              if avatars else []),
+            ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC, no_wrap=True),
+                       ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)],
                       spacing=0, expand=True),
             ft.Text(gap or ("лидер" if r["position"] == 1 and data["racing"] else ""), size=FONT_BODY_SMALL,
-                    color=TEXT_PRIMARY if gap else ACCENT_TEXT, width=78, text_align=ft.TextAlign.RIGHT),
+                    color=TEXT_PRIMARY if gap else ACCENT_TEXT, width=scaled(78), text_align=ft.TextAlign.RIGHT),
             tyre_badge(r["tyre"], r["tyre_age"]),
-            ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY), width=22,
+            ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY), width=scaled(22),
                          alignment=ft.Alignment.CENTER, tooltip=f"{r['pits']} {plural(r['pits'], 'пит-стоп', 'пит-стопа', 'пит-стопов')}"),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=SURFACE, border_radius=RADIUS_SM, border=ft.Border.all(1, LINE_SUBTLE),
             padding=ft.Padding.symmetric(horizontal=SPACE_XS, vertical=4),
             on_click=(lambda e, i=d["driver_id"]: state.open_driver(i)) if d else None, ink=bool(d)))
-    head = ft.Row([ft.Text("Поз.", size=10, color=TEXT_DIM, width=70),
-                   ft.Text("Пилот", size=10, color=TEXT_DIM, expand=True),
-                   ft.Text("Отрыв" if mode == "leader" else "Интервал", size=10, color=TEXT_DIM, width=78,
+    head = ft.Row([ft.Text("Поз.", size=FONT_TINY, color=TEXT_DIM, width=70 if avatars else 30),
+                   ft.Text("Пилот", size=FONT_TINY, color=TEXT_DIM, expand=True),
+                   ft.Text("Отрыв" if mode == "leader" else "Интервал", size=FONT_TINY, color=TEXT_DIM, width=scaled(78),
                            text_align=ft.TextAlign.RIGHT),
-                   ft.Text("Шины", size=10, color=TEXT_DIM, width=48),
-                   ft.Text("Пит", size=10, color=TEXT_DIM, width=22)], spacing=SPACE_XS)
+                   ft.Text("Шины", size=FONT_TINY, color=TEXT_DIM, width=scaled(48), no_wrap=True),
+                   ft.Text("Пит", size=FONT_TINY, color=TEXT_DIM, width=scaled(22), no_wrap=True)], spacing=SPACE_XS)
     return ft.Column([ft.Container(head, padding=ft.Padding.symmetric(horizontal=SPACE_XS))] + rows, spacing=SPACE_XXS)
 
 

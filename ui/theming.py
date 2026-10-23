@@ -20,8 +20,10 @@ def _screen_modules():
     return FIRST + sorted(n for n in names if n not in FIRST)
 
 
-def apply(name="dark", team=None):
-    """Применить тему и перезагрузить модули интерфейса. Возвращает итоговое имя темы."""
+def apply(name="dark", team=None, font_scale=None):
+    """Применить тему (и размер текста) и перезагрузить модули интерфейса. Возвращает итоговое имя темы."""
+    if font_scale is not None:
+        ds.apply_font_scale(font_scale)
     result = ds.apply_theme(name, team)
     for module in _screen_modules():
         if module in sys.modules:

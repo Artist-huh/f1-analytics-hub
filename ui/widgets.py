@@ -2,14 +2,14 @@
 import flet as ft
 
 from design_system import (
-    ACCENT, ACCENT_DEEP, ACCENT_GLOW, BG, DIM, F1_RED, FONT_DISPLAY_ITALIC, FONT_HEADING, LINE, MUTED, OK,
+    ACCENT, ACCENT_DEEP, ACCENT_GLOW, BG, DIM, F1_RED, FONT_DISPLAY_ITALIC, FONT_H2, FONT_HEADING, FONT_SCALE, LINE, MUTED, OK,
     ON_ACCENT, RADIUS_FULL, RAISED, SURFACE, SURFACE_ELEVATED, TEXT, TOUCH, TYRES, WARN, DANGER, glow,
 )
 
 
 def txt(value, size=14, color=TEXT, bold=False, head=False, **kw):
     return ft.Text(
-        str(value), size=size, color=color,
+        str(value), size=round(size * FONT_SCALE), color=color,
         weight=ft.FontWeight.BOLD if bold else None,
         font_family=FONT_HEADING if head else None, **kw,
     )
@@ -168,7 +168,7 @@ def screen(state, title, body, subtitle=None, back=False):
     from ui.components import page_width
     # на телефоне длинный заголовок с кнопкой «назад» не помещается рядом с подписью «Онлайн»
     compact = page_width(state) < 480 and (back or len(title) > 10)
-    titles = [ft.Text(title, size=28, color=TEXT, font_family=FONT_DISPLAY_ITALIC, max_lines=1,
+    titles = [ft.Text(title, size=FONT_H2, color=TEXT, font_family=FONT_DISPLAY_ITALIC, max_lines=1,
                       overflow=ft.TextOverflow.ELLIPSIS)]
     if subtitle:
         titles.append(txt(subtitle, 12, MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS))

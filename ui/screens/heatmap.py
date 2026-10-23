@@ -50,7 +50,7 @@ def build_section(state):
         race = names.get(rnd, {})
         flag_src, iso = state.flag(country=race.get("country")) if race else (None, "")
         header.append(ft.Container(
-            ft.Column([flag(flag_src, 10, iso), ft.Text(rnd, size=9, color=TEXT_DIM)],
+            ft.Column([flag(flag_src, 10, iso), ft.Text(rnd, size=FONT_MICRO, color=TEXT_DIM)],
                       spacing=1, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             width=CELL, tooltip=race.get("race_name", f"Этап {rnd}")))
     lines = [ft.Row(header, spacing=2)]
@@ -65,7 +65,7 @@ def build_section(state):
             bg, fg = cell_color(pos)
             race = names.get(rnd, {})
             cells.append(ft.Container(
-                ft.Text(pos if pos != "W" else "", size=10, color=fg, weight=ft.FontWeight.BOLD),
+                ft.Text(pos if pos != "W" else "", size=FONT_TINY, color=fg, weight=ft.FontWeight.BOLD),
                 width=CELL, height=CELL, bgcolor=bg, border_radius=4, alignment=ft.Alignment.CENTER,
                 border=None if bg else ft.Border.all(1, LINE_SUBTLE),
                 tooltip=f"{d['name']} · {race.get('race_name', 'этап ' + rnd)}: "

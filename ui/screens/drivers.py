@@ -100,7 +100,7 @@ def _build_driver_card(state, d):
     flag_src, iso = state.flag(nationality=d.get("nationality"))
     parts = d["name"].split()
     first, last = " ".join(parts[:-1]), parts[-1] if parts else d["name"]
-    height = 184
+    height = scaled(184)
 
     portrait = ft.Container(
         image(state.photo(d, "portrait"), height=height, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {d['name']}",
@@ -121,7 +121,7 @@ def _build_driver_card(state, d):
         ft.Container(expand=True),
         ft.Row([_mini_stat(d["points"], "очки"), _mini_stat(s["wins"], "победы"), _mini_stat(s["podiums"], "подиумы")],
                spacing=SPACE_MD),
-    ], spacing=SPACE_XS, width=180)
+    ], spacing=SPACE_XS, width=scaled(180))
 
     return AnimatedCard(
         content=ft.Stack([
@@ -146,7 +146,7 @@ def _build_driver_card(state, d):
 def _mini_stat(value, label):
     return ft.Column([
         ft.Text(str(value), size=FONT_H4, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
-        ft.Text(label, size=10, color=ft.Colors.with_opacity(0.75, ON_COLOR)),
+        ft.Text(label, size=FONT_TINY, color=ft.Colors.with_opacity(0.75, ON_COLOR)),
     ], spacing=0)
 
 

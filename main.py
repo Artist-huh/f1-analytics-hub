@@ -165,8 +165,9 @@ def main(page: ft.Page):
 
     # Тема оформления из настроек (до построения первого экрана)
     saved_theme = f1_api.get_setting("theme", "dark")
-    if saved_theme != "dark":
-        theming.apply(saved_theme, f1_api.get_setting("theme_team"))
+    saved_scale = f1_api.get_setting("font_scale", "1.0")
+    if saved_theme != "dark" or saved_scale != "1.0":
+        theming.apply(saved_theme, f1_api.get_setting("theme_team"), font_scale=saved_scale)
         refresh_screens()
     apply_page_theme(page)
 

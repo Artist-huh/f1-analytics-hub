@@ -68,7 +68,7 @@ def _axis(laps):
     cells = []
     prev = 0
     for m in marks:
-        cells.append(ft.Container(ft.Text(str(m), size=10, color=TEXT_DIM, max_lines=1, no_wrap=True),
+        cells.append(ft.Container(ft.Text(str(m), size=FONT_TINY, color=TEXT_DIM, max_lines=1, no_wrap=True),
                                   expand=max(1, m - prev),
                                   alignment=ft.Alignment.CENTER_RIGHT))
         prev = m
@@ -84,7 +84,7 @@ def _row(state, r, total):
             segments.append(ft.Container(expand=s["start"] - last - 1))
         color = TYRE_COLOR.get(s["tyre"], TEXT_DIM)
         segments.append(ft.Container(
-            ft.Text(s["tyre"] if s["laps"] >= 5 else "", size=10, color=INK, weight=ft.FontWeight.BOLD),
+            ft.Text(s["tyre"] if s["laps"] >= 5 else "", size=FONT_TINY, color=INK, weight=ft.FontWeight.BOLD),
             expand=s["laps"], height=18, bgcolor=color, border_radius=4, alignment=ft.Alignment.CENTER,
             tooltip=f"{TYRE_NAMES.get(s['tyre'], s['tyre'])}: круги {s['start']}–{s['end']}"
                     + (f", б/у ({s['age']} кр.)" if s["age"] else ", новые"),
@@ -104,5 +104,5 @@ def _row(state, r, total):
                     text_align=ft.TextAlign.CENTER, tooltip="пит-стопов"),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Row([ft.Container(width=LABEL_W), ft.Text(f"пит: {pit_laps}" if pit_laps else "без пит-стопов",
-                                                    size=10, color=TEXT_DIM)], spacing=SPACE_XS),
+                                                    size=FONT_TINY, color=TEXT_DIM)], spacing=SPACE_XS),
     ], spacing=0)

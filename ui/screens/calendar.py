@@ -81,7 +81,7 @@ def _build_next_race_card(state, race, race_state):
 
     countdown = ft.Text(
         "Гонка идёт" if live else fmt_countdown(race["start_ts"] - time.time()),
-        size=FONT_H2, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC,
+        size=FONT_H2, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC, no_wrap=True,
     )
     specs = []
     if info:
@@ -97,12 +97,13 @@ def _build_next_race_card(state, race, race_state):
             content=ft.Row([
                 ft.Column([ft.Text("До старта", size=FONT_CAPTION, color=TEXT_MUTED), countdown],
                           spacing=0, expand=True),
-                *specs,
+                *([] if large_text() else specs),
             ], vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_SM),
             gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
                                        colors=[ACCENT_SOFT, SURFACE_RAISED]),
             border_radius=RADIUS_MD, padding=SPACE_SM,
         ),
+        *([ft.Row(specs, spacing=SPACE_LG)] if large_text() and specs else []),   # крупный текст: под отсчётом
         session_list(race),
         _circuit_button(state, race),
     ]
@@ -179,7 +180,7 @@ def session_list(race, highlight="Race"):
             ft.Container(
                 ft.Text(fmt_clock(s["ts"]), size=FONT_BODY, color=ACCENT_TEXT if main else TEXT_PRIMARY,
                         font_family=FONT_HEADING),
-                width=48, alignment=ft.Alignment.CENTER_RIGHT,
+                width=scaled(48), alignment=ft.Alignment.CENTER_RIGHT,
             ),
         ], spacing=SPACE_XS))
     return ft.Column(rows, spacing=6)

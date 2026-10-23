@@ -54,6 +54,35 @@ FONT_BODY_LARGE = 16
 FONT_BODY = 14
 FONT_BODY_SMALL = 12
 FONT_CAPTION = 11
+FONT_TINY = 10
+FONT_MICRO = 9
+
+# Размер текста (настройка «Размер текста»): токены FONT_* умножаются на FONT_SCALE.
+# Системный крупный шрифт Android Flutter применяет поверх сам — вёрстка проверяется на ×1.3.
+FONT_SCALE = 1.0
+FONT_SCALES = {"1.0": "Обычный", "1.15": "Крупный", "1.3": "Очень крупный"}
+_FONT_BASE = {k: v for k, v in dict(globals()).items() if k.startswith("FONT_") and isinstance(v, int)}
+
+
+def scaled(px):
+    """Размер, который должен расти вместе с текстом (колонки таблиц, высота карточек)."""
+    return round(px * FONT_SCALE)
+
+
+def large_text():
+    return FONT_SCALE >= 1.1
+
+
+def apply_font_scale(scale=1.0):
+    """Пересчитать размеры шрифтов; модули интерфейса затем перезагружаются (ui/theming.py)."""
+    global FONT_SCALE
+    try:
+        scale = min(max(float(scale), 1.0), 1.5)
+    except (TypeError, ValueError):
+        scale = 1.0
+    FONT_SCALE = scale
+    globals().update({k: round(v * scale) for k, v in _FONT_BASE.items()})
+    return scale
 
 FONT_HEADING = "Exo2"            # заголовки и цифры
 FONT_HEADING_SEMI = "Exo2Semi"   # подзаголовки

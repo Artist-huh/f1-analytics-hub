@@ -149,7 +149,7 @@ def _build_stats(driver, s, has_results):
         ("Средний финиш", st.fmt_avg(s["avg_finish"]), ft.Icons.TIMELINE_ROUNDED, INFO),
     ]
     cards = [ft.Container(StatCard(label, value, icon, color, compact=True, expand=False),
-                          col={"xs": 3, "md": 3, "lg": 3}) for label, value, icon, color in items]
+                          col={"xs": 6 if large_text() else 3, "md": 3}) for label, value, icon, color in items]
     return ft.Column([SectionHeader("Статистика сезона"),
                       ft.ResponsiveRow(cards, spacing=SPACE_XS, run_spacing=SPACE_XS)], spacing=SPACE_SM)
 
@@ -180,10 +180,10 @@ def _build_points_by_race(results):
         pos = to_int(r["position"])
         color = POSITION_COLORS.get(pos, F1_RED if pts else SURFACE_ELEVATED)
         cols.append(ft.Column([
-            ft.Text(f"{pts:g}" if pts else "", size=10, color=TEXT_MUTED),
+            ft.Text(f"{pts:g}" if pts else "", size=FONT_TINY, color=TEXT_MUTED),
             ft.Container(width=18, height=max(3, int(100 * pts / top)), bgcolor=color, border_radius=4,
                          tooltip=f"{r['race_name']}: {r['position']} место, {pts:g} очк."),
-            ft.Text(r["round"], size=10, color=TEXT_DIM),
+            ft.Text(r["round"], size=FONT_TINY, color=TEXT_DIM),
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=3))
     total = sum(float(r["points"]) for r in results)
     return ft.Column([
