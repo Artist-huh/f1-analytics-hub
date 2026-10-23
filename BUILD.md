@@ -23,7 +23,7 @@ build.bat
 ```bat
 venv\Scripts\flet.exe pack main.py -y --name F1AnalyticsHub --icon assets\icon.ico ^
     --add-data "assets;assets" "data;data" ^
-    --product-name "F1 Analytics Hub" --product-version "2.1.0" --file-version "2.1.0.0"
+    --product-name "F1 Analytics Hub" --product-version "2.2.0" --file-version "2.2.0.0"
 ```
 
 - `assets/` — шрифт заголовков (работает без сети) и иконка;
@@ -60,8 +60,11 @@ APK собирается командой `flet build apk` (настройки �
 
 ```bash
 pip install -r requirements.txt
-flet build apk --yes          # результат: build/apk/f1-analytics-hub.apk
+flet build apk --split-per-abi --yes     # build/apk/: arm64-v8a, armeabi-v7a, x86_64
 ```
+
+Один APK на все архитектуры весит ~146 МБ, раздельные — примерно по 50 МБ. Для телефона почти
+всегда нужен `arm64-v8a`.
 
 `flet build` сам скачивает Flutter SDK, JDK 17 и Android SDK (несколько гигабайт, первый раз — надолго).
 **Windows:** путь к проекту и к профилю пользователя должен быть без кириллицы — Gradle и Flutter
@@ -81,6 +84,9 @@ flet build apk --yes          # результат: build/apk/f1-analytics-hub.a
 
 - **Windows** — тот же `build.bat`, артефакт `F1AnalyticsHub-Windows` (.exe);
 - **macOS** — `flet pack`, артефакт `F1AnalyticsHub-macOS` (.app в zip);
-- **Android** — `flet build apk` на Ubuntu, артефакт `F1AnalyticsHub-Android` (.apk).
+- **Android** — `flet build apk --split-per-abi` на Ubuntu, артефакт `F1AnalyticsHub-Android` (три .apk);
+- **проверка на эмуляторе** (`test-android`) — Android 14, Pixel 6: `tools/android_smoke.py` ставит x86_64-APK,
+  ждёт главный экран, проходит вкладки, отправляет тестовое уведомление и ищет его в системе, проверяет
+  кнопку «назад» и журнал устройства. Скриншоты и logcat — артефакт `Android-emulator-check`.
 
 При публикации релиза на GitHub файлы прикрепляются к нему автоматически.

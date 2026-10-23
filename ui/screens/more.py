@@ -219,7 +219,7 @@ def build_settings(state):
         ], spacing=10)),
         card(ft.Column([
             txt("О приложении", 16, bold=True, head=True),
-            txt("F1 Analytics Hub 2.1 — неофициальное фан-приложение о чемпионате Формулы-1.", 12, MUTED),
+            txt("F1 Analytics Hub 2.2 — неофициальное фан-приложение о чемпионате Формулы-1.", 12, MUTED),
             txt("Данные: Jolpica F1 API, OpenF1. Фото пилотов, логотипы, болиды и схемы трасс © Formula 1 "
                 "и команды; флаги — flagcdn.com. Приложение не связано с Formula 1 и FIA.", 11, DIM),
         ], spacing=6)),
