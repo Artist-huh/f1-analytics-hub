@@ -32,6 +32,6 @@ echo Starting the app...
 "%PY%" main.py
 if errorlevel 1 (
     echo.
-    echo [ERROR] The app exited with an error. See %USERPROFILE%\.ferrari_leclerc_hub\f1_hub.log
+    echo [ERROR] The app exited with an error. See %USERPROFILE%\.f1_analytics_hub\f1_hub.log
     pause
 )

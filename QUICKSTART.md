@@ -56,7 +56,7 @@ build.bat
 ## Первый запуск
 
 При первом запуске приложение:
-1. Создаст базу данных `%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.db`
+1. Создаст базу данных `%USERPROFILE%\.f1_analytics_hub\f1_hub.db`
 2. Заполнит её встроенным снимком `data/seed.json`, чтобы экраны сразу были с данными
 3. Откроет главный экран и в фоне загрузит свежие данные Ф1 (нужен интернет)
 
@@ -109,8 +109,8 @@ pip install flet requests
 
 - Проверьте интернет-соединение
 - API может быть недоступен — подождите 5 минут
-- Приложение работает с кешем в `%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.db`
-- Подробности ошибок — в журнале `%USERPROFILE%\.ferrari_leclerc_hub\f1_hub.log`
+- Приложение работает с кешем в `%USERPROFILE%\.f1_analytics_hub\f1_hub.db`
+- Подробности ошибок — в журнале `%USERPROFILE%\.f1_analytics_hub\f1_hub.log`
 
 ---
 
