@@ -36,9 +36,11 @@ def build(state):
                             ft.Text("Загружаем стинты и пит-стопы…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
                            spacing=SPACE_SM)]
         else:
-            body = [retry_block("Стратегия не загружена", archive.error(key) and
-                                "OpenF1 не отдал данные этой гонки — возможно, они ещё не опубликованы."
-                                or "Нужен интернет: данные загружаются один раз и дальше доступны без сети.",
+            err = archive.error(key)
+            hint = (live.LOCKED_TEXT if err == live.LOCKED_TEXT else
+                    "OpenF1 не отдал данные этой гонки — возможно, они ещё не опубликованы." if err else
+                    "Нужен интернет: данные загружаются один раз и дальше доступны без сети.")
+            body = [retry_block("Стратегия не загружена", hint,
                                 lambda e: (archive.get(key, lambda: live.fetch_strategy(int(race["season"]), race["date"]),
                                                        None, state.render, force=True), state.render()))]
         return screen(state, "Стратегия шин", body, subtitle=race["race_name"], back=True)

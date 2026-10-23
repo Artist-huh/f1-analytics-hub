@@ -23,7 +23,9 @@ def build(state):
                             ft.Text("Загружаем данные сессии…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
                            spacing=SPACE_SM)]
         else:
-            body = [retry_block("Нет данных о сессии", "OpenF1 не ответил. Проверь интернет и повтори.",
+            locked = error == live.LOCKED_TEXT
+            body = [retry_block("Доступ к данным закрыт до конца сессии" if locked else "Нет данных о сессии",
+                                live.LOCKED_TEXT if locked else "OpenF1 не ответил. Проверь интернет и повтори.",
                                 lambda e: live.refresh(on_done=state.render))]
         return screen(state, "Live-тайминг", body, back=True)
 

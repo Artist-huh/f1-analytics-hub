@@ -30,6 +30,26 @@ class LiveError(Exception):
     pass
 
 
+LOCKED_TEXT = ("Во время сессии OpenF1 закрывает бесплатный доступ ко всем данным (и к прошлым гонкам). "
+               "Данные появятся сами после окончания сессии.")
+
+
+class LockedError(LiveError):
+    """OpenF1 во время идущей сессии отвечает только с платным ключом — ждём окончания сессии."""
+
+    def __str__(self):
+        return LOCKED_TEXT
+
+
+def _check(endpoint, data):
+    if isinstance(data, list):
+        return data
+    detail = str(data.get("detail", data)) if isinstance(data, dict) else str(data)
+    if "session in progress" in detail.lower() or "restricted to authenticated" in detail.lower():
+        raise LockedError(detail)
+    raise LiveError(f"{endpoint}: {detail}")
+
+
 def _get(endpoint, query=""):
     with _throttle:
         pause = MIN_INTERVAL - (time.monotonic() - _last[0])
@@ -38,13 +58,13 @@ def _get(endpoint, query=""):
         _last[0] = time.monotonic()
     try:
         resp = _session.get(f"{API}/{endpoint}?session_key=latest{query}", timeout=TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
+        data = resp.json() if resp.status_code in (401, 403) else None
+        if data is None:
+            resp.raise_for_status()
+            data = resp.json()
     except (requests.RequestException, ValueError) as exc:
         raise LiveError(f"{endpoint}: {exc}") from exc
-    if not isinstance(data, list):       # {"detail": "..."} — лимит запросов, нет доступа и т.п.
-        raise LiveError(f"{endpoint}: {data}")
-    return data
+    return _check(endpoint, data)        # {"detail": "..."} — лимит запросов, закрытый доступ и т.п.
 
 
 def _ts(iso):
@@ -139,7 +159,7 @@ def fetch(now=None):
 
 
 # ---------------------------------------------------------------- кэш и фоновое обновление
-_state = {"data": None, "error": None, "loading": False}
+_state = {"data": None, "error": None, "loading": False, "error_at": 0.0, "locked": False}
 _lock = threading.Lock()
 REFRESH_LIVE = 10           # сек. — пока сессия идёт
 REFRESH_DONE = 300          # после сессии снимок почти не меняется
@@ -149,7 +169,15 @@ def snapshot():
     return _state["data"], _state["error"], _state["loading"]
 
 
+ERROR_PAUSE = 30           # после ошибки — пауза перед повтором
+LOCKED_PAUSE = 120         # доступ закрыт на время сессии — спрашиваем реже
+
+
 def stale():
+    if _state["error"]:
+        pause = LOCKED_PAUSE if _state["locked"] else ERROR_PAUSE
+        if time.time() - _state["error_at"] < pause:
+            return False
     data = _state["data"]
     if not data:
         return True
@@ -170,6 +198,8 @@ def refresh(on_done=None):
             _state["error"] = None
         except LiveError as exc:
             _state["error"] = str(exc)
+            _state["error_at"] = time.time()
+            _state["locked"] = isinstance(exc, LockedError)
             logger.warning("live-тайминг не обновлён: %s", exc)
         finally:
             _state["loading"] = False
@@ -200,13 +230,13 @@ def _query(endpoint, query):
         _last[0] = time.monotonic()
     try:
         resp = _session.get(f"{API}/{endpoint}?{query}", timeout=TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
+        data = resp.json() if resp.status_code in (401, 403) else None
+        if data is None:
+            resp.raise_for_status()
+            data = resp.json()
     except (requests.RequestException, ValueError) as exc:
         raise LiveError(f"{endpoint}: {exc}") from exc
-    if not isinstance(data, list):
-        raise LiveError(f"{endpoint}: {data}")
-    return data
+    return _check(endpoint, data)
 
 
 def fetch_strategy(year, race_date, session_name="Race"):

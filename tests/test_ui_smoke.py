@@ -192,7 +192,7 @@ class UiSmokeTest(unittest.TestCase):
         from services import live
         self.live_refresh = mock.patch.object(live, "refresh").start()   # live-тайминг: без запросов к OpenF1
         self.addCleanup(mock.patch.stopall)
-        live._state.update(data=None, error=None, loading=False)
+        live._state.update(data=None, error=None, loading=False, error_at=0.0, locked=False)
         api._state.update(error=None, fail_until=0.0)
         media.clear_memory()
         self.page = FakePage()
@@ -650,6 +650,20 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(race_strategy.finishing_order(self.state, race), ["ANT", "LEC", "LAW"])
         self.state.ui["strat_race"] = self.state.schedule[1]                  # нет данных -> повтор загрузки
         self.assertIn("Стратегия не загружена", texts(self.build("race_strategy")))
+
+    def test_openf1_locked_during_session(self):
+        from services import live
+        self.assertRaises(live.LockedError, live._check, "x", {"detail": "Live F1 session in progress. Global API "
+                                                                         "access is restricted to authenticated users"})
+        self.assertRaises(live.LiveError, live._check, "x", {"detail": "Too Many Requests"})
+        live._state.update(data=None, error=live.LOCKED_TEXT, error_at=time.time(), locked=True)
+        self.assertFalse(live.stale())                               # не стучимся каждые 3 секунды
+        fill_db()
+        self.state.load()
+        self.assertIn("Доступ к данным закрыт до конца сессии", texts(self.build("live")))
+        live._state.update(error_at=time.time() - live.LOCKED_PAUSE - 1)
+        self.assertTrue(live.stale())                                # через 2 минуты — снова пробуем
+        self.state.sub = None
 
     def test_live_banner_when_session_runs(self):
         from services import live
