@@ -32,6 +32,7 @@ ACCENT_TEXT = "#FF4136"      # красный для мелкого текста
 ACCENT_SOFT = "#3A1416"      # красноватая поверхность (выделение, избранное)
 ON_ACCENT = "#FFFFFF"        # текст и иконки на красном
 ON_COLOR = "#FFFFFF"         # текст на цветных фонах (градиенты команд, hero) — белый в любой теме
+INK = "#15151E"              # тёмный текст на светлых плашках (медали, белая кнопка) — в любой теме
 
 SUCCESS = "#22C55E"
 WARNING = "#F5A524"
@@ -90,7 +91,7 @@ ANIM_NORMAL = 250
 ANIM_SLOW = 400
 
 
-def shadow(level=1, color=BG_DEEPEST):
+def shadow(level=1, color="#000000"):
     """Мягкая тень карточки: 1 — в покое, 2 — при наведении."""
     import flet as ft   # здесь, а не наверху: сервисы берут из модуля только данные о командах
     blur, dy, alpha = {1: (12, 4, 0.35), 2: (24, 10, 0.5)}.get(level, (12, 4, 0.35))
@@ -98,9 +99,10 @@ def shadow(level=1, color=BG_DEEPEST):
                         color=ft.Colors.with_opacity(alpha, color))
 
 
-def glow(color=F1_RED, strength=0.45):
-    """Красное свечение для акцентных элементов."""
+def glow(color=None, strength=0.45):
+    """Свечение цвета акцента (красное в тёмной и светлой теме, цвет команды — в командной)."""
     import flet as ft
+    color = color or ACCENT_PRIMARY
     return ft.BoxShadow(blur_radius=28, spread_radius=1, offset=ft.Offset(0, 6),
                         color=ft.Colors.with_opacity(strength, color))
 
@@ -213,3 +215,59 @@ DIM = TEXT_DIM
 OK = SUCCESS
 WARN = WARNING
 team_color = get_team_color
+
+
+# === ТЕМЫ ===
+# Значения меняются на месте функцией apply_theme(); модули интерфейса после этого
+# перезагружаются (ui/theming.py), потому что берут цвета через «from design_system import *».
+_DARK = {
+    "BG_DEEPEST": "#000000", "BG_DEEP": "#0B0B10", "BG": "#15151E", "SURFACE": "#1E1E29",
+    "SURFACE_RAISED": "#272733", "SURFACE_ELEVATED": "#31313E",
+    "LINE_SUBTLE": "#23232E", "LINE": "#2D2D3A", "LINE_STRONG": "#41414F",
+    "TEXT_PRIMARY": "#FFFFFF", "TEXT_SECONDARY": "#D2D2DC", "TEXT_MUTED": "#9D9DAB", "TEXT_DIM": "#6E6E7C",
+}
+_LIGHT = {
+    "BG_DEEPEST": "#FFFFFF", "BG_DEEP": "#E4E4EA", "BG": "#F3F3F6", "SURFACE": "#FFFFFF",
+    "SURFACE_RAISED": "#ECECF1", "SURFACE_ELEVATED": "#E1E1E8",
+    "LINE_SUBTLE": "#ECECF1", "LINE": "#DCDCE3", "LINE_STRONG": "#C3C3CD",
+    "TEXT_PRIMARY": "#15151E", "TEXT_SECONDARY": "#3A3A46", "TEXT_MUTED": "#666673", "TEXT_DIM": "#9696A2",
+}
+_RED = {"F1_RED": "#E10600", "ACCENT_GLOW": "#FF2A1F", "ACCENT_DEEP": "#8E0400"}
+THEME_NAMES = {"dark": "Тёмная", "light": "Светлая", "team": "Цвета команды"}
+THEME = "dark"
+THEME_TEAM = None
+IS_LIGHT = False
+
+
+def _mix(a, b, t):
+    """Смесь двух цветов #RRGGBB: t=0 — a, t=1 — b."""
+    a, b = a.lstrip("#"), b.lstrip("#")
+    return "#" + "".join(f"{round(int(a[i:i + 2], 16) * (1 - t) + int(b[i:i + 2], 16) * t):02X}" for i in (0, 2, 4))
+
+
+def apply_theme(name="dark", team=None):
+    """Переключить палитру: 'dark', 'light' или 'team' (акцент — цвет команды team)."""
+    global THEME, THEME_TEAM, IS_LIGHT
+    g = globals()
+    base = _LIGHT if name == "light" else _DARK
+    g.update(base)
+    accent = dict(_RED)
+    team_colors = TEAMS.get(team_key(team)) if name == "team" else None
+    if team_colors:
+        accent = {"F1_RED": team_colors["color"], "ACCENT_GLOW": _mix(team_colors["color"], "#FFFFFF", 0.25),
+                  "ACCENT_DEEP": team_colors["dark"]}
+    g.update(accent)
+    g["ACCENT_PRIMARY"] = g["ACCENT"] = g["F1_RED"]
+    if name == "light":
+        g["ACCENT_TEXT"] = "#C80500"
+        g["ACCENT_SOFT"] = "#FDE3E1"
+    else:
+        g["ACCENT_TEXT"] = _mix(g["F1_RED"], "#FFFFFF", 0.3) if team_colors else "#FF4136"
+        g["ACCENT_SOFT"] = _mix(g["F1_RED"], base["BG"], 0.78)
+    g["GRADIENT_RED"] = [g["ACCENT_GLOW"], g["F1_RED"], g["ACCENT_DEEP"]]
+    g["GRADIENT_SURFACE"] = [g["SURFACE_RAISED"], g["SURFACE"]]
+    g["RAISED"], g["TEXT"], g["MUTED"], g["DIM"] = g["SURFACE_RAISED"], g["TEXT_PRIMARY"], g["TEXT_MUTED"], g["TEXT_DIM"]
+    THEME, THEME_TEAM, IS_LIGHT = (name if name in THEME_NAMES else "dark"), (team if team_colors else None), name == "light"
+    if name == "team" and not team_colors:
+        THEME = "dark"
+    return THEME

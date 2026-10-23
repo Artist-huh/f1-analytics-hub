@@ -655,6 +655,41 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(page.navigation_bar.selected_index, 3)
         self.assertIn("Пилоты", texts(page.added[0]))
 
+    def test_theme_switching(self):
+        """Светлая тема и тема команды: палитра меняется, экраны перестраиваются, выбор сохраняется."""
+        from ui import theming
+        self.addCleanup(theming.apply, "dark")            # палитра — общая для всех тестов
+        page, tasks = self._main_with_loop()
+        page.navigation_bar.on_change(Ctl(control=Ctl(selected_index=4)))
+        asyncio.run(tasks.pop()())
+        clickable(page.added[0], "Настройки")[0].on_click(Ctl())     # меню «Ещё» -> настройки
+        asyncio.run(tasks.pop()())
+        clickable(page.added[0], "Светлая")[0].on_click(Ctl())
+        self.assertEqual((design_system.THEME, design_system.BG, design_system.TEXT_PRIMARY),
+                         ("light", "#F3F3F6", "#15151E"))
+        self.assertEqual(page.bgcolor, "#F3F3F6")
+        self.assertEqual(api.get_setting("theme"), "light")
+        asyncio.run(tasks.pop()())
+        clickable(page.added[0], "Цвета команды")[0].on_click(Ctl())
+        asyncio.run(tasks.pop()())
+        self.assertEqual((design_system.THEME, design_system.THEME_TEAM), ("team", "Mercedes"))   # лидер Кубка
+        self.assertEqual(design_system.F1_RED, design_system.TEAMS["mercedes"]["color"])
+        clickable(page.added[0], "Ferrari")[0].on_click(Ctl())
+        self.assertEqual(design_system.F1_RED, design_system.TEAMS["ferrari"]["color"])
+        self.assertEqual(page.navigation_bar.indicator_color, design_system.TEAMS["ferrari"]["color"])
+        asyncio.run(tasks.pop()())
+        self.assertIn("Мои пилоты и их результаты", texts(app.TABS[4](AppState(page))))   # экраны собираются
+
+    def test_saved_theme_applied_on_start(self):
+        from ui import theming
+        self.addCleanup(theming.apply, "dark")
+        fill_db()
+        api.set_setting("theme", "light")
+        page = FakePage()
+        with mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()):
+            app.main(page)
+        self.assertEqual((design_system.THEME, page.bgcolor), ("light", "#F3F3F6"))
+
     def test_screen_change_animates_only_on_navigation(self):
         page, tasks = self._main_with_loop()
         page.navigation_bar.on_change(Ctl(control=Ctl(selected_index=1)))

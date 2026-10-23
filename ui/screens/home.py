@@ -49,7 +49,7 @@ def _build_next_race_hero(race, state, is_mobile):
     countdown = ft.Text(
         "LIVE" if live else fmt_countdown(race["seconds_left"]),
         size=FONT_H1 if is_mobile else FONT_DISPLAY,
-        color=TEXT_PRIMARY,
+        color=ON_COLOR,
         font_family=FONT_DISPLAY_ITALIC,
     )
     if not live:
@@ -68,13 +68,13 @@ def _build_next_race_hero(race, state, is_mobile):
     timer = ft.Column([
         countdown,
         ft.Text("в эфире" if live else f"до старта · {fmt_day(race['start_ts'])}, {fmt_clock(race['start_ts'])}",
-                size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, TEXT_PRIMARY)),
+                size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, ON_COLOR)),
     ], spacing=0)
 
     button = ft.Container(
         ft.Row([ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, color=F1_RED, size=18),
-                ft.Text("Расписание", color=BG, weight=ft.FontWeight.W_700)], spacing=SPACE_XS, tight=True),
-        bgcolor=TEXT_PRIMARY, border_radius=RADIUS_FULL, height=TOUCH, alignment=ft.Alignment.CENTER,
+                ft.Text("Расписание", color=INK, weight=ft.FontWeight.W_700)], spacing=SPACE_XS, tight=True),
+        bgcolor=ON_COLOR, border_radius=RADIUS_FULL, height=TOUCH, alignment=ft.Alignment.CENTER,
         padding=ft.Padding.symmetric(horizontal=SPACE_LG), ink=True,
         on_click=lambda e: state.open_tab(2),
     )
@@ -87,15 +87,15 @@ def _build_next_race_hero(race, state, is_mobile):
         content=ft.Stack([
             # «шахматный флаг» — декоративные полосы справа
             ft.Container(ft.Icon(ft.Icons.SPORTS_SCORE_ROUNDED, size=150,
-                                 color=ft.Colors.with_opacity(0.10, TEXT_PRIMARY)),
+                                 color=ft.Colors.with_opacity(0.10, ON_COLOR)),
                          right=-20, top=-20),
             ft.Column([
                 ft.Row([badge, ft.Container(expand=True), flag(flag_src, 22, iso)],
                        vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.Column([
-                    ft.Text(race["race_name"], size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_HEADING),
+                    ft.Text(race["race_name"], size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
                     ft.Text(f"{race['circuit']} · {race['locality']}", size=FONT_BODY_SMALL,
-                            color=ft.Colors.with_opacity(0.85, TEXT_PRIMARY), max_lines=1,
+                            color=ft.Colors.with_opacity(0.85, ON_COLOR), max_lines=1,
                             overflow=ft.TextOverflow.ELLIPSIS),
                 ], spacing=2),
                 bottom,
@@ -127,7 +127,7 @@ def _build_last_podium(state, race, podium, compact):
             ft.Text(short_name(driver.get("name", "")), size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                     weight=ft.FontWeight.W_600, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
             ft.Container(
-                ft.Text(str(pos), size=FONT_H3, color=BG, font_family=FONT_DISPLAY_ITALIC),
+                ft.Text(str(pos), size=FONT_H3, color=INK, font_family=FONT_DISPLAY_ITALIC),
                 height=heights[pos], bgcolor=color, alignment=ft.Alignment.CENTER,
                 border_radius=ft.BorderRadius.only(top_left=RADIUS_SM, top_right=RADIUS_SM),
                 gradient=ft.LinearGradient(begin=ft.Alignment.TOP_CENTER, end=ft.Alignment.BOTTOM_CENTER,
@@ -307,7 +307,7 @@ def _build_quick_actions(state):
     cards = [
         AnimatedCard(
             content=ft.Column([
-                ft.Container(ft.Icon(icon, size=22, color=TEXT_PRIMARY), width=40, height=40,
+                ft.Container(ft.Icon(icon, size=22, color=ON_COLOR), width=40, height=40,
                              border_radius=20, alignment=ft.Alignment.CENTER,
                              gradient=ft.LinearGradient(colors=[ACCENT_GLOW, ACCENT_DEEP],
                                                         begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT)),

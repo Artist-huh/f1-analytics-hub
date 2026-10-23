@@ -1,8 +1,8 @@
 """Раздел «Ещё»: меню, стратегия, настройки."""
 import flet as ft
 
-from design_system import (ACCENT, ACCENT_DEEP, ACCENT_GLOW, ACCENT_TEXT, DANGER, DIM, F1_RED, MUTED, OK, RAISED,
-                           SURFACE, TEXT, WARN)
+from design_system import (ACCENT, ACCENT_DEEP, ACCENT_GLOW, ACCENT_TEXT, DANGER, DIM, F1_RED, MUTED, OK, ON_ACCENT,
+                           RAISED, SURFACE, TEXT, WARN)
 from services import db, f1_api as api, log, media
 from ui.fmt import fmt_updated
 from ui.widgets import button, card, dropdown, screen, tyre_chip, txt
@@ -11,7 +11,7 @@ from ui.widgets import button, card, dropdown, screen, tyre_chip, txt
 # ---------------------------------------------------------------- меню
 def _tile(icon, title, hint, on_click):
     return card(ft.Row(
-        [ft.Container(ft.Icon(icon, color=TEXT, size=22), border_radius=20, width=42, height=42,
+        [ft.Container(ft.Icon(icon, color=ON_ACCENT, size=22), border_radius=20, width=42, height=42,
                       alignment=ft.Alignment.CENTER,
                       gradient=ft.LinearGradient(colors=[ACCENT_GLOW, ACCENT_DEEP], begin=ft.Alignment.TOP_LEFT,
                                                  end=ft.Alignment.BOTTOM_RIGHT)),
@@ -115,6 +115,43 @@ def _line(label, value, color=TEXT):
                   vertical_alignment=ft.CrossAxisAlignment.START)
 
 
+def _theme_card(state):
+    """Оформление: тёмная / светлая / в цветах команды (+ выбор команды)."""
+    import design_system as ds
+    current, chosen_team = ds.THEME, ds.THEME_TEAM
+
+    def option(key, icon, hint):
+        active = current == key
+        return ft.Container(
+            ft.Column([ft.Icon(icon, color=ON_ACCENT if active else TEXT, size=22),
+                       txt(ds.THEME_NAMES[key], 12, ON_ACCENT if active else TEXT, bold=True),
+                       txt(hint, 10, ON_ACCENT if active else MUTED, text_align=ft.TextAlign.CENTER)],
+                      horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
+            expand=True, padding=10, border_radius=12, ink=True,
+            bgcolor=ACCENT if active else RAISED,
+            on_click=lambda e, k=key: state.set_theme(k, chosen_team or (state.constructors[0]["name"]
+                                                                         if k == "team" and state.constructors else None)),
+        )
+
+    items = [txt("Оформление", 16, bold=True, head=True),
+             ft.Row([option("dark", ft.Icons.DARK_MODE_ROUNDED, "чёрный и красный"),
+                     option("light", ft.Icons.LIGHT_MODE_ROUNDED, "светлый фон"),
+                     option("team", ft.Icons.PALETTE_ROUNDED, "акцент команды")], spacing=8)]
+    if current == "team" and state.constructors:
+        chips = []
+        for c in state.constructors:
+            color = ds.get_team_color(c["name"])
+            active = ds.team_key(c["name"]) == ds.team_key(chosen_team)
+            chips.append(ft.Container(
+                ft.Row([ft.Container(width=12, height=12, bgcolor=color, border_radius=6),
+                        txt(c["name"], 12, TEXT, bold=active)], spacing=6, tight=True),
+                bgcolor=RAISED, border=ft.Border.all(2, color) if active else None, border_radius=20, ink=True,
+                padding=ft.Padding.symmetric(horizontal=12, vertical=8),
+                on_click=lambda e, n=c["name"]: state.set_theme("team", n)))
+        items.append(ft.Row(chips, wrap=True, spacing=6, run_spacing=6))
+    return card(ft.Column(items, spacing=10))
+
+
 def build_settings(state):
     minutes = str(state.refresh_minutes())
     if minutes not in INTERVALS:
@@ -136,6 +173,7 @@ def build_settings(state):
         info.append(_line("Последняя ошибка", str(st["error"])[:90], WARN))
 
     body = [
+        _theme_card(state),
         card(ft.Column([
             txt("Обновление данных", 16, bold=True, head=True),
             dropdown(label="Автообновление", value=minutes,

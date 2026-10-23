@@ -138,7 +138,7 @@ def image(src, width=None, height=None, fit=ft.BoxFit.CONTAIN, fallback=None, **
                     gapless_playback=True, filter_quality=ft.FilterQuality.HIGH, **kwargs)
 
 
-def initials(code, size, color=TEXT_PRIMARY):
+def initials(code, size, color=ON_COLOR):
     return ft.Text((code or "?")[:3].upper(), size=max(10, int(size / 3)), weight=ft.FontWeight.BOLD,
                    color=color, font_family=FONT_DISPLAY_ITALIC)
 
@@ -177,7 +177,7 @@ def flag(src, height=14, code=""):
         return fallback if code else ft.Container(width=0)
     return ft.Container(image(src, width, height, fit=ft.BoxFit.COVER, fallback=fallback),
                         width=width, height=height, border_radius=3, clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-                        border=ft.Border.all(0.5, ft.Colors.with_opacity(0.25, TEXT_PRIMARY)))
+                        border=ft.Border.all(0.5, ft.Colors.with_opacity(0.25, TEXT_DIM)))
 
 
 class TeamLogo(ft.Container):
@@ -185,7 +185,7 @@ class TeamLogo(ft.Container):
 
     def __init__(self, team_name, src=None, size=40, **kwargs):
         top, bottom = get_team_gradient(team_name)
-        fallback = ft.Text((team_name or "?")[:1].upper(), size=size * 0.45, color=TEXT_PRIMARY,
+        fallback = ft.Text((team_name or "?")[:1].upper(), size=size * 0.45, color=ON_COLOR,
                            weight=ft.FontWeight.BOLD, font_family=FONT_HEADING)
         super().__init__(
             content=image(src, size * 0.72, size * 0.72, fallback=fallback) if src else fallback,
@@ -208,7 +208,7 @@ class PositionBadge(ft.Container):
             pos = 0
         podium = pos in POSITION_COLORS
         super().__init__(
-            content=ft.Text(str(pos) if pos else "—", size=size * 0.5, color=BG if podium else TEXT_PRIMARY,
+            content=ft.Text(str(pos) if pos else "—", size=size * 0.5, color=INK if podium else TEXT_PRIMARY,
                             font_family=FONT_DISPLAY_ITALIC),
             width=size,
             height=size,

@@ -5,8 +5,10 @@ import time
 
 import flet as ft
 
+import design_system as ds
 from services import f1_api, log
 from design_system import *
+from ui import theming
 from ui.components import ResponsiveContainer
 from ui.fmt import fmt_countdown
 from ui.screens import home, season, calendar, drivers, driver_detail, compare, more, favorites, team, title
@@ -14,25 +16,33 @@ from ui.state import AppState
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
-# Основные табы
-TABS = [
-    home.render,               # 0: Главная
-    season.render,             # 1: Чемпионат
-    calendar.build_calendar,   # 2: Календарь
-    drivers.build,             # 3: Пилоты
-    more.build_menu,           # 4: Ещё
-]
+# Основные табы и подэкраны. Собираются функцией: после смены темы модули экранов
+# перезагружаются (ui/theming.py), и ссылки на их функции нужно взять заново.
+TABS = []
+SUBS = {}
 
-# Подэкраны (sub-pages)
-SUBS = {
-    "driver_detail": driver_detail.build,
-    "compare": compare.build,
-    "favorites": favorites.build,
-    "team": team.build,
-    "title": title.build,
-    "strategy": more.build_strategy,
-    "settings": more.build_settings,
-}
+
+def refresh_screens():
+    TABS[:] = [
+        home.render,               # 0: Главная
+        season.render,             # 1: Чемпионат
+        calendar.build_calendar,   # 2: Календарь
+        drivers.build,             # 3: Пилоты
+        more.build_menu,           # 4: Ещё
+    ]
+    SUBS.clear()
+    SUBS.update({
+        "driver_detail": driver_detail.build,
+        "compare": compare.build,
+        "favorites": favorites.build,
+        "team": team.build,
+        "title": title.build,
+        "strategy": more.build_strategy,
+        "settings": more.build_settings,
+    })
+
+
+refresh_screens()
 
 TICK_SECONDS = 30
 MAX_CONTENT_WIDTH = 1100   # шире контент не растягиваем — по бокам поля
@@ -79,18 +89,38 @@ def run_on_ui(page, fn):
         logger.info("перерисовка пропущена: сессия закрыта")
 
 
+def apply_page_theme(page, nav=None):
+    """Цвета окна, темы Flutter и нижнего меню — из текущей палитры (ds.*, не копии в этом модуле)."""
+    page.theme_mode = ft.ThemeMode.LIGHT if ds.IS_LIGHT else ft.ThemeMode.DARK
+    page.theme = ft.Theme(
+        color_scheme_seed=ds.F1_RED,
+        color_scheme=ft.ColorScheme(primary=ds.F1_RED, on_primary=ds.ON_ACCENT, secondary=ds.F1_RED,
+                                    surface=ds.SURFACE, on_surface=ds.TEXT_PRIMARY),
+    )
+    page.dark_theme = page.theme
+    page.bgcolor = ds.BG
+    try:
+        page.window.bgcolor = ds.BG
+    except Exception:
+        pass
+    if nav is not None:
+        nav.bgcolor = ds.BG_DEEPEST
+        nav.indicator_color = ds.F1_RED
+        nav.border = ft.Border.only(top=ft.BorderSide(1, ds.LINE))
+
+
 def nav_bar(on_change):
     def dest(icon, selected, label):
         return ft.NavigationBarDestination(icon=icon, selected_icon=selected, label=label)
 
     return ft.NavigationBar(
         selected_index=0,
-        bgcolor=BG_DEEPEST,
-        indicator_color=F1_RED,
+        bgcolor=ds.BG_DEEPEST,
+        indicator_color=ds.F1_RED,
         label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
         height=72,
         elevation=0,
-        border=ft.Border.only(top=ft.BorderSide(1, LINE)),
+        border=ft.Border.only(top=ft.BorderSide(1, ds.LINE)),
         animation_duration=ft.Duration(milliseconds=SWITCH_MS),
         destinations=[
             dest(ft.Icons.HOME_OUTLINED, ft.Icons.HOME_ROUNDED, "Главная"),
@@ -105,14 +135,6 @@ def nav_bar(on_change):
 
 def main(page: ft.Page):
     page.title = "F1 Analytics Hub"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.theme = ft.Theme(
-        color_scheme_seed=F1_RED,
-        color_scheme=ft.ColorScheme(primary=F1_RED, on_primary=ON_ACCENT, secondary=F1_RED,
-                                    surface=SURFACE, on_surface=TEXT_PRIMARY),
-    )
-    page.dark_theme = page.theme
-    page.bgcolor = BG
     page.padding = 0
     page.fonts = dict(FONTS)
 
@@ -122,7 +144,6 @@ def main(page: ft.Page):
         page.window.height = 880
         page.window.min_width = 360
         page.window.min_height = 640
-        page.window.bgcolor = BG
     except Exception:
         pass
 
@@ -130,6 +151,13 @@ def main(page: ft.Page):
     f1_api.bootstrap()
     state = AppState(page)
     state.load()
+
+    # Тема оформления из настроек (до построения первого экрана)
+    saved_theme = f1_api.get_setting("theme", "dark")
+    if saved_theme != "dark":
+        theming.apply(saved_theme, f1_api.get_setting("theme_team"))
+        refresh_screens()
+    apply_page_theme(page)
 
     # Контент: экраны сменяются с анимацией (только при переходе, не при обновлении данных)
     switcher = ft.AnimatedSwitcher(
@@ -147,6 +175,15 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(horizontal=SPACE_MD, vertical=SPACE_XS),
     )
     nav = nav_bar(lambda e: state.open_tab(e.control.selected_index))
+
+    def on_theme_change(name, team_name):
+        """Настройки -> «Оформление»: новая палитра, перезагрузка экранов, перерисовка."""
+        theming.apply(name, team_name)
+        refresh_screens()
+        apply_page_theme(page, nav)
+        state.render()
+
+    state.on_theme_change = on_theme_change
     shown = {"key": None}
     pending = threading.Event()   # перерисовка уже запланирована — повторные запросы сливаются
 

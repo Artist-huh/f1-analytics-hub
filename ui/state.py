@@ -31,6 +31,7 @@ class AppState:
         self.countdown = None           # (текст, номер этапа) — для обновления отсчёта на месте
         self.render = lambda: None      # подставляет main.py
         self.run_on_ui = lambda fn: fn()  # main.py: выполнить в цикле событий Flet
+        self.on_theme_change = lambda name, team: None   # main.py: перекрасить интерфейс
         self._stop = None
         self._back = []                 # стек подэкранов для кнопки «назад»
         self._by_driver = {}
@@ -237,6 +238,13 @@ class AppState:
     def screen_key(self):
         detail = {"driver_detail": "driver_id", "team": "team"}.get(self.sub)
         return (self.tab, self.sub, self.ui.get(detail) if detail else None)
+
+    # ---------- оформление ----------
+    def set_theme(self, name, team=None):
+        """Сменить тему ('dark', 'light', 'team' + команда) и запомнить выбор."""
+        api.set_setting("theme", name)
+        api.set_setting("theme_team", team or "")
+        self.on_theme_change(name, team)
 
     # ---------- клавиатура ----------
     def on_key(self, key, ctrl=False):

@@ -108,14 +108,14 @@ def _build_driver_card(state, d):
         right=0, bottom=0, height=height,
     )
     number = ft.Text(d.get("number") or "", size=120, font_family=FONT_DISPLAY_ITALIC,
-                     color=ft.Colors.with_opacity(0.16, TEXT_PRIMARY))
+                     color=ft.Colors.with_opacity(0.16, ON_COLOR))
     info = ft.Column([
         ft.Row([PositionBadge(d["position"], size=30), flag(flag_src, 14, iso)], spacing=SPACE_XS,
                vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Column([
-            ft.Text(first, size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, TEXT_PRIMARY), max_lines=1),
-            ft.Text(last.upper(), size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC, max_lines=1),
-            ft.Text(d["team"], size=FONT_CAPTION, color=ft.Colors.with_opacity(0.75, TEXT_PRIMARY), max_lines=1,
+            ft.Text(first, size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, ON_COLOR), max_lines=1),
+            ft.Text(last.upper(), size=FONT_H3, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC, max_lines=1),
+            ft.Text(d["team"], size=FONT_CAPTION, color=ft.Colors.with_opacity(0.75, ON_COLOR), max_lines=1,
                     overflow=ft.TextOverflow.ELLIPSIS),
         ], spacing=0),
         ft.Container(expand=True),
@@ -145,8 +145,8 @@ def _build_driver_card(state, d):
 
 def _mini_stat(value, label):
     return ft.Column([
-        ft.Text(str(value), size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC),
-        ft.Text(label, size=10, color=ft.Colors.with_opacity(0.75, TEXT_PRIMARY)),
+        ft.Text(str(value), size=FONT_H4, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
+        ft.Text(label, size=10, color=ft.Colors.with_opacity(0.75, ON_COLOR)),
     ], spacing=0)
 
 
