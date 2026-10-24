@@ -46,6 +46,8 @@ def build(state):
         state.render()
 
     body = [_header(state, data)]
+    if data.get("weather"):
+        body.append(weather_strip(data["weather"]))
     if data.get("track"):
         body.append(_track_status(data["track"]))
     tabs = [pill("Таблица", view == "table", lambda e: show("table"))]
@@ -167,11 +169,38 @@ def update_in_place(state, data):
     return True
 
 
+def _weather_key(w):
+    """Погода для сравнения «изменилось ли»: целые градусы и дождь — десятые доли не перестраивают экран."""
+    if not w:
+        return None
+    return tuple(round(w[k]) if w.get(k) is not None else None for k in ("air", "track", "humidity")) + (w.get("rain"),)
+
+
 def _structure(data):
     """Что требует полной перерисовки: сессия, сейфти-кар и флаги, число записей радио, последнее сообщение."""
     s = data["session"]
     return {"session": (s.get("name"), s.get("location")), "live": data["live"], "track": data.get("track"),
+            "weather": _weather_key(data.get("weather")),
             "radio": len(data.get("radio") or []), "message": (data["messages"][0]["text"] if data["messages"] else "")}
+
+
+def weather_strip(w):
+    """Погода на трассе: воздух, асфальт, влажность, ветер, дождь — строкой чипов."""
+    def chip(icon, text, color=TEXT_SECONDARY):
+        return ft.Row([ft.Icon(icon, size=16, color=color), ft.Text(text, size=FONT_CAPTION, color=TEXT_SECONDARY)],
+                      spacing=4, tight=True)
+    items = []
+    if w.get("air") is not None:
+        items.append(chip(ft.Icons.THERMOSTAT_ROUNDED, f"воздух {w['air']:.0f}°", SECTION_COLORS["history"]))
+    if w.get("track") is not None:
+        items.append(chip(ft.Icons.ROUTE_ROUNDED, f"трасса {w['track']:.0f}°", DANGER))
+    if w.get("humidity") is not None:
+        items.append(chip(ft.Icons.WATER_DROP_OUTLINED, f"{w['humidity']:.0f} %", SECTION_COLORS["race"]))
+    if w.get("wind") is not None:
+        items.append(chip(ft.Icons.AIR_ROUNDED, f"{w['wind']:.1f} м/с"))
+    items.append(chip(ft.Icons.UMBRELLA_ROUNDED, "дождь", SECTION_COLORS["race"]) if w.get("rain") else
+                 chip(ft.Icons.WB_SUNNY_ROUNDED, "сухо", SECTION_COLORS["favorites"]))
+    return AnimatedCard(ft.Row(items, spacing=SPACE_MD, wrap=True, run_spacing=SPACE_XS), size="s")
 
 
 def _track_status(text):

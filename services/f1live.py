@@ -17,7 +17,7 @@ from . import log, track_map
 BASE = "https://livetiming.formula1.com"
 STATIC = f"{BASE}/static/"
 TOPICS = ["SessionInfo", "DriverList", "TimingData", "TimingAppData", "LapCount", "TrackStatus",
-          "RaceControlMessages", "TeamRadio", "ExtrapolatedClock", "Position.z"]
+          "RaceControlMessages", "TeamRadio", "ExtrapolatedClock", "Position.z", "WeatherData"]
 TIMEOUT = 15
 RS = "\x1e"                      # разделитель сообщений SignalR
 TYRES = {"SOFT": "S", "MEDIUM": "M", "HARD": "H", "INTERMEDIATE": "I", "WET": "W"}
@@ -99,6 +99,32 @@ def _items(value):
     return value or []
 
 
+def sector_state(sector):
+    """Сектор: overall — лучший в сессии (фиолетовый), personal — личный лучший (зелёный),
+    normal — пройден (жёлтый), none — ещё не пройден на этом круге."""
+    if not isinstance(sector, dict) or not sector.get("Value"):
+        return "none"
+    if sector.get("OverallFastest"):
+        return "overall"
+    if sector.get("PersonalFastest"):
+        return "personal"
+    return "normal"
+
+
+def weather(data):
+    """WeatherData -> {air, track, humidity, wind, rain} (числа) или None."""
+    if not data:
+        return None
+
+    def num(key):
+        try:
+            return float(data.get(key))
+        except (TypeError, ValueError):
+            return None
+    return {"air": num("AirTemp"), "track": num("TrackTemp"), "humidity": num("Humidity"),
+            "wind": num("WindSpeed"), "rain": str(data.get("Rainfall", "0")) not in ("0", "", "None")}
+
+
 def fmt_gap(value):
     text = (value or "").strip() if isinstance(value, str) else ""
     if not text:
@@ -142,6 +168,8 @@ def snapshot(state, now=None):
             "in_pit": bool(t.get("InPit")), "retired": bool(t.get("Retired") or t.get("Stopped")),
             "best": ((t.get("BestLapTime") or {}).get("Value") or ""),
             "last": ((t.get("LastLapTime") or {}).get("Value") or ""),
+            "laps": t.get("NumberOfLaps") or 0,
+            "sectors": [sector_state(s) for s in _items(t.get("Sectors"))][:3],
         })
     rows.sort(key=lambda r: r["position"])
     lap = state.get("LapCount") or {}
@@ -167,6 +195,7 @@ def snapshot(state, now=None):
                       "lap": m.get("Lap")} for m in messages[-6:]][::-1],
         "radio": sorted(radio, key=lambda r: r["ts"] or 0),
         "positions": track_map.decode_positions(state.get("Position.z")),      # только во время сессии
+        "weather": weather(state.get("WeatherData")),
         "circuit_key": (meeting.get("Circuit") or {}).get("Key"),
         "drivers": {str(n): {"code": d.get("Tla", ""), "team": d.get("TeamName", ""), "colour": d.get("TeamColour")}
                     for n, d in drivers.items() if isinstance(d, dict)},

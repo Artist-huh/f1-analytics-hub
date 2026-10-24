@@ -967,6 +967,49 @@ class UiSmokeTest(unittest.TestCase):
         self.state.on_live_data()
         self.assertEqual(len(self.renders), renders + 1)
 
+    def test_live_weather_sectors_favorites_card(self):
+        from services import f1live, live
+        from ui.screens import live_table as lt
+        self.assertEqual([f1live.sector_state(s) for s in ({"Value": "31.2", "OverallFastest": True},
+                                                           {"Value": "31.2", "PersonalFastest": True},
+                                                           {"Value": "31.2"}, {"Value": ""})],
+                         ["overall", "personal", "normal", "none"])
+        self.assertEqual(f1live.weather({"AirTemp": "29.3", "TrackTemp": "39.1", "Humidity": "25", "WindSpeed": "2.1",
+                                         "Rainfall": "1"}),
+                         {"air": 29.3, "track": 39.1, "humidity": 25.0, "wind": 2.1, "rain": True})
+        fill_db()
+        self.state.load()
+        self.state.favorites = ["leclerc"]
+        live._state["data"] = {
+            "session": {"name": "Race", "type": "Race", "country": "USA", "location": "Austin", "circuit": "Austin",
+                        "start": 0, "end": 0, "year": 2026},
+            "live": True, "racing": True, "lap": 30, "messages": [], "radio": [], "track": None,
+            "updated": time.time(), "weather": {"air": 29.3, "track": 39.1, "humidity": 25, "wind": 2.1, "rain": False},
+            "rows": [{"position": 1, "code": "LEC", "number": 16, "name": "Charles Leclerc", "team": "Ferrari",
+                      "colour": "#ED1131", "gap": "", "interval": "", "tyre": "H", "tyre_age": 11, "pits": 1,
+                      "laps": 30, "last": "1:37.204", "best": "1:36.880", "sectors": ["overall", "personal", "none"]},
+                     {"position": 2, "code": "ANT", "number": 12, "name": "Kimi Antonelli", "team": "Mercedes",
+                      "colour": "#00D7B6", "gap": "+1.200", "interval": "+1.200", "tyre": "M", "tyre_age": 4,
+                      "pits": 1, "laps": 30, "last": "1:37.5", "best": "1:37.1", "sectors": ["normal"] * 3}]}
+        self.state.sub, self.state.ui["live_view"] = "live", "table"
+        t = texts(self.build("live"))
+        for expected in ("воздух 29°", "трасса 39°", "25 %", "2.1 м/с", "сухо"):
+            self.assertIn(expected, t)
+        rows = self.state.ui["live_table"].rows
+        self.assertEqual([b.bgcolor for b in rows["LEC"]["sectors"]][:2],
+                         [lt.SECTOR_COLORS["overall"], lt.SECTOR_COLORS["personal"]])
+        self.assertTrue(rows["LEC"]["favorite"])                                   # любимый — рамка цвета команды
+        self.assertFalse(rows["ANT"]["favorite"])
+        gesture = next(n for n in walk(rows["ANT"]["box"]) if type(n).__name__ == "GestureDetector")
+        gesture.on_horizontal_drag_end(Ctl(primary_velocity=40))                   # случайное смещение — не свайп
+        self.assertEqual(self.page.dialogs, [])
+        gesture.on_horizontal_drag_end(Ctl(primary_velocity=-700))
+        card = texts(self.page.dialogs[-1])
+        for expected in ("P2 · ANT", "+1.200", "1:37.5", "средние, 4 кр.", "30"):
+            self.assertIn(expected, card)
+        rows["LEC"]["box"].on_long_press(Ctl())                                    # компьютер: долгое нажатие
+        self.assertIn("P1 · LEC", texts(self.page.dialogs[-1]))
+
     def test_live_track_map(self):
         import base64
         import zlib
