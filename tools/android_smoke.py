@@ -131,7 +131,7 @@ def main():
     print(f"первый экран: {first or 'НЕТ'} за {time.time() - started:.0f} с")
     if first == "Добро пожаловать":
         onboarding(out, failures)
-        xml = wait_for("F1 Hub", timeout=60)
+        xml = wait_for("F1 Hub", timeout=150)          # эмулятор CI бывает медленным (системные «не отвечает»)
     print(f"главный экран: {'да' if xml else 'НЕТ'} за {time.time() - started:.0f} с")
     shot(out, "01_home")
     time.sleep(3)
