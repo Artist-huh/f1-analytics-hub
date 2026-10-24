@@ -133,8 +133,10 @@ def status_chip(state, compact=False):
 
 
 def empty_state(state, title, hint):
+    """Данных ещё нет (первый запуск без сети): болид, объяснение и одна кнопка «Обновить»."""
+    from ui.components import illustration
     return ft.Column(
-        [ft.Container(height=40), txt(title, 20, bold=True, head=True),
+        [ft.Container(height=24), illustration("car", 190), txt(title, 20, bold=True, head=True),
          txt(hint, 13, MUTED, text_align=ft.TextAlign.CENTER),
          ft.Container(height=8), button("Обновить", lambda e: state.refresh_now(), icon=ft.Icons.REFRESH_ROUNDED)],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6,

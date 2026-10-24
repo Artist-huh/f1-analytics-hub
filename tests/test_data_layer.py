@@ -567,11 +567,21 @@ class DataLayerTest(unittest.TestCase):
 
     def test_interval_change_wakes_loop(self):
         fake = self.patch_net()
+
+        def settle(deadline=5.0):
+            """Дождаться, пока запросы перестанут идти (под нагрузкой поток медленнее фиксированной паузы)."""
+            end, last = time.time() + deadline, -1
+            while time.time() < end and len(fake.calls) != last:
+                last = len(fake.calls)
+                time.sleep(0.3)
+            return len(fake.calls)
+
         h1 = f1_api.start_background_refresh(interval=3600)
-        time.sleep(0.3)
-        n = len(fake.calls)                                    # первое обновление выполнено
+        n = settle()                                           # первое обновление выполнено
         h2 = f1_api.start_background_refresh(interval=3600)    # новый интервал -> немедленное обновление
-        time.sleep(0.3)
+        end = time.time() + 5
+        while time.time() < end and len(fake.calls) <= n:
+            time.sleep(0.05)
         self.assertGreater(len(fake.calls), n)
         h1.set()
         h2.set()

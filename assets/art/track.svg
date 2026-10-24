@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 140" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Контур трассы со стартовой линией (рисунок приложения) -->
+  <path d="M40 112 L150 112 Q186 112 190 82 Q193 58 168 52 L128 44 Q110 40 112 26 Q114 14 96 14 L60 16 Q30 18 26 46 L22 84 Q20 112 40 112 Z" stroke-width="9"/>
+  <path d="M84 104 L84 120" stroke-width="4"/>
+  <path d="M92 104 L92 120" stroke-width="4" stroke-dasharray="2 3"/>
+  <circle cx="168" cy="52" r="5" fill="#FFFFFF" stroke="none"/>
+</svg>

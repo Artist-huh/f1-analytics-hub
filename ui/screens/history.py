@@ -189,7 +189,7 @@ def _champions_view(state):
     rows = archive.champions()
     if not rows:
         return [empty_block(ft.Icons.HISTORY_ROUNDED, "Список чемпионов недоступен",
-                            "Файл data/champions.json не найден в сборке.")]
+                            "Файл data/champions.json не найден в сборке.", art="flag")]
     rec = archive.records(rows)
     out = []
     if state.standings and str(int(rows[0]["season"]) + 1) == str(state.season):

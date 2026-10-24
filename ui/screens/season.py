@@ -48,8 +48,10 @@ def _build_driver_standings(state, standings, leader_points, favs_view=False):
     if not standings:
         if favs_view:
             return [empty_block(ft.Icons.STAR_BORDER_ROUNDED, "Нет избранных пилотов",
-                                "Нажми на звёздочку рядом с пилотом — он появится здесь.")]
-        return [empty_block(ft.Icons.TABLE_CHART_OUTLINED, "Нет данных")]
+                                "Нажми на звёздочку рядом с пилотом — он появится здесь.",
+                                ("Выбрать пилотов", lambda e: state.open_tab(3)))]
+        return [empty_block(ft.Icons.REFRESH_ROUNDED, "Нет данных", "Таблица появится после обновления.",
+                            ("Обновить", lambda e: state.refresh_now()), art="flag")]
 
     rows = []
     for d in standings:
@@ -72,7 +74,8 @@ def _build_constructor_standings(state, is_mobile):
     """Таблица команд: логотипы, пилоты, болид"""
     standings = state.constructors
     if not standings:
-        return [empty_block(ft.Icons.TABLE_CHART_OUTLINED, "Кубок конструкторов ещё не загружен")]
+        return [empty_block(ft.Icons.REFRESH_ROUNDED, "Кубок конструкторов ещё не загружен", None,
+                            ("Обновить", lambda e: state.refresh_now()), art="flag")]
     leader_points = float(standings[0]["points"]) or 1
     cards = [ft.Container(team_row(state, c, leader_points, show_car=not is_mobile or i == 0),
                           col={"xs": 12, "lg": 6})

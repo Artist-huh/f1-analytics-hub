@@ -26,7 +26,9 @@ def build(state):
     race = state.ui.get("strat_race")
     if not race:
         return screen(state, "Разбор гонки", [empty_block(ft.Icons.FLAG_ROUNDED, "Гонка не выбрана",
-                                                          "Открой прошедший этап в календаре.")], back=True)
+                                                          "Открой прошедший этап в календаре.",
+                                                          ("Открыть календарь", lambda e: state.open_tab(2)),
+                                                          art="track")], back=True)
     view = state.ui.get("race_view", "tyres")
 
     def switch(key):

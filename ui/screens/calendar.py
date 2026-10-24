@@ -53,8 +53,11 @@ def build_calendar(state):
     if view == "past":
         shown.reverse()  # свежие сверху
     if not shown:
-        body.append(empty_block(ft.Icons.EVENT_AVAILABLE_ROUNDED,
-                                "Сезон завершён" if view == "upcoming" else "Здесь пока пусто"))
+        body.append(empty_block(ft.Icons.HISTORY_EDU_ROUNDED,
+                                "Сезон завершён" if view == "upcoming" else "Здесь пока пусто",
+                                "Итоги сезона — в «Истории сезонов»." if view == "upcoming" else None,
+                                ("История сезонов", lambda e: state.open_sub("history")) if view == "upcoming"
+                                else None, art="track"))
 
     for i, race in enumerate(shown):
         if view == "upcoming" and i == 0:

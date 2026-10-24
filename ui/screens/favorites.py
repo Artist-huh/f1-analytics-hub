@@ -17,7 +17,8 @@ def build(state):
     sections = []
     if not state.favorites:
         sections.append(empty_block(ft.Icons.STAR_OUTLINE_ROUNDED, "Нет избранных пилотов",
-                                    "Добавьте гонщиков, чтобы быстро отслеживать их результаты"))
+                                    "Добавьте гонщиков, чтобы быстро отслеживать их результаты",
+                                    ("Выбрать пилотов", lambda e: state.open_tab(3))))
     else:
         if favorite_drivers:
             sections.append(_build_quick_stats(state, favorite_drivers))

@@ -29,7 +29,8 @@ def build(state):
     driver = state.driver(state.ui.get("driver_id"))
     if not driver:
         return screen(state, "Пилот", [empty_block(ft.Icons.PERSON_OFF_ROUNDED, "Пилот не выбран",
-                                                   "Выбери пилота в разделе «Пилоты» или «Чемпионат».")], back=True)
+                                                   "Выбери пилота в разделе «Пилоты» или «Чемпионат».",
+                                                   ("К списку пилотов", lambda e: state.open_tab(3)))], back=True)
 
     is_mobile = ResponsiveContainer.is_mobile(page_width(state))
     results = state.driver_results(driver["driver_id"])
@@ -47,7 +48,7 @@ def build(state):
         sections.append(skeleton("Загружаем результаты гонок…", "rows", 5))
     else:
         sections.append(empty_block(ft.Icons.FLAG_OUTLINED, "Результатов пока нет",
-                                    "Появятся после первой гонки пилота или после обновления данных."))
+                                    "Появятся после первой гонки пилота или после обновления данных.", art="flag"))
 
     return screen(state, short_name(driver["name"]), sections, subtitle=f"Сезон {driver['season']}", back=True)
 

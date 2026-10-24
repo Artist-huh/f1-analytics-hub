@@ -46,7 +46,9 @@ def build(state):
                      and r.get("season") == race.get("season")), race)
     if not race:
         return screen(state, "Трасса", [empty_block(ft.Icons.ROUTE_ROUNDED, "Трасса не выбрана",
-                                                    "Открой этап в календаре и нажми «Трасса и история».")], back=True)
+                                                    "Открой этап в календаре и нажми «Трасса и история».",
+                                                    ("Открыть календарь", lambda e: state.open_tab(2)),
+                                                    art="track")], back=True)
     sections = [_hero(state, race)]
     if race.get("start_ts") and race["start_ts"] > time.time():
         sections.append(ft.Column([SectionHeader("Расписание уик-энда"),

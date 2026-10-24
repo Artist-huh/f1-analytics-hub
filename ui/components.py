@@ -335,15 +335,29 @@ def progress_bar(fraction: float, color: str, height: int = 4) -> ft.Row:
     )
 
 
-def empty_block(icon, title: str, hint: str = None) -> ft.Container:
-    """Пустое состояние внутри экрана"""
-    items = [ft.Icon(icon, size=56, color=TEXT_DIM), ft.Text(title, size=FONT_H4, color=TEXT_MUTED,
-                                                             text_align=ft.TextAlign.CENTER)]
+ART = {"car": "art/car.svg", "track": "art/track.svg", "flag": "art/flag.svg"}   # иллюстрации в assets/art
+
+
+def illustration(art, width=170):
+    """Силуэт болида, трассы или флага, тонированный под тему (свои SVG в assets/art)."""
+    return ft.Image(src=ART[art], width=width, fit=ft.BoxFit.CONTAIN, color=LINE_STRONG,
+                    color_blend_mode=ft.BlendMode.SRC_IN, exclude_from_semantics=True)
+
+
+def empty_block(icon, title: str, hint: str = None, action=None, art="car") -> ft.Container:
+    """Пустое состояние внутри экрана: иллюстрация, что случилось, подсказка и одна понятная кнопка.
+    action — (подпись, обработчик) или None. icon — для экранного диктора (подпись картинки)."""
+    items = [illustration(art), ft.Text(title, size=FONT_H4, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600,
+                                        text_align=ft.TextAlign.CENTER)]
     if hint:
-        items.append(ft.Text(hint, size=FONT_BODY_SMALL, color=TEXT_DIM, text_align=ft.TextAlign.CENTER))
+        items.append(ft.Text(hint, size=FONT_BODY_SMALL, color=TEXT_MUTED, text_align=ft.TextAlign.CENTER))
+    if action:
+        label, handler = action
+        items.append(ft.Container(height=SPACE_XXS))
+        items.append(ft.FilledTonalButton(label, icon=icon, on_click=handler, tooltip=label))
     return ft.Container(
         content=ft.Column(items, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_SM),
-        padding=SPACE_XL,
+        padding=ft.Padding.symmetric(horizontal=SPACE_LG, vertical=SPACE_XL),
         alignment=ft.Alignment.CENTER,
     )
 

@@ -42,7 +42,10 @@ def build(state):
     team = next((c for c in state.constructors if c["name"] == name), None)
     if not team:
         return screen(state, "Команда", [empty_block(ft.Icons.GROUPS_ROUNDED, "Команда не выбрана",
-                                                     "Выбери команду в разделе «Чемпионат».")], back=True)
+                                                     "Выбери команду в разделе «Чемпионат».",
+                                                     ("Кубок конструкторов",
+                                                      lambda e: (state.ui.__setitem__("champ", "teams"),
+                                                                 state.open_tab(1))))], back=True)
     drivers = sorted(state.team_drivers(name), key=lambda d: int(d["position"]))
     s = team_stats(state, name)
     sections = [_hero(state, team, drivers), _stats(team, s), _drivers(state, drivers)]

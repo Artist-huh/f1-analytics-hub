@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 90" fill="#FFFFFF">
+  <!-- Силуэт болида F1 сбоку (рисунок приложения) -->
+  <path d="M18 52 L58 46 L92 34 L120 31 L132 22 L146 22 L152 31 L188 34 L214 40 L214 22 L246 22 L246 30 L226 30 L226 52 L196 58 L72 58 L40 60 L8 62 L8 56 Z"/>
+  <rect x="2" y="58" width="44" height="6" rx="2"/>
+  <circle cx="62" cy="62" r="17"/>
+  <circle cx="196" cy="62" r="17"/>
+  <circle cx="62" cy="62" r="7" fill="#000000" fill-opacity="0.35"/>
+  <circle cx="196" cy="62" r="7" fill="#000000" fill-opacity="0.35"/>
+  <path d="M128 24 Q139 12 150 24 Z" fill-opacity="0.55"/>
+</svg>

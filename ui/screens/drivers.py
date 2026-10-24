@@ -24,9 +24,14 @@ def build(state):
         found = filter_drivers(all_drivers, state.ui["drv_q"], state.ui["drv_team"])
         counter.value = f"Найдено: {len(found)} из {len(all_drivers)}"
         grid.controls = [_build_driver_card(state, d) for d in found] or [
-            ft.Container(empty_block(ft.Icons.SEARCH_OFF_ROUNDED, "Пилоты не найдены",
-                                     "Измени запрос или сбрось фильтр команды."), col=12)
+            ft.Container(empty_block(ft.Icons.FILTER_ALT_OFF_ROUNDED, "Пилоты не найдены",
+                                     "Измени запрос или сбрось фильтр команды.",
+                                     ("Сбросить поиск", lambda e: reset())), col=12)
         ]
+
+    def reset():
+        state.ui["drv_q"], state.ui["drv_team"] = "", None
+        state.render()
 
     def on_search(e):
         state.ui["drv_q"] = e.control.value or ""

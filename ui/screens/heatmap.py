@@ -43,7 +43,7 @@ def build_section(state):
     rows, rounds = season_grid(state, mode)
     if not rounds:
         return [empty_block(ft.Icons.GRID_ON_ROUNDED, "Результатов пока нет",
-                            "Карта появится после первой гонки сезона.")]
+                            "Карта появится после первой гонки сезона.", art="flag")]
     names = {r["round"]: r for r in state.schedule}
 
     header = [ft.Container(width=LABEL_W)]
