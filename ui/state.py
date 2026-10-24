@@ -271,7 +271,7 @@ class AppState:
         """Пока живые данные кому-то нужны (live_watched) — обновлять снимок (во время сессии раз в 5 с).
         Поток сам завершается, когда пользователь уходит с экрана."""
         if live.stale() and not live.snapshot()[2]:
-            live.refresh(on_done=self.render)
+            live.refresh(on_done=self.on_live_data)
         if self._live_watch and self._live_watch.is_alive():
             return
 
@@ -279,10 +279,20 @@ class AppState:
             while self.live_watched():
                 time.sleep(period)
                 if self.live_watched() and live.stale():
-                    live.refresh(on_done=self.render)
+                    live.refresh(on_done=self.on_live_data)
 
         self._live_watch = threading.Thread(target=loop, name="f1-live-watch", daemon=True)
         self._live_watch.start()
+
+    def on_live_data(self):
+        """Пришёл свежий снимок (из фонового потока). Экран Live с таблицей обновляется на месте —
+        с анимацией обгонов; в остальных случаях — обычная перерисовка."""
+        def apply():
+            data = live.snapshot()[0]
+            from ui.screens import live as live_screen
+            if not (data and live_screen.update_in_place(self, data)):
+                self.render()
+        self.run_on_ui(apply)
 
     def live_now(self):
         """Идёт ли сейчас сессия по календарю: (этап, ключ сессии) или None."""

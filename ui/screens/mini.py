@@ -6,7 +6,7 @@ from design_system import *
 from services import live
 from ui.components import *
 from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_day
-from ui.screens.live import _leader_text
+from ui.screens.live_table import leader_text as _leader_text
 
 
 def build(state):

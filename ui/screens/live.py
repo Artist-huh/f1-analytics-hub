@@ -1,11 +1,14 @@
 """Live-тайминг: позиции, отрывы, шины, пит-стопы и радио текущей сессии (поток F1, запасной — OpenF1)"""
+import contextlib
+
 import flet as ft
 
 from design_system import *
 from services import live
 from ui.components import *
-from ui.fmt import fmt_clock, plural
+from ui.fmt import fmt_clock
 from ui.screens.calendar import track_info
+from ui.screens.live_table import LiveTable
 from ui.widgets import pill, retry_block, screen
 
 SESSION_RU = {"Race": "Гонка", "Qualifying": "Квалификация", "Sprint": "Спринт",
@@ -51,7 +54,9 @@ def build(state):
         tabs += [pill("До лидера", mode == "leader", lambda e: switch("leader")),
                  pill("Интервал", mode == "interval", lambda e: switch("interval"))]
     body.append(ft.Row(tabs, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO))
+    state.ui["live_shown"] = _structure(data)
     if view == "radio" and radio_items:
+        state.ui.pop("live_table", None)
         body += _radio(state, data)
     else:
         body.append(_table(state, data, mode))
@@ -65,9 +70,9 @@ def build(state):
     return screen(state, "Live-тайминг", body, subtitle=f"{s['country']} · {s['location']}", back=True)
 
 
-def _header(state, data):
+def _status_line(state, data):
+    """«Сессия идёт · Круг 31 из 56» / «осталось 00:41:12» / «Итог последней сессии»."""
     s = data["session"]
-    name = SESSION_RU.get(s["name"], s["name"])
     total = None
     place = (s["location"] or "").lower()
     nxt = next((r for r in state.schedule if r["locality"] and place and
@@ -79,33 +84,33 @@ def _header(state, data):
     lap = f"Круг {data['lap']}" + (f" из {total}" if total else "") if data["lap"] and data["racing"] else ""
     if not lap and data.get("remaining") and data["live"]:
         lap = f"осталось {data['remaining']}"
+    status = "Сессия идёт" if data["live"] else "Итог последней сессии"
+    return " · ".join(x for x in (status, lap) if x)
+
+
+def _header(state, data):
+    s = data["session"]
+    name = SESSION_RU.get(s["name"], s["name"])
     if data["live"]:
         badge = ft.Container(ft.Row([ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
                                      ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
                                     spacing=6, tight=True),
                              bgcolor=DANGER, border_radius=RADIUS_FULL,
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
-        status = "Сессия идёт"
     else:
         badge = ft.Container(ft.Text("ФИНИШ", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC),
                              bgcolor=ft.Colors.with_opacity(0.25, BG_DEEPEST), border_radius=RADIUS_FULL,
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
-        status = "Итог последней сессии"
+    updated = ft.Text(f"обновлено в {fmt_clock(data['updated'])}", size=FONT_CAPTION, color=ON_COLOR)
+    status = ft.Text(_status_line(state, data), size=FONT_BODY_SMALL, color=ON_COLOR)
+    state.ui["live_head"] = {"updated": updated, "status": status}     # обновляются на месте (update_in_place)
     return ft.Container(ft.Column([
-        ft.Row([badge, ft.Container(expand=True),
-                ft.Text(f"обновлено в {fmt_clock(data['updated'])}", size=FONT_CAPTION, color=ON_COLOR)]),
+        ft.Row([badge, ft.Container(expand=True), updated]),
         ft.Text(f"{name} · {s['circuit']} {s['year'] or ''}", size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
-        ft.Text(" · ".join(x for x in (status, lap) if x), size=FONT_BODY_SMALL, color=ON_COLOR),
+        status,
     ], spacing=SPACE_XS), gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
                                                      colors=GRADIENT_RED),
         border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3))
-
-
-def _leader_text(r, data):
-    """У лидера отрыва нет: в гонке — «лидер», в практике и квалификации — его лучший круг (как на табло F1)."""
-    if r["position"] != 1:
-        return ""
-    return "лидер" if data["racing"] else (r.get("best") or "")
 
 
 def tyre_badge(letter, age):
@@ -120,34 +125,10 @@ def tyre_badge(letter, age):
 
 
 def _table(state, data, mode):
-    by_code = {d["code"]: d for d in state.standings}
-    rows = []
+    """Таблица на месте обновляемых строк (live_table.LiveTable): обгоны анимируются, отрывы подсвечиваются."""
     avatars = not (large_text() and is_narrow(state))     # крупный текст на телефоне: место — под код пилота
-    for r in data["rows"]:
-        d = by_code.get(r["code"])
-        color = r["colour"] or (get_team_color(d["team"]) if d else TEXT_DIM)
-        gap = r["gap"] if mode == "leader" else r["interval"]
-        rows.append(ft.Container(ft.Row([
-            PositionBadge(r["position"], size=28),
-            ft.Container(width=3, height=30, bgcolor=color, border_radius=2),
-            *([DriverAvatar(r["code"], d["team"] if d else r["team"], size=32, src=state.photo(d) if d else None)]
-              if avatars else []),
-            ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC,
-                               no_wrap=True),
-                       ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1,
-                               overflow=ft.TextOverflow.ELLIPSIS)],
-                      spacing=0, expand=True),
-            ft.Text(gap or _leader_text(r, data), size=FONT_BODY_SMALL, font_family=FONT_MONO,
-                    color=TEXT_PRIMARY if gap else ACCENT_TEXT, width=scaled(78), text_align=ft.TextAlign.RIGHT),
-            tyre_badge(r["tyre"], r["tyre_age"]),
-            ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY, font_family=FONT_MONO),
-                         width=scaled(22),
-                         alignment=ft.Alignment.CENTER,
-                         tooltip=f"{r['pits']} {plural(r['pits'], 'пит-стоп', 'пит-стопа', 'пит-стопов')}"),
-        ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-            bgcolor=SURFACE, border_radius=RADIUS_SM, border=ft.Border.all(1, LINE_SUBTLE),
-            padding=ft.Padding.symmetric(horizontal=SPACE_XS, vertical=4),
-            on_click=(lambda e, i=d["driver_id"]: state.open_driver(i)) if d else None, ink=bool(d)))
+    table = LiveTable(state, data, mode, avatars, tyre_badge)
+    state.ui["live_table"] = table
     head = ft.Row([ft.Text("Поз.", size=FONT_TINY, color=TEXT_DIM, width=70 if avatars else 30),
                    ft.Text("Пилот", size=FONT_TINY, color=TEXT_DIM, expand=True),
                    ft.Text("Отрыв" if mode == "leader" else "Интервал", size=FONT_TINY, color=TEXT_DIM,
@@ -155,7 +136,34 @@ def _table(state, data, mode):
                            text_align=ft.TextAlign.RIGHT),
                    ft.Text("Шины", size=FONT_TINY, color=TEXT_DIM, width=scaled(48), no_wrap=True),
                    ft.Text("Пит", size=FONT_TINY, color=TEXT_DIM, width=scaled(22), no_wrap=True)], spacing=SPACE_XS)
-    return ft.Column([ft.Container(head, padding=ft.Padding.symmetric(horizontal=SPACE_XS))] + rows, spacing=SPACE_XXS)
+    return ft.Column([ft.Container(head, padding=ft.Padding.symmetric(horizontal=SPACE_XS)), table.stack],
+                     spacing=SPACE_XXS)
+
+
+def update_in_place(state, data):
+    """Свежий снимок, а экран Live уже открыт: обновить таблицу и шапку без перестройки экрана.
+    -> False, если изменилось что-то структурное (тогда нужна обычная перерисовка)."""
+    table, head = state.ui.get("live_table"), state.ui.get("live_head")
+    shown = state.ui.get("live_shown") or {}
+    if (not table or not head or state.sub != "live" or state.ui.get("live_view", "table") != "table"
+            or not table.matches(data, state.ui.get("live_gap", "leader"))
+            or shown != _structure(data)):
+        return False
+    table.apply(data)
+    head["updated"].value = f"обновлено в {fmt_clock(data['updated'])}"
+    head["status"].value = _status_line(state, data)
+    table.update()
+    for text in head.values():
+        with contextlib.suppress(RuntimeError, AssertionError, AttributeError):   # экран уже перестроен
+            text.update()
+    return True
+
+
+def _structure(data):
+    """Что требует полной перерисовки: сессия, сейфти-кар и флаги, число записей радио, последнее сообщение."""
+    s = data["session"]
+    return {"session": (s.get("name"), s.get("location")), "live": data["live"], "track": data.get("track"),
+            "radio": len(data.get("radio") or []), "message": (data["messages"][0]["text"] if data["messages"] else "")}
 
 
 def _track_status(text):

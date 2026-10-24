@@ -924,6 +924,49 @@ class UiSmokeTest(unittest.TestCase):
         self.assertTrue(live.stale())                                # через 2 минуты — снова пробуем
         self.state.sub = None
 
+    def test_live_table_updates_in_place(self):
+        from services import live
+        from ui.screens import live as live_screen
+        from ui.screens import live_table as lt
+        self.assertEqual((lt.gap_seconds("+1.234"), lt.gap_seconds(""), lt.gap_seconds("+1 кр.")), (1.234, 0.0, None))
+        self.assertEqual(lt.flash_color(2.0, 1.5), design_system.SUCCESS)        # отрыв сократился
+        self.assertEqual(lt.flash_color(1.5, 2.0), design_system.DANGER)
+        self.assertIsNone(lt.flash_color(1.5, 1.52))                              # шум — не мигаем
+        fill_db()
+        self.state.load()
+
+        def snap(order, gaps):
+            return {"session": {"name": "Race", "type": "Race", "country": "USA", "location": "Austin",
+                                "circuit": "Austin", "start": 0, "end": 0, "year": 2026},
+                    "live": True, "racing": True, "lap": 30, "messages": [], "radio": [], "track": None,
+                    "updated": time.time(),
+                    "rows": [{"position": i, "code": c, "number": i, "name": c, "team": "", "colour": None,
+                              "gap": g, "interval": g, "tyre": "M", "tyre_age": 5, "pits": 1}
+                             for i, (c, g) in enumerate(zip(order, gaps, strict=True), start=1)]}
+        live._state["data"] = snap(["LEC", "ANT", "LAW"], ["", "+2.000", "+5.000"])
+        self.state.sub = "live"
+        self.build("live")
+        table = self.state.ui["live_table"]
+        step = lt.row_height() + lt.ROW_GAP
+        lec, ant = table.rows["LEC"]["box"], table.rows["ANT"]["box"]
+        self.assertEqual((lec.top, ant.top), (0, step))
+        # обгон: ANT впереди, LAW сократил отрыв -> строки меняются местами на месте, отрыв LAW подсвечен
+        live._state["data"] = snap(["ANT", "LEC", "LAW"], ["", "+0.500", "+4.000"])
+        with mock.patch("threading.Timer"):
+            self.assertTrue(live_screen.update_in_place(self.state, live._state["data"]))
+        self.assertIs(self.state.ui["live_table"], table)                       # та же таблица — анимация возможна
+        self.assertEqual((ant.top, lec.top), (0, step))
+        self.assertEqual(table.rows["LAW"]["gap"].value, "+4.000")
+        self.assertIsNotNone(table.rows["LAW"]["gap_box"].bgcolor)
+        renders = len(self.renders)
+        with mock.patch.object(live_screen, "update_in_place", return_value=True):
+            self.state.on_live_data()
+        self.assertEqual(len(self.renders), renders)                             # без перерисовки экрана
+        live._state["data"]["track"] = "Сейфти-кар"                              # структура изменилась
+        self.assertFalse(live_screen.update_in_place(self.state, live._state["data"]))
+        self.state.on_live_data()
+        self.assertEqual(len(self.renders), renders + 1)
+
     def test_live_banner_when_session_runs(self):
         from services import live
         fill_db()
