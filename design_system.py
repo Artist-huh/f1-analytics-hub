@@ -106,6 +106,13 @@ SPACE_LG = 24
 SPACE_XL = 32
 SPACE_XXL = 48
 
+# Цвета разделов для иконок меню и быстрого доступа: красный оставлен для LIVE и главных действий,
+# чтобы акценты не спорили. В светлой теме иконки темнеют через readable_text().
+SECTION_COLORS = {
+    "live": "#FF5A5C", "race": "#4DA3FF", "compare": "#A77BFF", "predict": "#22C55E", "favorites": "#FFC93C",
+    "title": "#FFB020", "history": "#FF8A3D", "strategy": "#2EC4B6", "mini": "#5AC8FA", "settings": "#9D9DAB",
+}
+
 # Портреты в карточках опускаются на столько вниз, чтобы над головой оставался воздух
 PHOTO_DROP = 10
 
@@ -281,8 +288,14 @@ _LIGHT = {
     "TEXT_PRIMARY": "#15151E", "TEXT_SECONDARY": "#3A3A46", "TEXT_MUTED": "#4F4F5A", "TEXT_DIM": "#62626E",
     "SUCCESS": "#0F7A35", "WARNING": "#9A4A00", "DANGER": "#C62828", "GOLD": "#8A5A00",
 }
+# OLED: чистый чёрный фон (пиксели AMOLED-экрана гаснут — меньше расход батареи), карточки чуть светлее
+_OLED = dict(_DARK, **{
+    "BG_DEEPEST": "#000000", "BG_DEEP": "#000000", "BG": "#000000", "SURFACE": "#0E0E13",
+    "SURFACE_RAISED": "#18181F", "SURFACE_ELEVATED": "#22222B",
+    "LINE_SUBTLE": "#141419", "LINE": "#1D1D25", "LINE_STRONG": "#32323D",
+})
 _RED = {"F1_RED": "#E10600", "ACCENT_GLOW": "#FF2A1F", "ACCENT_DEEP": "#8E0400"}
-THEME_NAMES = {"dark": "Тёмная", "light": "Светлая", "team": "Цвета команды"}
+THEME_NAMES = {"dark": "Тёмная", "oled": "OLED", "light": "Светлая", "team": "Цвета команды"}
 THEME = "dark"
 THEME_TEAM = None
 IS_LIGHT = False
@@ -334,10 +347,10 @@ def readable_on(color):
 
 
 def apply_theme(name="dark", team=None):
-    """Переключить палитру: 'dark', 'light' или 'team' (акцент — цвет команды team)."""
+    """Переключить палитру: 'dark', 'oled' (чистый чёрный), 'light' или 'team' (акцент — цвет команды team)."""
     global THEME, THEME_TEAM, IS_LIGHT
     g = globals()
-    base = _LIGHT if name == "light" else _DARK
+    base = _LIGHT if name == "light" else _OLED if name == "oled" else _DARK
     g.update(base)
     accent = dict(_RED)
     team_colors = TEAMS.get(team_key(team)) if name == "team" else None

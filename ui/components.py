@@ -197,6 +197,14 @@ def flag(src, height=14, code=""):
                         border=ft.Border.all(0.5, ft.Colors.with_opacity(0.25, TEXT_DIM)))
 
 
+def icon_badge(icon, color, size=40):
+    """Иконка раздела: круг с прозрачной подложкой цвета раздела (вместо красного градиента везде)."""
+    tone = readable_text(color, 3.0)
+    return ft.Container(ft.Icon(icon, size=round(size * 0.55), color=tone), width=size, height=size,
+                        border_radius=size / 2, alignment=ft.Alignment.CENTER,
+                        bgcolor=ft.Colors.with_opacity(0.16, tone))
+
+
 class TeamLogo(ft.Container):
     """Белый логотип команды на квадрате цвета команды; без логотипа — первая буква."""
 

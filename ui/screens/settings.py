@@ -37,9 +37,10 @@ def _theme_card(state):
         )
 
     items = [txt("Оформление", 16, bold=True, head=True),
-             ft.Row([option("dark", ft.Icons.DARK_MODE_ROUNDED, "чёрный и красный"),
+             ft.Row([option("dark", ft.Icons.DARK_MODE_ROUNDED, "угольно-чёрная"),
+                     option("oled", ft.Icons.BRIGHTNESS_2_ROUNDED, "чистый чёрный, экономит батарею"),
                      option("light", ft.Icons.LIGHT_MODE_ROUNDED, "светлый фон"),
-                     option("team", ft.Icons.PALETTE_ROUNDED, "акцент команды")], spacing=8)]
+                     option("team", ft.Icons.PALETTE_ROUNDED, "акцент команды")], spacing=6)]
     if current == "team" and state.constructors:
         chips = []
         for c in state.constructors:

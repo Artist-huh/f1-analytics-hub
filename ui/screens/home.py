@@ -299,26 +299,23 @@ def _build_favorites_strip(state, favs):
 
 def _build_quick_actions(state):
     actions = [
-        (ft.Icons.FLAG_ROUNDED, "Разбор", lambda e: _open_last_race(state)),
-        (ft.Icons.COMPARE_ARROWS_ROUNDED, "Сравнение", lambda e: state.open_sub("compare")),
-        (ft.Icons.SPORTS_SCORE, "Прогнозы", lambda e: state.open_sub("predict")),
-        (ft.Icons.STAR_ROUNDED, "Избранное", lambda e: state.open_sub("favorites")),
+        (ft.Icons.FLAG_ROUNDED, "Разбор", "race", lambda e: _open_last_race(state)),
+        (ft.Icons.COMPARE_ARROWS_ROUNDED, "Сравнение", "compare", lambda e: state.open_sub("compare")),
+        (ft.Icons.SPORTS_SCORE, "Прогнозы", "predict", lambda e: state.open_sub("predict")),
+        (ft.Icons.STAR_ROUNDED, "Избранное", "favorites", lambda e: state.open_sub("favorites")),
     ]
     cards = [
         AnimatedCard(
             content=ft.Column([
-                ft.Container(ft.Icon(icon, size=22, color=ON_COLOR), width=40, height=40,
-                             border_radius=20, alignment=ft.Alignment.CENTER,
-                             gradient=ft.LinearGradient(colors=[ACCENT_GLOW, ACCENT_DEEP],
-                                                        begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT)),
+                icon_badge(icon, SECTION_COLORS[section]),
                 ft.Text(label, size=FONT_CAPTION, color=TEXT_PRIMARY, max_lines=1),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XS),
             padding=ft.Padding.symmetric(horizontal=SPACE_XXS, vertical=SPACE_SM),
             on_click=handler,
             expand=True,
-            accent=F1_RED,
+            accent=SECTION_COLORS[section],
         )
-        for icon, label, handler in actions
+        for icon, label, section, handler in actions
     ]
     return ft.Row(cards, spacing=SPACE_XS)
 

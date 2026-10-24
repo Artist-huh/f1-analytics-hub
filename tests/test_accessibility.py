@@ -23,7 +23,10 @@ class ContrastTest(unittest.TestCase):
 
     def test_dark_and_light_text(self):
         self.check_theme("dark")
+        self.check_theme("oled")
         self.check_theme("light")
+        ds.apply_theme("oled")
+        self.assertEqual((ds.BG, ds.THEME), ("#000000", "oled"))
 
     def test_team_accent_text(self):
         for team in ds.TEAMS:
