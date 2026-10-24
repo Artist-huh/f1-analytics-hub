@@ -65,7 +65,7 @@ def build(state):
             ft.Container(height=4),
             ft.Row([tyre_chip("S"), txt("мягкие", 12, MUTED), tyre_chip("M"), txt("средние", 12, MUTED),
                     tyre_chip("H"), txt("жёсткие", 12, MUTED)], spacing=6, wrap=True),
-        ], spacing=3), radius=16, padding=16),
+        ], spacing=3), size="l"),
         txt("Это базовые прикидки приложения, а не официальные планы команд.", 11, DIM),
     ]
     return screen(state, "Стратегия", body, subtitle="План пит-стопов по трассам", back=True)
