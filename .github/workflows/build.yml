@@ -86,7 +86,7 @@ jobs:
     - name: Build with flet pack
       run: |
         pip install pillow   # PyInstaller converts icon.png to .icns with it
-        flet pack main.py -y --name F1AnalyticsHub --icon assets/icon.png --add-data "assets:assets" "data:data" --product-name "F1 Analytics Hub" --product-version "2.4.0" --bundle-id com.f1hub.analytics --pyinstaller-build-args=--collect-all=desktop_notifier --pyinstaller-build-args=--collect-all=faster_whisper --pyinstaller-build-args=--collect-binaries=ctranslate2 --pyinstaller-build-args=--exclude-module=onnxruntime
+        flet pack main.py -y --name F1AnalyticsHub --icon assets/icon.png --add-data "assets:assets" "data:data" --product-name "F1 Analytics Hub" --product-version "2.5.0" --bundle-id com.f1hub.analytics --pyinstaller-build-args=--collect-all=desktop_notifier --pyinstaller-build-args=--collect-all=faster_whisper --pyinstaller-build-args=--collect-binaries=ctranslate2 --pyinstaller-build-args=--exclude-module=onnxruntime
 
     - name: Create release package
       run: |
