@@ -165,7 +165,8 @@ def pace_section(state, race):
             ft.Column([ft.Text(f"средний {fmt_lap(p['median'])}", size=FONT_BODY_SMALL, color=TEXT_PRIMARY),
                        ft.Text(f"лучший {fmt_lap(p['best'])} · {p['laps']} чистых кругов", size=FONT_CAPTION,
                                color=TEXT_MUTED)], spacing=0, expand=True),
-            ft.Text("быстрее всех" if gap == 0 else (f"+{gap:.3f}" if gap is not None else "—"), size=FONT_BODY_SMALL,
+            ft.Text("быстрее всех" if gap == 0 else (f"+{gap:.3f}" if gap is not None else "—"),
+                    size=FONT_BODY_SMALL, font_family=FONT_MONO,
                     color=ACCENT_TEXT if gap == 0 else TEXT_SECONDARY),
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER))
     return [
@@ -197,7 +198,8 @@ def quali_section(state, race):
             ft.Text(r["code"] or r["driver_id"][:3].upper(), size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                     font_family=FONT_ITALIC, width=40),
             ft.Container(bar, expand=True),
-            ft.Text("поул" if gap == 0 else (f"+{gap:.3f}" if gap is not None else "без времени"), size=FONT_BODY_SMALL,
+            ft.Text("поул" if gap == 0 else (f"+{gap:.3f}" if gap is not None else "без времени"),
+                    size=FONT_BODY_SMALL, font_family=FONT_MONO,
                     color=GOLD if gap == 0 else TEXT_SECONDARY, width=78, text_align=ft.TextAlign.RIGHT),
             ft.Text(stage, size=FONT_CAPTION, color=TEXT_DIM, width=24),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))

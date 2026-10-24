@@ -51,6 +51,14 @@ class ContrastTest(unittest.TestCase):
                     self.assertGreaterEqual(ds.contrast(ds.readable_text(team["color"]), ds.SURFACE), AA)
                     self.assertGreaterEqual(ds.contrast(ds.readable_text(team["color"], 3.0), ds.SURFACE), 3.0)
 
+    def test_all_fonts_bundled(self):
+        """Каждый шрифт из FONTS лежит в assets — иначе Flutter молча рисует запасным шрифтом."""
+        import os
+        root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
+        for family, path in ds.FONTS.items():
+            with self.subTest(font=family):
+                self.assertTrue(os.path.isfile(os.path.join(root, path)), path)
+
     def test_contrast_formula(self):
         self.assertAlmostEqual(ds.contrast("#000000", "#FFFFFF"), 21.0)
         self.assertAlmostEqual(ds.contrast("#777777", "#777777"), 1.0)

@@ -88,11 +88,13 @@ FONT_HEADING = "Exo2"            # заголовки и цифры
 FONT_HEADING_SEMI = "Exo2Semi"   # подзаголовки
 FONT_DISPLAY_ITALIC = "Exo2XBI"  # крупные цифры, «гоночный» курсив
 FONT_ITALIC = "Exo2BI"
+FONT_MONO = "JBMonoBI"           # отрывы и времена кругов: моноширинные цифры, колонки не «дрожат»
 FONTS = {                        # регистрируются в main.py через page.fonts (лежат в assets/)
     FONT_HEADING: "fonts/Exo2-Bold.ttf",
     FONT_HEADING_SEMI: "fonts/Exo2-SemiBold.ttf",
     FONT_DISPLAY_ITALIC: "fonts/Exo2-ExtraBoldItalic.ttf",
     FONT_ITALIC: "fonts/Exo2-BoldItalic.ttf",
+    FONT_MONO: "fonts/JetBrainsMono-BoldItalic.ttf",
 }
 
 # === ОТСТУПЫ ===

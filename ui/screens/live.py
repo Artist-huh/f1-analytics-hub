@@ -116,7 +116,8 @@ def tyre_badge(letter, age):
         ft.Container(ft.Text(letter or "—", size=FONT_CAPTION, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
                      width=scaled(24), height=scaled(24), border_radius=12, border=ft.Border.all(3, color),
                      alignment=ft.Alignment.CENTER),
-        ft.Text(f"{age}" if age is not None else "", size=FONT_CAPTION, color=TEXT_MUTED, width=scaled(20)),
+        ft.Text(f"{age}" if age is not None else "", size=FONT_CAPTION, color=TEXT_MUTED, width=scaled(20),
+                font_family=FONT_MONO),
     ], spacing=4, tight=True)
 
 
@@ -138,10 +139,11 @@ def _table(state, data, mode):
                        ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1,
                                overflow=ft.TextOverflow.ELLIPSIS)],
                       spacing=0, expand=True),
-            ft.Text(gap or _leader_text(r, data), size=FONT_BODY_SMALL,
+            ft.Text(gap or _leader_text(r, data), size=FONT_BODY_SMALL, font_family=FONT_MONO,
                     color=TEXT_PRIMARY if gap else ACCENT_TEXT, width=scaled(78), text_align=ft.TextAlign.RIGHT),
             tyre_badge(r["tyre"], r["tyre_age"]),
-            ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY), width=scaled(22),
+            ft.Container(ft.Text(f"{r['pits']}", size=FONT_CAPTION, color=TEXT_SECONDARY, font_family=FONT_MONO),
+                         width=scaled(22),
                          alignment=ft.Alignment.CENTER,
                          tooltip=f"{r['pits']} {plural(r['pits'], 'пит-стоп', 'пит-стопа', 'пит-стопов')}"),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
