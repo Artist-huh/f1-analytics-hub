@@ -88,9 +88,11 @@ def _build_hero(state, driver, is_mobile):
         content=ft.Stack([
             ft.Container(ft.Text(driver.get("number") or "", size=180, font_family=FONT_DISPLAY_ITALIC,
                                  color=ft.Colors.with_opacity(0.15, ON_COLOR)), right=10, top=-40),
-            ft.Container(image(state.photo(driver, "hero"), height=height, fit=ft.BoxFit.FIT_HEIGHT,
-                               label=f"Фото: {driver['name']}",
-                               fallback=ft.Container()), right=SPACE_LG, top=PHOTO_DROP + 4),   # голова не у края
+            ft.Container(driver_hero(driver["driver_id"],
+                                     image(state.photo(driver, "hero"), width=round(height * 0.8), height=height,
+                                           fit=ft.BoxFit.COVER, label=f"Фото: {driver['name']}",
+                                           fallback=ft.Container(width=round(height * 0.8), height=height))),
+                         right=SPACE_LG, top=PHOTO_DROP + 4),   # голова не у края
             ft.Container(info, left=SPACE_MD, top=SPACE_MD, bottom=SPACE_MD),
         ], height=height, clip_behavior=ft.ClipBehavior.HARD_EDGE),
         height=height,

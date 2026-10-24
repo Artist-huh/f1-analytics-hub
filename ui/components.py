@@ -225,6 +225,12 @@ def skeleton(caption, kind="rows", count=5):
     ], spacing=SPACE_XS)
 
 
+def driver_hero(driver_id, control):
+    """Фото пилота с меткой Hero: при открытии его страницы Flutter «перевозит» фото из списка.
+    Тег должен встречаться на экране один раз — ставим только там, где пилот виден однажды."""
+    return ft.Hero(tag=f"driver-{driver_id}", content=control) if driver_id else control
+
+
 def icon_badge(icon, color, size=40):
     """Иконка раздела: круг с прозрачной подложкой цвета раздела (вместо красного градиента везде)."""
     tone = readable_text(color, 3.0)

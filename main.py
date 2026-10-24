@@ -74,6 +74,9 @@ def refresh_screens():
 
 refresh_screens()
 
+# Подэкраны, которые открываются отдельной страницей навигатора поверх текущего экрана:
+# тогда Flutter «перевозит» фото пилота (Hero) из списка на его страницу и обратно.
+OVERLAY_SUBS = {"driver_detail"}
 TICK_SECONDS = 30
 MAX_CONTENT_WIDTH = 1100   # шире контент не растягиваем — по бокам поля
 NARROW_WIDTH = 400         # уже — компактные подписи
@@ -124,10 +127,14 @@ def run_on_ui(page, fn):
 def apply_page_theme(page, nav=None):
     """Цвета окна, темы Flutter и нижнего меню — из текущей палитры (ds.*, не копии в этом модуле)."""
     page.theme_mode = ft.ThemeMode.LIGHT if ds.IS_LIGHT else ft.ThemeMode.DARK
+    zoom = ft.PageTransitionTheme.ZOOM
     page.theme = ft.Theme(
         color_scheme_seed=ds.F1_RED,
         color_scheme=ft.ColorScheme(primary=ds.F1_RED, on_primary=ds.ON_ACCENT, secondary=ds.F1_RED,
                                     surface=ds.SURFACE, on_surface=ds.TEXT_PRIMARY),
+        # у перехода на страницу пилота должна быть длительность — иначе фото (Hero) «перелетает» мгновенно
+        page_transitions=ft.PageTransitionsTheme(android=zoom, windows=zoom, linux=zoom, macos=zoom,
+                                                 ios=ft.PageTransitionTheme.CUPERTINO),
     )
     page.dark_theme = page.theme
     page.bgcolor = ds.BG
@@ -270,8 +277,44 @@ def main(page: ft.Page):
     shown = {"key": None}
     pending = threading.Event()   # перерисовка уже запланирована — повторные запросы сливаются
 
+    overlay = {"view": None, "body": None}
+
+    def overlay_redraw():
+        """Страница пилота поверх текущего экрана (экран под ней не трогаем — источник Hero на месте)."""
+        body = ft.Container(build_screen(state), expand=True)
+        if overlay["view"] is None:
+            holder = ft.Container(body, expand=True, padding=content.padding)
+            view = ft.View(route="/" + state.sub, controls=[ft.SafeArea(holder, expand=True,
+                                                                        avoid_intrusions_bottom=False)],
+                           bgcolor=ds.BG, padding=0, can_pop=False)
+            view.on_confirm_pop = on_confirm_pop          # «назад» Android: снимаем страницу сами (с анимацией)
+            overlay.update(view=view, body=holder)
+            page.views.append(view)
+            with contextlib.suppress(Exception):
+                page.route = view.route                   # смена маршрута запускает анимацию перехода
+        else:
+            overlay["body"].content = body
+            overlay["body"].padding = content.padding
+        page.update()
+
+    def close_overlay():
+        if overlay["view"] is not None:
+            with contextlib.suppress(ValueError):
+                page.views.remove(overlay["view"])
+            overlay.update(view=None, body=None)
+            with contextlib.suppress(Exception):
+                page.route = "/"
+
     def redraw():
         pending.clear()
+        if state.sub in OVERLAY_SUBS and not state.mini and hasattr(page, "views"):
+            overlay_redraw()
+            return
+        reopened = overlay["view"] is not None
+        close_overlay()
+        if reopened and state.screen_key() == shown["key"]:
+            page.update()                             # вернулись на тот же экран — фото улетает обратно на место
+            return
         key = state.screen_key()
         state.fresh = key != shown["key"]
         shown["key"] = key

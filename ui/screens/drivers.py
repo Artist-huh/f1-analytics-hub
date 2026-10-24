@@ -112,8 +112,10 @@ def _build_driver_card(state, d):
     # Портрет — во всю высоту карточки и опущен на PHOTO_DROP: над головой остаётся воздух,
     # обрезаются только плечи (раньше фото было выше карточки и срезалась макушка).
     portrait = ft.Container(
-        image(state.photo(d, "portrait"), height=inner, fit=ft.BoxFit.FIT_HEIGHT, label=f"Фото: {d['name']}",
-              fallback=ft.Container()),
+        # точный размер (портрет 4:5): Hero интерполирует прямоугольник, без ширины фото летит «сплющенным»
+        driver_hero(d["driver_id"], image(state.photo(d, "portrait"), width=round(inner * 0.8), height=inner,
+                                          fit=ft.BoxFit.COVER, label=f"Фото: {d['name']}",
+                                          fallback=ft.Container(width=round(inner * 0.8), height=inner))),
         right=SPACE_MD, top=PHOTO_DROP, height=inner,
     )
     number = ft.Text(d.get("number") or "", size=120, font_family=FONT_DISPLAY_ITALIC,

@@ -18,7 +18,8 @@ def driver_row(state, d, trailing=None, subtitle=None):
         lead.append(ft.Container(width=3, height=36, bgcolor=color, border_radius=2))
     return AnimatedCard(
         content=ft.Row(lead + [
-            DriverAvatar(d["code"], d["team"], size=40 if compact else 44, src=state.photo(d)),
+            driver_hero(d["driver_id"], DriverAvatar(d["code"], d["team"], size=40 if compact else 44,
+                                                     src=state.photo(d))),
             ft.Column([
                 ft.Row([flag(flag_src, 12, iso),
                         ft.Text(name, size=FONT_BODY, weight=ft.FontWeight.W_600, color=TEXT_PRIMARY,

@@ -1079,6 +1079,41 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.build("home_edit"), "Вернуть как было")[0].on_click(Ctl())
         self.assertEqual(hb.layout(), [(k, True) for k in hb.BLOCKS])
 
+    def test_hero_tags_unique_per_screen(self):
+        """Flutter падает, если на одном экране два Hero с одним тегом — проверяем все экраны."""
+        fill_db()
+        add_podium()
+        self.state.load()
+        self.state.favorites = [d["driver_id"] for d in self.state.standings]
+        self.state.ui["driver_id"] = "leclerc"
+        self.state.ui["team"] = "Ferrari"
+        tagged = 0
+        for name, build in self.all_screens():
+            tags = [n.tag for n in walk(build(self.state)) if type(n).__name__ == "Hero"]
+            tagged += len(tags)
+            with self.subTest(screen=name):
+                self.assertEqual(len(tags), len(set(tags)), tags)
+        self.assertGreater(tagged, 5)
+
+    def test_driver_page_opens_over_current_screen(self):
+        page, tasks = self._main_with_loop()
+        page.views = [Ctl()]                                   # навигатор: корневая страница
+        page.navigation_bar.on_change(Ctl(control=Ctl(selected_index=3)))
+        asyncio.run(tasks.pop()())
+        root = page.added[0]
+        drivers_screen = texts(root)
+        card = clickable(root, "ANTONELLI")[0]
+        card.on_click(Ctl())
+        asyncio.run(tasks.pop()())
+        self.assertEqual(len(page.views), 2)                   # страница пилота — поверх
+        self.assertEqual(texts(page.added[0]), drivers_screen)  # экран под ней не перестроен (источник Hero)
+        detail = page.views[1]
+        self.assertIn("Antonelli", " ".join(texts(detail)))
+        back = [n for n in walk(detail) if getattr(n, "tooltip", "") == "Назад (Esc)"][0]
+        back.on_click(Ctl())
+        asyncio.run(tasks.pop()())
+        self.assertEqual(len(page.views), 1)                   # сняли — фото улетает обратно
+
     def test_live_track_map(self):
         import base64
         import zlib

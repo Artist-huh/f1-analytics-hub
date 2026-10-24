@@ -80,6 +80,26 @@ def onboarding(out, failures):
         failures.append("знакомство: нет кнопки «Готово»")
 
 
+def driver_page(out, failures):
+    """Пилоты -> первая карточка: страница пилота открывается поверх (фото «перелетает»),
+    системная «назад» возвращает на список."""
+    point = find(dump(), "Найдено")
+    if not point:
+        failures.append("страница пилота: нет списка пилотов")
+        return
+    adb("shell", "input", "tap", str(point[0]), str(point[1] + 260))
+    if not wait_for("СТАТИСТИКА СЕЗОНА", timeout=30):
+        failures.append("страница пилота не открылась")
+        return
+    shot(out, "04b_driver_page")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(3)
+    if wait_for("Найдено", timeout=20):
+        print("страница пилота: открылась поверх списка, «назад» вернул на список")
+    else:
+        failures.append("«назад» со страницы пилота не вернул на список")
+
+
 def tap(label, xml=None):
     point = find(xml or dump(), label)
     if not point:
@@ -123,6 +143,8 @@ def main():
                 shot(out, f"{i:02d}_{tab}")
             else:
                 failures.append(f"нет вкладки «{tab}»")
+            if tab == "Пилоты":
+                driver_page(out, failures)
         # «Ещё» -> Настройки -> тестовое уведомление
         if tap("Настройки"):
             time.sleep(4)
