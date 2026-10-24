@@ -2,7 +2,7 @@
 import flet as ft
 
 from design_system import *
-from services import db, log, media
+from services import db, log, media, notify
 from services import f1_api as api
 from ui.fmt import fmt_updated
 from ui.widgets import button, card, dropdown, pill, screen, txt
@@ -75,6 +75,13 @@ def _notifications_card(state):
         button("Проверить уведомление", lambda e: state.test_notification(), primary=False,
                icon=ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED),
         txt("Приходят, пока приложение запущено (свёрнутое — тоже).", 11, DIM),
+        *([ft.Row([
+            ft.Column([txt("Вибрация", 14, bold=True),
+                       txt("Сейфти-кар, красный флаг и обгоны избранных в Live Timing", 11, MUTED)],
+                      spacing=1, expand=True),
+            ft.Switch(value=state.haptics_on(), active_color=ACCENT,
+                      on_change=lambda e: state.set_haptics(bool(e.control.value))),
+        ], vertical_alignment=ft.CrossAxisAlignment.CENTER)] if notify.is_android() else []),
     ], spacing=10))
 
 

@@ -224,6 +224,25 @@ def refresh(on_done=None):
     threading.Thread(target=job, name="f1-live", daemon=True).start()
 
 
+ALERT_TRACK = ("Сейфти-кар", "Виртуальный сейфти-кар", "Красный флаг")
+
+
+def haptic_events(prev, new, favorite_codes=()):
+    """Что стоит отметить вибрацией (чистая функция): сейфти-кар / VSC / красный флаг появились —
+    «heavy»; любимый пилот поднялся в таблице — «medium». -> [(сила, описание)]."""
+    if not prev or not new or not new.get("live"):
+        return []
+    events = []
+    track = new.get("track")
+    if track in ALERT_TRACK and track != prev.get("track"):
+        events.append(("heavy", track))
+    before = {r["code"]: r["position"] for r in prev.get("rows") or []}
+    for r in new.get("rows") or []:
+        if r["code"] in favorite_codes and r["code"] in before and r["position"] < before[r["code"]]:
+            events.append(("medium", f"{r['code']}: P{before[r['code']]} → P{r['position']}"))
+    return events
+
+
 def session_is_live(schedule, now=None):
     """По календарю: идёт ли сейчас какая-нибудь сессия (без запроса к OpenF1).
     -> (этап, ключ сессии) или None. Длительность сессии считаем ~2 ч."""

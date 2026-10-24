@@ -43,6 +43,8 @@ class AppState:
         self.on_mini_change = lambda enabled: None   # main.py: размер окна, «поверх всех»
         self.on_minimize = lambda: None              # main.py: свернуть окно
         self.background = False         # приложение Android свёрнуто — живые данные не опрашиваем
+        self._live_prev = None          # прошлый снимок live — для вибрации на событиях
+        self._haptics = None
 
     # ---------- данные ----------
     def load(self):
@@ -286,9 +288,13 @@ class AppState:
 
     def on_live_data(self):
         """Пришёл свежий снимок (из фонового потока). Экран Live с таблицей обновляется на месте —
-        с анимацией обгонов; в остальных случаях — обычная перерисовка."""
+        с анимацией обгонов; в остальных случаях — обычная перерисовка. На Android — вибрация на событиях."""
         def apply():
             data = live.snapshot()[0]
+            codes = {d["code"] for d in self.standings if d["driver_id"] in self.favorites}
+            for strength, _ in live.haptic_events(self._live_prev, data, codes)[:1]:
+                self.haptic(strength)
+            self._live_prev = data
             from ui.screens import live as live_screen
             if not (data and live_screen.update_in_place(self, data)):
                 self.render()
@@ -305,6 +311,29 @@ class AppState:
             if self.live_watched():
                 self.watch_live()
             self.render()
+
+    # ---------- вибрация (Android) ----------
+    def haptics_on(self):
+        return notify.is_android() and api.get_setting("haptics", "1") == "1"
+
+    def set_haptics(self, on):
+        api.set_setting("haptics", "1" if on else "0")
+        if on:
+            self.haptic("light")
+
+    def haptic(self, strength="medium"):
+        """Короткий тактильный отклик: light / medium / heavy. Только Android и если включено в настройках."""
+        if not self.haptics_on():
+            return False
+        if self._haptics is None:
+            import flet as ft
+            self._haptics = ft.HapticFeedback()          # сервис регистрируется на текущей странице
+        method = {"light": self._haptics.light_impact, "heavy": self._haptics.heavy_impact}.get(
+            strength, self._haptics.medium_impact)
+        run_task = getattr(self.page, "run_task", None)
+        if run_task:
+            run_task(method)
+        return True
 
     # ---------- окно (компьютер) ----------
     def minimize(self):

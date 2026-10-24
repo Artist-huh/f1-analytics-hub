@@ -1010,6 +1010,34 @@ class UiSmokeTest(unittest.TestCase):
         rows["LEC"]["box"].on_long_press(Ctl())                                    # компьютер: долгое нажатие
         self.assertIn("P1 · LEC", texts(self.page.dialogs[-1]))
 
+    def test_haptics_on_live_events(self):
+        from services import live, notify
+        def snap(track, order):
+            return {"live": True, "track": track, "rows": [{"code": c, "position": i} for i, c in enumerate(order, 1)]}
+        events = live.haptic_events(snap(None, ["VER", "LEC", "NOR"]), snap("Сейфти-кар", ["LEC", "VER", "NOR"]),
+                                    {"LEC"})
+        self.assertEqual(events, [("heavy", "Сейфти-кар"), ("medium", "LEC: P2 → P1")])
+        self.assertEqual(live.haptic_events(snap("Сейфти-кар", ["LEC"]), snap("Сейфти-кар", ["LEC"]), {"LEC"}), [])
+        self.assertEqual(live.haptic_events(None, snap("Сейфти-кар", ["LEC"])), [])      # первый снимок — тихо
+        self.assertFalse(self.state.haptic("heavy"))                                     # компьютер — ничего
+        tasks = []
+        self.page.run_task = tasks.append
+        fake = mock.Mock()
+        with mock.patch.object(notify, "is_android", return_value=True), \
+                mock.patch.object(sys.modules["flet"], "HapticFeedback", return_value=fake, create=True):
+            self.assertTrue(self.state.haptic("heavy"))
+            self.assertIs(tasks[-1], fake.heavy_impact)
+            self.state.set_haptics(False)
+            self.assertFalse(self.state.haptic("heavy"))                                 # выключено в настройках
+            self.state.sub = "settings"
+            self.assertIn("Вибрация", texts(self.build("settings")))
+            self.state.set_haptics(True)
+            live._state["data"] = snap("Красный флаг", ["LEC"])
+            self.state._live_prev = snap(None, ["LEC"])
+            n = len(tasks)
+            self.state.on_live_data()
+            self.assertEqual(tasks[n:], [fake.heavy_impact])                             # красный флаг — сильный отклик
+
     def test_live_track_map(self):
         import base64
         import zlib
