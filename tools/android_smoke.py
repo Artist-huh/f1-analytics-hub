@@ -134,6 +134,9 @@ def main():
         xml = wait_for("F1 Hub", timeout=60)
     print(f"главный экран: {'да' if xml else 'НЕТ'} за {time.time() - started:.0f} с")
     shot(out, "01_home")
+    time.sleep(3)
+    # logcat — кольцевой буфер: к концу проверки строки запуска (виджет, разрешения) могут вытесниться
+    early_log = adb("logcat", "-d", check=False)
     if not xml:
         failures.append("главный экран не появился")
     else:
@@ -193,7 +196,7 @@ def main():
         print("виджет: провайдер зарегистрирован")
     else:
         failures.append("виджет F1 Hub не зарегистрирован в системе")
-    widget_log = [ln for ln in log.splitlines() if "F1Widget" in ln or "виджет" in ln]
+    widget_log = [ln for ln in (early_log + log).splitlines() if "F1Widget" in ln or "виджет" in ln]
     if any("данные виджета обновлены" in ln for ln in widget_log):
         print("виджет: данные получены")
     else:
