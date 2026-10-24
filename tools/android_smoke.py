@@ -49,16 +49,27 @@ def wait_for(label, timeout=240):
     return wait_any([label], timeout)[1]
 
 
+def clear_anr(xml=None):
+    """Окно «… isn't responding» системного приложения эмулятора (обычно лаунчера) перекрывает экран
+    и съедает нажатия; «Wait» не помогает — зависший лаунчер показывает окно снова. Закрываем его
+    («Close app»: системное приложение перезапустится само, наше не затрагивается). -> было ли окно."""
+    xml = xml if xml is not None else dump()
+    if "isn't responding" not in xml and "не отвечает" not in xml:
+        return False
+    print("системное окно «не отвечает» — закрываем зависшее системное приложение")
+    point = find(xml, "Close app") or find(xml, "Закрыть приложение") or find(xml, "Wait")
+    if point:
+        adb("shell", "input", "tap", str(point[0]), str(point[1]))
+    time.sleep(2)
+    return True
+
+
 def wait_any(labels, timeout=240):
     """Первый из labels, появившийся на экране, и XML экрана (или None, None)."""
     end = time.time() + timeout
     while time.time() < end:
         xml = dump()
-        if "isn't responding" in xml or "не отвечает" in xml:
-            # зависание системного приложения эмулятора (лаунчер) закрывает экран — ждём, а не закрываем
-            print("системное окно «не отвечает» — нажимаем «Wait»")
-            tap("Wait", xml) or tap("Подождать", xml)
-            time.sleep(2)
+        if clear_anr(xml):
             continue
         for label in labels:
             if find(xml, label):
@@ -101,6 +112,8 @@ def driver_page(out, failures):
 
 
 def tap(label, xml=None):
+    if clear_anr(xml):                         # перед нажатием — убрать системное окно, иначе нажмём в него
+        xml = None
     point = find(xml or dump(), label)
     if not point:
         return False
