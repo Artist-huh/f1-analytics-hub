@@ -22,6 +22,7 @@ from ui.screens import (
     favorites,
     history,
     home,
+    home_blocks,
     live,
     mini,
     more,
@@ -65,6 +66,7 @@ def refresh_screens():
         "title": title.build,
         "predict": predict.build,
         "welcome": welcome.build,
+        "home_edit": home_blocks.build_editor,
         "strategy": strategy.build,
         "settings": settings.build,
     })

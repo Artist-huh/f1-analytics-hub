@@ -1038,6 +1038,47 @@ class UiSmokeTest(unittest.TestCase):
             self.state.on_live_data()
             self.assertEqual(tasks[n:], [fake.heavy_impact])                             # красный флаг — сильный отклик
 
+    def test_home_blocks_customizable(self):
+        from services import radio
+        from ui.screens import home_blocks as hb
+        fill_db()
+        add_podium()
+        self.state.load()
+        self.assertEqual([k for k, _ in hb.layout()], list(hb.BLOCKS))                # по умолчанию — все по порядку
+        db.set_setting("home_blocks", json.dumps([{"key": "weather", "on": True}, {"key": "drivers", "on": False},
+                                                  {"key": "устаревший", "on": True}]))
+        lay = hb.layout()
+        self.assertEqual(lay[:2], [("weather", True), ("drivers", False)])           # порядок пользователя
+        self.assertEqual(len(lay), len(hb.BLOCKS))                                    # новые блоки — в конец
+        db.save_archive(hb.WEATHER_KEY, {"weather": {"air": 22.0, "track": 31.0, "humidity": 40.0, "wind": 1.0,
+                                                     "rain": True}, "place": "Austin", "session": "Practice 3"})
+        last, _ = self.state.last_race()
+        db.save_archive(radio.radio_key(last), {"start": 0, "drivers": {"16": {"code": "LEC", "colour": "ED1131"}},
+                                                "messages": [{"driver": "16", "url": "https://r/x.mp3", "ts": 5}]})
+        db.save_archive(radio.tx_key("https://r/x.mp3"), {"en": "Box", "ru": "Сделай пит-стоп."})
+        with mock.patch.object(radio, "supported", return_value=True):
+            t = texts(self.build("tab0"))
+        self.assertEqual(t.index("Live Timing"), min(t.index(x) for x in ("Live Timing", "Погода на трассе")))
+        self.assertLess(t.index("Погода на трассе"), t.index("Радио команд"))       # погода — первым блоком
+        self.assertNotIn("Чемпионат пилотов", t)                                     # лидеры скрыты
+        for expected in ("воздух 22°", "дождь", "Сделай пит-стоп.", "Радио команд"):
+            self.assertIn(expected, t)
+        self.assertTrue(any("прогноз ещё не сделан" in x for x in t))
+        clickable(self.build("tab0"), "Настроить главную")[0].on_click(Ctl())
+        self.assertEqual(self.state.sub, "home_edit")
+        editor = self.build("home_edit")
+        down = [n for n in walk(editor) if getattr(n, "tooltip", "") == "Погода на трассе: ниже"]
+        down[0].on_click(Ctl())
+        self.assertEqual([k for k, _ in hb.layout()][:2], ["drivers", "weather"])
+        lst = next(n for n in walk(self.build("home_edit")) if type(n).__name__ == "ReorderableListView")
+        lst.on_reorder(Ctl(old_index=0, new_index=2))
+        self.assertEqual([k for k, _ in hb.layout()][:3], ["weather", "next_race", "drivers"])
+        sw = [n for n in walk(self.build("home_edit")) if getattr(n, "tooltip", "") == "Лидеры: пилоты: показывать"]
+        sw[0].on_change(Ctl(control=Ctl(value=True)))
+        self.assertIn(("drivers", True), hb.layout())
+        clickable(self.build("home_edit"), "Вернуть как было")[0].on_click(Ctl())
+        self.assertEqual(hb.layout(), [(k, True) for k in hb.BLOCKS])
+
     def test_live_track_map(self):
         import base64
         import zlib

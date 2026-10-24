@@ -9,39 +9,65 @@ from services import live
 from ui.components import *
 from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_day, plural, short_name
 from ui.rows import driver_row, team_row
+from ui.screens import home_blocks as hb
 from ui.widgets import empty_state, screen
 
 
 def render(state):
     """Отрисовка главного экрана"""
     is_mobile = ResponsiveContainer.is_mobile(page_width(state))
-    standings, constructors = state.standings, state.constructors
+    standings = state.standings
 
-    # Live Timing и быстрый доступ — первыми: самые частые действия всегда под рукой
+    # Live Timing и быстрый доступ — первыми и закреплены: самые частые действия всегда под рукой.
+    # Остальное — блоки в порядке пользователя (home_blocks, экран «Настроить главную»).
     sections = [_build_live_card(state), _build_quick_actions(state)]
-    race = state.next_race()
-    if race:
-        sections.append(_build_next_race_hero(race, state, is_mobile))
-
     if not standings:
+        race = state.next_race()
+        if race:
+            sections.append(_build_next_race_hero(race, state, is_mobile))
         sections.append(empty_state(state, "Данных пока нет",
                                     "Подключись к интернету и нажми «Обновить» — таблицы сохранятся "
                                     "и будут доступны без сети."))
     else:
-        last, podium = state.last_race()
-        if podium:
-            sections.append(_build_last_podium(state, last, podium, is_narrow(state)))
-        sections.append(_build_season_stats(state, is_narrow(state)))
-        sections.append(_build_title_fight(state))
-        sections.append(_build_top_drivers(state, standings[:5]))
-        if constructors:
-            sections.append(_build_top_constructors(state, constructors[:5]))
-        favs = [d for d in standings if d["driver_id"] in state.favorites]
-        if favs:
-            sections.append(_build_favorites_strip(state, favs))
+        for key, on in hb.layout():
+            if on:
+                block = _block(state, key, is_mobile)
+                if block is not None:
+                    sections.append(block)
+        sections.append(ft.Row([ft.TextButton("Настроить главную", icon=ft.Icons.TUNE_ROUNDED,
+                                              on_click=lambda e: state.open_sub("home_edit"))],
+                               alignment=ft.MainAxisAlignment.CENTER))
 
     subtitle = f"Сезон {state.season}" if state.season else None
     return screen(state, "F1 Hub", sections, subtitle=subtitle)
+
+
+def _block(state, key, is_mobile):
+    """Один блок главной по ключу (None — показывать нечего)."""
+    if key == "next_race":
+        race = state.next_race()
+        return _build_next_race_hero(race, state, is_mobile) if race else None
+    if key == "podium":
+        last, podium = state.last_race()
+        return _build_last_podium(state, last, podium, is_narrow(state)) if podium else None
+    if key == "season":
+        return _build_season_stats(state, is_narrow(state))
+    if key == "title":
+        return _build_title_fight(state)
+    if key == "drivers":
+        return _build_top_drivers(state, state.standings[:5])
+    if key == "teams":
+        return _build_top_constructors(state, state.constructors[:5]) if state.constructors else None
+    if key == "favorites":
+        favs = [d for d in state.standings if d["driver_id"] in state.favorites]
+        return _build_favorites_strip(state, favs) if favs else None
+    if key == "predict":
+        return hb.predict_block(state)
+    if key == "radio":
+        return hb.radio_block(state)
+    if key == "weather":
+        return hb.weather_block(state)
+    return None
 
 
 # ========================================
