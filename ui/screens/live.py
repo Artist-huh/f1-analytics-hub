@@ -9,6 +9,7 @@ from ui.components import *
 from ui.fmt import fmt_clock
 from ui.screens.calendar import track_info
 from ui.screens.live_table import LiveTable
+from ui.screens.live_track import track_section
 from ui.widgets import pill, retry_block, screen
 
 SESSION_RU = {"Race": "Гонка", "Qualifying": "Квалификация", "Sprint": "Спринт",
@@ -48,6 +49,8 @@ def build(state):
     if data.get("track"):
         body.append(_track_status(data["track"]))
     tabs = [pill("Таблица", view == "table", lambda e: show("table"))]
+    if data.get("circuit_key"):
+        tabs.append(pill("Трасса", view == "track", lambda e: show("track")))
     if radio_items:
         tabs.append(pill(f"Радио · {len(radio_items)}", view == "radio", lambda e: show("radio")))
     if data["racing"] and view == "table":
@@ -58,6 +61,9 @@ def build(state):
     if view == "radio" and radio_items:
         state.ui.pop("live_table", None)
         body += _radio(state, data)
+    elif view == "track" and data.get("circuit_key"):
+        state.ui.pop("live_table", None)
+        body += track_section(state, data)
     else:
         body.append(_table(state, data, mode))
         if data["messages"]:
@@ -143,11 +149,13 @@ def _table(state, data, mode):
 def update_in_place(state, data):
     """Свежий снимок, а экран Live уже открыт: обновить таблицу и шапку без перестройки экрана.
     -> False, если изменилось что-то структурное (тогда нужна обычная перерисовка)."""
-    table, head = state.ui.get("live_table"), state.ui.get("live_head")
+    view = state.ui.get("live_view", "table")
+    table = state.ui.get("live_track") if view == "track" else state.ui.get("live_table")
+    head = state.ui.get("live_head")
     shown = state.ui.get("live_shown") or {}
-    if (not table or not head or state.sub != "live" or state.ui.get("live_view", "table") != "table"
-            or not table.matches(data, state.ui.get("live_gap", "leader"))
-            or shown != _structure(data)):
+    if not table or not head or state.sub != "live" or view not in ("table", "track") or shown != _structure(data):
+        return False
+    if not (table.matches(data) if view == "track" else table.matches(data, state.ui.get("live_gap", "leader"))):
         return False
     table.apply(data)
     head["updated"].value = f"обновлено в {fmt_clock(data['updated'])}"

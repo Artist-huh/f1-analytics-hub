@@ -12,12 +12,12 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from . import log
+from . import log, track_map
 
 BASE = "https://livetiming.formula1.com"
 STATIC = f"{BASE}/static/"
 TOPICS = ["SessionInfo", "DriverList", "TimingData", "TimingAppData", "LapCount", "TrackStatus",
-          "RaceControlMessages", "TeamRadio", "ExtrapolatedClock"]
+          "RaceControlMessages", "TeamRadio", "ExtrapolatedClock", "Position.z"]
 TIMEOUT = 15
 RS = "\x1e"                      # разделитель сообщений SignalR
 TYRES = {"SOFT": "S", "MEDIUM": "M", "HARD": "H", "INTERMEDIATE": "I", "WET": "W"}
@@ -166,6 +166,8 @@ def snapshot(state, now=None):
         "messages": [{"time": _ts(m.get("Utc")), "text": m.get("Message", ""), "flag": m.get("Flag"),
                       "lap": m.get("Lap")} for m in messages[-6:]][::-1],
         "radio": sorted(radio, key=lambda r: r["ts"] or 0),
+        "positions": track_map.decode_positions(state.get("Position.z")),      # только во время сессии
+        "circuit_key": (meeting.get("Circuit") or {}).get("Key"),
         "drivers": {str(n): {"code": d.get("Tla", ""), "team": d.get("TeamName", ""), "colour": d.get("TeamColour")}
                     for n, d in drivers.items() if isinstance(d, dict)},
         "source": "F1",

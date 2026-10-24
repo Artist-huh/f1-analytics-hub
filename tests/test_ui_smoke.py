@@ -967,6 +967,47 @@ class UiSmokeTest(unittest.TestCase):
         self.state.on_live_data()
         self.assertEqual(len(self.renders), renders + 1)
 
+    def test_live_track_map(self):
+        import base64
+        import zlib
+
+        from services import live, track_map
+        from ui.screens import live as live_screen
+        last = {"16": {"Status": "OnTrack", "X": 900, "Y": 400, "Z": 0},
+                "1": {"Status": "OffTrack", "X": 100, "Y": 900, "Z": 0}}
+        frames = {"Position": [{"Timestamp": "t0", "Entries": {"16": {"Status": "OnTrack", "X": 0, "Y": 0, "Z": 0}}},
+                               {"Timestamp": "t1", "Entries": last}]}
+        comp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+        z = base64.b64encode(comp.compress(json.dumps(frames).encode()) + comp.flush()).decode()
+        positions = track_map.decode_positions(z)                            # формат Position.z потока F1
+        self.assertEqual(positions["16"], {"x": 900, "y": 400, "status": "OnTrack"})   # последний кадр
+        self.assertEqual(track_map.decode_positions("мусор"), {})
+        outline = {"x": [0, 1000, 1000, 0], "y": [0, 0, 1000, 1000], "rotation": 0, "corners": [(1, 1000, 0)]}
+        to_screen = track_map.project(outline, 300, 300, pad=10)
+        self.assertEqual(tuple(round(v) for v in to_screen(0, 0)), (10, 290))   # ось Y вверх, поля по 10
+        self.assertEqual(tuple(round(v) for v in to_screen(1000, 1000)), (290, 10))
+        fill_db()
+        self.state.load()
+        db.save_archive(track_map.outline_key(9), outline)
+        live._state["data"] = {"session": {"name": "Race", "type": "Race", "country": "USA", "location": "Austin",
+                                           "circuit": "Austin", "start": 0, "end": 0, "year": 2026},
+                               "live": True, "racing": True, "lap": 3, "messages": [], "radio": [], "track": None,
+                               "updated": time.time(), "rows": [], "circuit_key": 9, "positions": positions,
+                               "drivers": {"16": {"code": "LEC", "colour": "ED1131"},
+                                           "1": {"code": "NOR", "colour": "F47600"}}}
+        self.state.sub, self.state.ui["live_view"] = "live", "track"
+        t = texts(self.build("live"))
+        self.assertIn("Трасса", t)
+        self.assertTrue(any(x.startswith("На трассе: 2.") for x in t))
+        track = self.state.ui["live_track"]
+        lec = track.dots["16"]
+        before = (lec.left, lec.top)
+        self.assertEqual(track.dots["1"].opacity, 0.45)                        # вне трассы — полупрозрачно
+        live._state["data"]["positions"] = dict(positions, **{"16": {"x": 100, "y": 100, "status": "OnTrack"}})
+        self.assertTrue(live_screen.update_in_place(self.state, live._state["data"]))
+        self.assertIs(self.state.ui["live_track"], track)                     # те же точки — плавное движение
+        self.assertNotEqual((lec.left, lec.top), before)
+
     def test_live_banner_when_session_runs(self):
         from services import live
         fill_db()
