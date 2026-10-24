@@ -202,4 +202,4 @@ def _messages(messages):
                                size=FONT_CAPTION, color=TEXT_MUTED)], spacing=0, expand=True),
         ], spacing=SPACE_SM))
     return ft.Column([SectionHeader("Дирекция гонки", subtitle="Последние сообщения"),
-                      AnimatedCard(ft.Column(items, spacing=SPACE_XS), padding=SPACE_SM)], spacing=SPACE_SM)
+                      AnimatedCard(ft.Column(items, spacing=SPACE_XS))], spacing=SPACE_SM)

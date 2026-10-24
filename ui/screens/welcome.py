@@ -118,7 +118,7 @@ def _notify_step(state, w):
                                         ft.Text(hint, size=FONT_CAPTION, color=TEXT_MUTED)], spacing=2, expand=True),
                              ft.Switch(value=w[kind], active_color=F1_RED, on_change=switch(kind),
                                        label=None, tooltip=title)],
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER), padding=SPACE_SM)
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER))
         for kind, title, hint in rows]
 
 

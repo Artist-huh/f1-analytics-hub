@@ -165,7 +165,7 @@ def _build_live_card(state):
                   spacing=0, expand=True),
         ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM),
     ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=SPACE_SM, accent=DANGER if now_live else F1_RED, on_click=lambda e: state.open_sub("live"),
+        accent=DANGER if now_live else F1_RED, on_click=lambda e: state.open_sub("live"),
         tooltip="Live Timing: открыть", **({"border": ft.Border.all(1, DANGER)} if now_live else {}))
 
 
@@ -256,7 +256,7 @@ def _build_title_fight(state):
         ft.Row(faces, spacing=-8, tight=True),
         ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM),
     ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=SPACE_SM, accent=GOLD, on_click=lambda e: state.open_sub("title"))
+        accent=GOLD, on_click=lambda e: state.open_sub("title"))
 
 
 def _build_top_drivers(state, drivers):

@@ -84,7 +84,7 @@ def _finish_codes(state, race):
 def _translate_card(state):
     if not radio.supported():
         return AnimatedCard(ft.Text("Перевод радио работает в версии для компьютера. Здесь — запись в оригинале.",
-                                    size=FONT_BODY_SMALL, color=TEXT_SECONDARY), padding=SPACE_SM)
+                                    size=FONT_BODY_SMALL, color=TEXT_SECONDARY))
     if radio.models_ready():
         return ft.Container()
     dl = radio.download_state()
@@ -104,7 +104,7 @@ def _translate_card(state):
                    primary=model == radio.DEFAULT_WHISPER, icon=ft.Icons.DOWNLOAD_ROUNDED)
             for model, (label, size) in radio.WHISPER_MODELS.items()], wrap=True, spacing=SPACE_XS,
             run_spacing=SPACE_XS))
-    return AnimatedCard(ft.Column(body, spacing=SPACE_XS), padding=SPACE_SM)
+    return AnimatedCard(ft.Column(body, spacing=SPACE_XS))
 
 
 # ---------------------------------------------------------------- одна запись
@@ -138,7 +138,7 @@ def _message(state, m, info, start):
         ft.Column([ft.Row([ft.Text(name, size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC),
                            ft.Text(stamp, size=FONT_CAPTION, color=TEXT_DIM)], spacing=SPACE_XS)] + lines,
                   spacing=2, expand=True),
-    ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.START), padding=SPACE_XS)
+    ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.START), size="s")
 
 
 # ---------------------------------------------------------------- проигрывание

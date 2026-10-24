@@ -172,7 +172,7 @@ def _build_points_chart(state, driver):
     return ft.Column([
         SectionHeader("Набор очков",
                       subtitle="Гонки и спринты, по этапам" + (" · против напарника" if len(people) > 1 else "")),
-        AnimatedCard(ft.Column([chart, legend(series)], spacing=SPACE_XS), padding=SPACE_SM),
+        AnimatedCard(ft.Column([chart, legend(series)], spacing=SPACE_XS)),
     ], spacing=SPACE_SM)
 
 
@@ -194,8 +194,7 @@ def _build_points_by_race(results):
     return ft.Column([
         SectionHeader("Очки по гонкам", subtitle=f"{total:g} {plural(total, 'очко', 'очка', 'очков')} за гонки "
                                                  "(без спринтов). Золото, серебро, бронза — подиумы."),
-        AnimatedCard(ft.Row(cols, spacing=8, vertical_alignment=ft.CrossAxisAlignment.END, scroll=ft.ScrollMode.AUTO),
-                     padding=SPACE_SM),
+        AnimatedCard(ft.Row(cols, spacing=8, vertical_alignment=ft.CrossAxisAlignment.END, scroll=ft.ScrollMode.AUTO)),
     ], spacing=SPACE_SM)
 
 

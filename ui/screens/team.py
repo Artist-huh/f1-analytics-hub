@@ -124,7 +124,7 @@ def _duel(state, a, b):
             ft.Row([ft.Container(expand=x or None, height=5, bgcolor=color, border_radius=3),
                     ft.Container(expand=y or None, height=5, bgcolor=TEXT_SECONDARY, border_radius=3)],
                    spacing=2) if total else ft.Container(),
-        ], spacing=SPACE_XXS, horizontal_alignment=ft.CrossAxisAlignment.CENTER), padding=SPACE_SM, expand=True)
+        ], spacing=SPACE_XXS, horizontal_alignment=ft.CrossAxisAlignment.CENTER), expand=True)
 
     return ft.Column([
         SectionHeader("Дуэль напарников", subtitle=f"{short_name(a['name'])} против {short_name(b['name'])}"),
@@ -152,5 +152,5 @@ def _chart(state, team):
         SectionHeader("Набор очков", subtitle="По этапам, " + ("против ближайшего соперника" if team["position"] == "1"
                                                                 else "против лидера Кубка")),
         AnimatedCard(ft.Column([line_chart(series, rounds, content_width(state) - 2 * SPACE_SM, height=200),
-                                legend(series)], spacing=SPACE_XS), padding=SPACE_SM),
+                                legend(series)], spacing=SPACE_XS)),
     ], spacing=SPACE_SM)

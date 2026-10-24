@@ -83,7 +83,7 @@ def _champion(state, row, view):
                    ft.Text(f"Титул оформлен досрочно · {row['points']} очков", size=FONT_BODY_SMALL,
                            color=TEXT_MUTED)], spacing=2, expand=True),
         ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD, size=40),
-    ], spacing=SPACE_MD, vertical_alignment=ft.CrossAxisAlignment.CENTER), accent=GOLD, padding=SPACE_MD)
+    ], spacing=SPACE_MD, vertical_alignment=ft.CrossAxisAlignment.CENTER), accent=GOLD, size="l")
 
 
 def _next_clinch(state, rows, race, view):
@@ -102,7 +102,7 @@ def _next_clinch(state, rows, race, view):
                            weight=ft.FontWeight.W_600),
                    ft.Text(f"Для этого {cond}.", size=FONT_BODY_SMALL, color=TEXT_SECONDARY)],
                   spacing=2, expand=True),
-    ], spacing=SPACE_MD, vertical_alignment=ft.CrossAxisAlignment.CENTER), accent=F1_RED, padding=SPACE_MD)
+    ], spacing=SPACE_MD, vertical_alignment=ft.CrossAxisAlignment.CENTER), accent=F1_RED, size="l")
 
 
 def _contenders(state, race, view, total):
@@ -128,7 +128,7 @@ def _contenders(state, race, view, total):
                 progress_bar(best / top, ft.Colors.with_opacity(0.35, color), height=6),
                 progress_bar(pts / top, color, height=6),
             ]),
-        ], spacing=SPACE_XS), padding=SPACE_SM, accent=color,
+        ], spacing=SPACE_XS), accent=color,
             on_click=(lambda e, i=row["driver_id"]: state.open_driver(i)) if view == "drivers" else None))
     out = [SectionHeader("Ещё могут стать чемпионом" if view == "drivers" else "Ещё могут выиграть Кубок",
                          subtitle="Тёмная часть полосы — набрано, светлая — максимум при победах "

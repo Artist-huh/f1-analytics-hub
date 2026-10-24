@@ -104,7 +104,7 @@ def positions_section(state, race):
     note = (f"Больше всех отыграл {short_name(_driver(state, best[1])['name'])}: +{best[0]} "
             f"{plural(best[0], 'позиция', 'позиции', 'позиций')}" if best and best[0] > 0 else None)
     return [
-        AnimatedCard(chart, padding=SPACE_SM),
+        AnimatedCard(chart),
         ft.Text(note, size=FONT_BODY_SMALL, color=TEXT_SECONDARY) if note else ft.Container(),
         ft.Text(f"{total} {plural(total, 'круг', 'круга', 'кругов')}. Цветом — первая десятка и избранные, "
                 "серым — остальные. Источник — Jolpica.", size=FONT_CAPTION, color=TEXT_DIM),
@@ -171,9 +171,8 @@ def pace_section(state, race):
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER))
     return [
         ft.Row(chips, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO),
-        AnimatedCard(ft.Column([chart, legend([(n, c, None) for n, c, _, _ in series])], spacing=SPACE_XS),
-                     padding=SPACE_SM),
-        AnimatedCard(ft.Column(table, spacing=SPACE_XS), padding=SPACE_SM),
+        AnimatedCard(ft.Column([chart, legend([(n, c, None) for n, c, _, _ in series])], spacing=SPACE_XS)),
+        AnimatedCard(ft.Column(table, spacing=SPACE_XS)),
         ft.Text("Чистые круги: без первого круга, заездов в боксы и сейфти-кара (медленнее медианы > 4 %). "
                 "Выбери до четырёх пилотов.", size=FONT_CAPTION, color=TEXT_DIM),
     ]
@@ -206,8 +205,8 @@ def quali_section(state, race):
     pole = gaps[0] if gaps else None
     head = (f"Поул: {pole[0]['name']} — {fmt_lap(pole[1])}" if pole and pole[1] else "Квалификация")
     return [
-        AnimatedCard(ft.Text(head, size=FONT_BODY, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600), padding=SPACE_SM),
-        AnimatedCard(ft.Column(rows, spacing=6), padding=SPACE_SM),
+        AnimatedCard(ft.Text(head, size=FONT_BODY, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600)),
+        AnimatedCard(ft.Column(rows, spacing=6)),
         ft.Text("Лучшее время в той части квалификации, до которой дошёл пилот. Источник — Jolpica.",
                 size=FONT_CAPTION, color=TEXT_DIM),
     ]

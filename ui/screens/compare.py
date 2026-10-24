@@ -117,7 +117,7 @@ def _build_selector(state, drivers):
     return AnimatedCard(ft.Column([
         ft.Row(cells, vertical_alignment=ft.CrossAxisAlignment.START, spacing=SPACE_XXS),
         ft.Row(chips, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO),
-    ], spacing=SPACE_SM), padding=SPACE_SM)
+    ], spacing=SPACE_SM))
 
 
 def _presets(state):
@@ -218,7 +218,7 @@ def _build_chart(state, drivers):
     return ft.Column([
         SectionHeader("Набор очков", subtitle="Гонки и спринты по этапам (напарники — пунктиром)"),
         AnimatedCard(ft.Column([line_chart(series, rounds, content_width(state) - 2 * SPACE_SM, height=220),
-                                legend(series)], spacing=SPACE_XS), padding=SPACE_SM),
+                                legend(series)], spacing=SPACE_XS)),
     ], spacing=SPACE_SM)
 
 
@@ -252,7 +252,7 @@ def _score_card(title, a, b, c1, c2):
         ft.Row([ft.Container(expand=a or None, height=5, bgcolor=c1, border_radius=3),
                 ft.Container(expand=b or None, height=5, bgcolor=c2, border_radius=3)],
                spacing=2) if total else ft.Container(),
-    ], spacing=SPACE_XXS, horizontal_alignment=ft.CrossAxisAlignment.CENTER), padding=SPACE_SM, expand=True)
+    ], spacing=SPACE_XXS, horizontal_alignment=ft.CrossAxisAlignment.CENTER), expand=True)
 
 
 def _build_duel(state, d1, d2, results):
@@ -297,5 +297,5 @@ def _build_group(state, drivers, results):
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER))
     return ft.Column([
         SectionHeader("Кто чаще был впереди", subtitle="Гонки, где пилот финишировал выше всех выбранных"),
-        AnimatedCard(ft.Column(rows, spacing=SPACE_SM), padding=SPACE_SM),
+        AnimatedCard(ft.Column(rows, spacing=SPACE_SM)),
     ], spacing=SPACE_SM)

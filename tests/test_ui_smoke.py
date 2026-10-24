@@ -284,6 +284,14 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.sub, "live")
         self.assertIsNone(home.next_session([], now=0))
 
+    def test_card_size_scale(self):
+        ds = design_system
+        for size, (pad, radius) in ds.CARD_SIZES.items():
+            c = components.AnimatedCard(Ctl(), size=size)
+            self.assertEqual((c.padding, c.border_radius), (pad, radius))
+        self.assertEqual(components.AnimatedCard(Ctl()).padding, ds.SPACE_SM)        # по умолчанию — m
+        self.assertEqual(components.AnimatedCard(Ctl(), padding=3).padding, 3)       # явный отступ сильнее
+
     def test_font_scale_setting(self):
         self.addCleanup(design_system.apply_font_scale, 1.0)
         calls = []

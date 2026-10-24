@@ -76,10 +76,12 @@ class FadeIn(ft.Container):
 class AnimatedCard(ft.Container):
     """Карточка: тень, подъём и подсветка рамки при наведении, «рябь» при нажатии."""
 
-    def __init__(self, content: ft.Control, on_click=None, elevation_end: int = 2, accent=None, **kwargs):
-        kwargs.setdefault("padding", SPACE_MD)
+    def __init__(self, content: ft.Control, on_click=None, elevation_end: int = 2, accent=None, size="m",
+                 **kwargs):
+        pad, radius = CARD_SIZES[size]                 # s / m / l — общая шкала (design_system.CARD_SIZES)
+        kwargs.setdefault("padding", pad)
         kwargs.setdefault("bgcolor", SURFACE)
-        kwargs.setdefault("border_radius", RADIUS_MD)
+        kwargs.setdefault("border_radius", radius)
         self._accent = accent or LINE_STRONG
         kwargs.setdefault("border", ft.Border.all(1, LINE))
         super().__init__(

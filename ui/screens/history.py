@@ -183,7 +183,7 @@ def _winners(state, data):
     most = max(wins.items(), key=lambda kv: kv[1]) if wins else None
     sub = f"Больше всего побед: {most[0]} — {most[1]}" if most else None
     return ft.Column([SectionHeader("Победители гонок", subtitle=sub),
-                      AnimatedCard(ft.Column(items, spacing=SPACE_XS), padding=SPACE_SM)], spacing=SPACE_SM)
+                      AnimatedCard(ft.Column(items, spacing=SPACE_XS))], spacing=SPACE_SM)
 
 
 # ---------------------------------------------------------------- чемпионы всех лет
@@ -203,7 +203,7 @@ def _champions_view(state):
             ft.Column([ft.Text(f"{state.season}: {lead['name']}", size=FONT_BODY, color=TEXT_PRIMARY,
                                weight=ft.FontWeight.W_600),
                        ft.Text(status, size=FONT_CAPTION, color=TEXT_MUTED)], spacing=0, expand=True),
-        ], spacing=SPACE_SM), padding=SPACE_SM, accent=F1_RED, on_click=lambda e: state.open_sub("title")))
+        ], spacing=SPACE_SM), accent=F1_RED, on_click=lambda e: state.open_sub("title")))
 
     def leaderboard(title, pairs, unit=("титул", "титула", "титулов")):
         top = pairs[0][1] if pairs else 1
@@ -217,8 +217,7 @@ def _champions_view(state):
                         text_align=ft.TextAlign.RIGHT),
             ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
         return AnimatedCard(ft.Column([ft.Text(title, size=FONT_BODY_SMALL, color=TEXT_SECONDARY,
-                                               weight=ft.FontWeight.W_600)] + items, spacing=SPACE_XS),
-                            padding=SPACE_SM)
+                                               weight=ft.FontWeight.W_600)] + items, spacing=SPACE_XS))
 
     out.append(SectionHeader("Рекорды", subtitle=f"По {len(rows)} сезонам: {rows[-1]['season']}–{rows[0]['season']}"))
     out.append(ft.ResponsiveRow([

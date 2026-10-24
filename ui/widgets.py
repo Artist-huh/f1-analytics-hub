@@ -5,6 +5,7 @@ from design_system import (
     ACCENT,
     ACCENT_DEEP,
     ACCENT_GLOW,
+    CARD_SIZES,
     DANGER,
     DIM,
     F1_RED,
@@ -35,9 +36,13 @@ def txt(value, size=14, color=TEXT, bold=False, head=False, **kw):
     )
 
 
-def card(content, bgcolor=SURFACE, radius=14, padding=14, on_click=None, border=None, **kw):
-    return ft.Container(content=content, bgcolor=bgcolor, border_radius=radius,
-                        padding=padding, on_click=on_click, border=border or ft.Border.all(1, LINE), **kw)
+def card(content, bgcolor=SURFACE, size="m", on_click=None, border=None, **kw):
+    """Простая карточка (без анимации) — той же шкалы размеров, что AnimatedCard."""
+    pad, radius = CARD_SIZES[size]
+    kw.setdefault("padding", pad)
+    kw.setdefault("border_radius", radius)
+    return ft.Container(content=content, bgcolor=bgcolor, on_click=on_click, border=border or ft.Border.all(1, LINE),
+                        **kw)
 
 
 def pill(label, selected, on_click):

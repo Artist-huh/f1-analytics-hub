@@ -60,7 +60,6 @@ def team_row(state, c, leader_points, show_car=False):
     items.append(progress_bar(float(c["points"]) / leader_points if leader_points else 0, color))
     return AnimatedCard(
         content=ft.Column(items, spacing=SPACE_XS),
-        padding=SPACE_SM,
         accent=color,
         on_click=lambda e, n=c["name"]: state.open_team(n),
     )

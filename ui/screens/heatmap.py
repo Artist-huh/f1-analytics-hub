@@ -83,7 +83,7 @@ def build_section(state):
         ft.Row([pill("Гонки", mode == "race", lambda e: switch("race")),
                 pill("Квалификации", mode == "quali", lambda e: switch("quali"))], spacing=SPACE_XS),
         legend_row,
-        AnimatedCard(grid, padding=SPACE_SM),
+        AnimatedCard(grid),
         ft.Text("Нажми на пилота — откроется его страница. Строки — по местам в чемпионате.",
                 size=FONT_CAPTION, color=TEXT_DIM),
     ]

@@ -50,7 +50,7 @@ def build(state):
     sections = [_hero(state, race)]
     if race.get("start_ts") and race["start_ts"] > time.time():
         sections.append(ft.Column([SectionHeader("Расписание уик-энда"),
-                                   AnimatedCard(session_list(race), padding=SPACE_SM)], spacing=SPACE_SM))
+                                   AnimatedCard(session_list(race))], spacing=SPACE_SM))
     cid = race.get("circuit_id")
     data = archive.circuit(cid, on_done=state.render) if cid else None
     if data:
@@ -90,7 +90,7 @@ def _hero(state, race):
                 for k, v in specs]),
         ft.Text(fmt_date_full(race["start_ts"]), size=FONT_CAPTION,
                 color=TEXT_DIM) if race.get("start_ts") else ft.Container(),
-    ], spacing=SPACE_SM), padding=SPACE_MD, accent=F1_RED)
+    ], spacing=SPACE_SM), size="l", accent=F1_RED)
 
 
 def _history(state, data):
@@ -115,7 +115,7 @@ def _history(state, data):
                                  text_align=ft.TextAlign.RIGHT)], spacing=SPACE_SM) for k, v in facts]
     out = [SectionHeader("Трасса в цифрах",
                          subtitle="Данные о кругах — с 2004 года; конфигурация трассы могла меняться"),
-           AnimatedCard(ft.Column(fact_rows, spacing=SPACE_XS), padding=SPACE_SM)]
+           AnimatedCard(ft.Column(fact_rows, spacing=SPACE_XS))]
     out.append(_people(state, "Последние победители", list(reversed(data["winners"]))[:10]))
     if data.get("poles"):
         out.append(_people(state, "Последние поулы", list(reversed(data["poles"]))[:10], show_time=True))
@@ -136,5 +136,5 @@ def _people(state, title, rows, show_time=False):
                       spacing=0, expand=True),
             ft.Text(right, size=FONT_CAPTION, color=TEXT_SECONDARY),
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER))
-    return ft.Column([SectionHeader(title), AnimatedCard(ft.Column(items, spacing=SPACE_XS), padding=SPACE_SM)],
+    return ft.Column([SectionHeader(title), AnimatedCard(ft.Column(items, spacing=SPACE_XS))],
                      spacing=SPACE_SM)

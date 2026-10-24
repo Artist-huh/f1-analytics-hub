@@ -14,7 +14,7 @@ def _tile(icon, title, hint, on_click, section="settings"):
          ft.Column([txt(title, 16, bold=True), txt(hint, 12, MUTED)], expand=True, spacing=1),
          ft.Icon(ft.Icons.CHEVRON_RIGHT, color=DIM)],
         vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=12),
-        on_click=on_click, padding=12, ink=True)
+        on_click=on_click, ink=True)
 
 
 def build_menu(state):

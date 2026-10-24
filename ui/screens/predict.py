@@ -43,7 +43,7 @@ def build(state):
         body.append(_picker(state, season, race, picks.get(race["round"], {})))
     else:
         body.append(AnimatedCard(ft.Text("Сезон завершён: новых этапов для прогноза нет.", size=FONT_BODY_SMALL,
-                                         color=TEXT_SECONDARY), padding=SPACE_SM))
+                                         color=TEXT_SECONDARY)))
     past = [r for r in reversed(state.schedule) if r["round"] in picks and (not race or r["round"] != race["round"])]
     if past:
         body.append(ft.Text("Мои прогнозы", size=FONT_H3, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600))
@@ -69,7 +69,7 @@ def _summary(s):
                 cell(s["exact"], "точных")], spacing=SPACE_SM),
         ft.Text(" · ".join(x for x in (best, share) if x), size=FONT_CAPTION, color=TEXT_SECONDARY,
                 text_align=ft.TextAlign.CENTER),
-    ], spacing=SPACE_XS, horizontal_alignment=ft.CrossAxisAlignment.CENTER), padding=SPACE_SM)
+    ], spacing=SPACE_XS, horizontal_alignment=ft.CrossAxisAlignment.CENTER))
 
 
 # ---------------------------------------------------------------- прогноз на ближайший этап
@@ -140,7 +140,7 @@ def _picker(state, season, race, saved):
         ft.Row([ft.Text(status, size=FONT_CAPTION, color=TEXT_MUTED, expand=True),
                 button("Сохранить", submit if can_save else None, primary=can_save, icon=ft.Icons.CHECK_ROUNDED)],
                vertical_alignment=ft.CrossAxisAlignment.CENTER),
-    ], spacing=SPACE_SM), padding=SPACE_SM)
+    ], spacing=SPACE_SM))
 
 
 # ---------------------------------------------------------------- прошедшие этапы
@@ -174,4 +174,4 @@ def _past(state, race, pick, pole, podium):
                         weight=ft.FontWeight.W_600, expand=True),
                 ft.Text(total, size=FONT_BODY_SMALL, color=ACCENT_TEXT if result["complete"] else TEXT_DIM)]),
         *lines,
-    ], spacing=4), padding=SPACE_SM)
+    ], spacing=4))

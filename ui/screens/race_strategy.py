@@ -54,7 +54,7 @@ def tyres_section(state, race):
                f"{common} {plural(common, 'пит-стоп', 'пит-стопа', 'пит-стопов')}")
     return [
         AnimatedCard(ft.Column([ft.Text(summary, size=FONT_BODY_SMALL, color=TEXT_SECONDARY), legend_row],
-                               spacing=SPACE_XS), padding=SPACE_SM),
+                               spacing=SPACE_XS)),
         _axis(data["laps"]),
         ft.Column([_row(state, r, data["laps"]) for r in rows], spacing=6),
         ft.Text("Источник — OpenF1. Порядок — по местам финиша; цифры на полосах — номер круга пит-стопа.",
