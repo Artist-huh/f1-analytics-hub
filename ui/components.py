@@ -199,6 +199,32 @@ def flag(src, height=14, code=""):
                         border=ft.Border.all(0.5, ft.Colors.with_opacity(0.25, TEXT_DIM)))
 
 
+# ---------------------------------------------------------------- заготовки загрузки (skeleton)
+def _bone(width=None, height=12, radius=6, expand=None):
+    return ft.Container(width=width, height=height, border_radius=radius, bgcolor=SURFACE_ELEVATED, expand=expand)
+
+
+def skeleton(caption, kind="rows", count=5):
+    """Серые заготовки на месте будущих данных с мерцанием (ft.Shimmer) — вместо одинакового круга загрузки.
+    kind: rows — строки таблиц и лент, chart — блок графика, bars — полосы (стратегия шин)."""
+    if kind == "chart":
+        shapes = [_bone(height=220, radius=RADIUS_MD), ft.Row([_bone(60), _bone(60), _bone(60)], spacing=SPACE_SM)]
+    elif kind == "bars":
+        shapes = [ft.Row([_bone(36, 14), _bone(height=14, expand=True)], spacing=SPACE_XS) for _ in range(count)]
+    else:
+        shapes = [ft.Container(ft.Row([
+            _bone(32, 32, 16),
+            ft.Column([_bone(110 - 12 * (i % 3)), _bone(70, 10)], spacing=6, expand=True),
+            _bone(44, 16),
+        ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            bgcolor=SURFACE, border_radius=CARD_SIZES["s"][1], padding=CARD_SIZES["s"][0]) for i in range(count)]
+    return ft.Column([
+        ft.Text(caption, size=FONT_CAPTION, color=TEXT_MUTED),
+        ft.Shimmer(ft.Column(shapes, spacing=SPACE_XS), base_color=SURFACE_ELEVATED,
+                   highlight_color=LINE_STRONG, period=1400),
+    ], spacing=SPACE_XS)
+
+
 def icon_badge(icon, color, size=40):
     """Иконка раздела: круг с прозрачной подложкой цвета раздела (вместо красного градиента везде)."""
     tone = readable_text(color, 3.0)

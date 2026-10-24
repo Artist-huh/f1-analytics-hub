@@ -56,9 +56,7 @@ def build(state):
     if data:
         sections += _history(state, data)
     elif cid and archive.loading(archive.circuit_key(cid)):
-        sections.append(ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
-                                ft.Text("Загружаем историю трассы…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
-                               spacing=SPACE_SM))
+        sections.append(skeleton("Загружаем историю трассы…", "rows", 4))
     else:
         sections.append(retry_block("История трассы не загружена",
                                     "Нужен интернет: данные загружаются один раз и дальше доступны без сети.",

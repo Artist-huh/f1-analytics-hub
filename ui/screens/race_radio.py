@@ -17,9 +17,7 @@ def radio_section(state, race):
     data = archive.get(key, fetch, None, state.render)
     if not data:
         if archive.loading(key):
-            return [ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
-                            ft.Text("Загружаем записи радио…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
-                           spacing=SPACE_SM)]
+            return [skeleton("Загружаем записи радио…", "rows", 5)]
         err = archive.error(key)
         hint = (live.LOCKED_TEXT if err == live.LOCKED_TEXT else
                 "OpenF1 не отдал записи этой гонки — возможно, они ещё не опубликованы." if err else

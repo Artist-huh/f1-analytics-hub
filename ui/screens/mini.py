@@ -50,8 +50,7 @@ def _live(state, live_now):
                                   bgcolor=WARNING, border_radius=RADIUS_SM,
                                   padding=ft.Padding.symmetric(horizontal=8, vertical=2)))
     if not data:
-        items.append(ft.Row([ft.ProgressRing(width=16, height=16, stroke_width=2, color=F1_RED),
-                             ft.Text("Загружаем live timing…", size=FONT_CAPTION, color=TEXT_MUTED)], spacing=6))
+        items.append(skeleton("Загружаем live timing…", "rows", 3))
         return items
     for r in data["rows"][:5]:
         gap = r["interval"] if data["racing"] else r["gap"]

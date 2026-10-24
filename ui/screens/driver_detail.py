@@ -44,9 +44,7 @@ def build(state):
         sections += [_build_points_chart(state, driver), _build_points_by_race(results),
                      _build_race_results(state, driver, results)]
     elif state.results_loading(driver["driver_id"]):
-        sections.append(ft.Row([ft.ProgressRing(width=18, height=18, stroke_width=2, color=F1_RED),
-                                ft.Text("Загружаем результаты гонок…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
-                               spacing=SPACE_SM))
+        sections.append(skeleton("Загружаем результаты гонок…", "rows", 5))
     else:
         sections.append(empty_block(ft.Icons.FLAG_OUTLINED, "Результатов пока нет",
                                     "Появятся после первой гонки пилота или после обновления данных."))

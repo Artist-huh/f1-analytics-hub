@@ -48,9 +48,7 @@ def _load(state, key, fetch, what):
     if data:
         return data, None
     if archive.loading(key):
-        return None, [ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
-                              ft.Text(f"Загружаем {what}…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
-                             spacing=SPACE_SM)]
+        return None, [skeleton(f"Загружаем {what}…", "chart")]
     return None, [retry_block(f"Не удалось загрузить {what}",
                               "Нужен интернет: данные загружаются один раз и дальше доступны без сети.",
                               lambda e: (archive.get(key, fetch, None, state.render, force=True), state.render()))]

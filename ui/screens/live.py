@@ -20,9 +20,7 @@ def build(state):
     data, error, loading = live.snapshot()
     if not data:
         if loading or not error:
-            body = [ft.Row([ft.ProgressRing(width=20, height=20, stroke_width=2, color=F1_RED),
-                            ft.Text("Загружаем данные сессии…", size=FONT_BODY_SMALL, color=TEXT_MUTED)],
-                           spacing=SPACE_SM)]
+            body = [skeleton("Загружаем данные сессии…", "rows", 10)]
         else:
             locked = error == live.LOCKED_TEXT
             body = [retry_block("Доступ к данным закрыт до конца сессии" if locked else "Нет данных о сессии",

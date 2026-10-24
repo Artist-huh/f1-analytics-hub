@@ -650,8 +650,12 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(live.fmt_gap("+1 LAP"), "+1 кр.")
         fill_db()
         self.state.load()
-        t = texts(self.build("live"))
+        tree = self.build("live")
+        t = texts(tree)
         self.assertIn("Загружаем данные сессии…", t)
+        kinds = {type(n).__name__ for n in walk(tree)}
+        self.assertIn("Shimmer", kinds)                            # заготовка таблицы, а не круг загрузки
+        self.assertNotIn("ProgressRing", kinds)
         self.live_refresh.assert_called()                          # экран сам запросил данные
         live._state["data"] = {"session": {"name": "Race", "type": "Race", "country": "Italy", "location": "Monza",
                                            "circuit": "Monza", "start": 0, "end": 0, "year": 2026},
