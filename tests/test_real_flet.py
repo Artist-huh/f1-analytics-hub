@@ -50,6 +50,34 @@ for name, build in screens:
         build(state)
     except Exception:
         errors.append(f"{name}: {traceback.format_exc(limit=3)}")
+# Live Timing с живым снимком: таблица, трасса, радио, мини-карточка — настоящими элементами
+from ui.screens import live_table
+row = {"position": 1, "code": "LEC", "number": 16, "name": "Charles Leclerc", "team": "Ferrari", "colour": "#ED1131",
+       "gap": "", "interval": "", "tyre": "H", "tyre_age": 11, "pits": 1, "laps": 30, "last": "1:37.2",
+       "best": "1:36.9", "sectors": ["overall", "personal", "none"], "in_pit": True}
+live._state["data"] = {
+    "session": {"name": "Race", "type": "Race", "country": "USA", "location": "Austin", "circuit": "Austin",
+                "start": time.time() - 600, "end": time.time() + 3600, "year": 2026},
+    "live": True, "racing": True, "lap": 30, "total_laps": 56, "track": "Сейфти-кар", "updated": time.time(),
+    "messages": [{"time": time.time(), "text": "SAFETY CAR DEPLOYED", "flag": "YELLOW", "lap": 30}],
+    "radio": [{"driver": "16", "url": "https://example.invalid/r.mp3", "ts": time.time()}],
+    "weather": {"air": 29.3, "track": 39.1, "humidity": 25.0, "wind": 2.1, "rain": True},
+    "drivers": {"16": {"code": "LEC", "team": "Ferrari", "colour": "ED1131"}}, "circuit_key": 9,
+    "positions": {"16": {"x": 100, "y": 200, "status": "OnTrack"}}, "rows": [row], "source": "F1"}
+archive.get = lambda key, fetch, ttl=None, on_done=None, force=False: (
+    {"x": [0, 1000, 1000, 0], "y": [0, 0, 1000, 1000], "rotation": 0, "corners": [(1, 1000, 0)]}
+    if key.startswith("track:") else None)
+state.sub = "live"
+for view in ("table", "track", "radio"):
+    state.ui["live_view"] = view
+    try:
+        app.SUBS["live"](state)
+    except Exception:
+        errors.append(f"live/{view}: {traceback.format_exc(limit=3)}")
+try:
+    live_table.driver_card(state, row, live._state["data"])
+except Exception:
+    errors.append(f"driver_card: {traceback.format_exc(limit=3)}")
 print(json.dumps({"screens": len(screens), "errors": errors}, ensure_ascii=False))
 '''
 
