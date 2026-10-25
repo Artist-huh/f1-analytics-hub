@@ -88,7 +88,7 @@ def _notifications_card(state):
                       spacing=1, expand=True),
             ft.Switch(value=state.haptics_on(), active_color=ACCENT,
                       on_change=lambda e: state.set_haptics(bool(e.control.value))),
-        ], vertical_alignment=ft.CrossAxisAlignment.CENTER)] if notify.is_android() else []),
+        ], vertical_alignment=ft.CrossAxisAlignment.CENTER)] if notify.is_mobile() else []),
     ], spacing=10))
 
 

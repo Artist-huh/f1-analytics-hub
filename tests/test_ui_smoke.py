@@ -1040,6 +1040,20 @@ class UiSmokeTest(unittest.TestCase):
             self.state.on_live_data()
             self.assertEqual(tasks[n:], [fake.heavy_impact])                             # красный флаг — сильный отклик
 
+    def test_iphone_is_a_phone(self):
+        """На iPhone (FLET_PLATFORM=ios) — как на телефоне: вибрация есть, мини-виджета и окон нет."""
+        from services import notify
+        self.assertFalse(notify.is_mobile())
+        self.assertIn("Мини-виджет", texts(self.build("tab4")))
+        self.page.run_task = lambda fn: None
+        with mock.patch.dict(os.environ, {"FLET_PLATFORM": "ios"}), \
+                mock.patch.object(sys.modules["flet"], "HapticFeedback", return_value=mock.Mock(), create=True):
+            self.assertTrue(notify.is_ios() and notify.is_mobile() and not notify.is_android())
+            self.assertNotIn("Мини-виджет", texts(self.build("tab4")))
+            self.assertTrue(self.state.haptic("light"))
+            self.state.sub = "settings"
+            self.assertIn("Вибрация", texts(self.build("settings")))
+
     def test_home_blocks_customizable(self):
         from services import radio
         from ui.screens import home_blocks as hb

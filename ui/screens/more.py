@@ -36,7 +36,7 @@ def build_menu(state):
         _tile(ft.Icons.SETTINGS_ROUNDED, "Настройки", "Оформление, уведомления, обновление данных",
               lambda e: state.open_sub("settings")),
     ]
-    if not notify.is_android():
+    if not notify.is_mobile():
         body.insert(-1, _tile(ft.Icons.PICTURE_IN_PICTURE_ALT_ROUNDED, "Мини-виджет",
                               "Окно поверх остальных: таймер и топ-3 (Ctrl+M)",
                               lambda e: state.toggle_mini(), section="mini"))

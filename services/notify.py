@@ -28,7 +28,16 @@ logger = log.get("notify")
 
 
 def is_android():
-    return "ANDROID_DATA" in os.environ or "ANDROID_ARGUMENT" in os.environ
+    return os.environ.get("FLET_PLATFORM") == "android" or bool({"ANDROID_DATA", "ANDROID_ARGUMENT"} & set(os.environ))
+
+
+def is_ios():
+    return os.environ.get("FLET_PLATFORM") == "ios"
+
+
+def is_mobile():
+    """Телефон (Android или iPhone): нет окон, горячих клавиш и мини-виджета, есть вибрация."""
+    return is_android() or is_ios()
 
 
 # ---------------------------------------------------------------- что отправлять
@@ -149,7 +158,7 @@ class Notifier:
         self.run_async = run_async
         self.fallback = fallback
         self._desktop = None
-        if IMPORT_ERROR and not is_android():
+        if IMPORT_ERROR and not is_mobile():
             logger.warning("системные уведомления недоступны: %s", IMPORT_ERROR)
 
     def send(self, nid, title, text):

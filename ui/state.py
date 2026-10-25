@@ -312,9 +312,9 @@ class AppState:
                 self.watch_live()
             self.render()
 
-    # ---------- вибрация (Android) ----------
+    # ---------- вибрация (телефон) ----------
     def haptics_on(self):
-        return notify.is_android() and api.get_setting("haptics", "1") == "1"
+        return notify.is_mobile() and api.get_setting("haptics", "1") == "1"
 
     def set_haptics(self, on):
         api.set_setting("haptics", "1" if on else "0")
@@ -322,7 +322,7 @@ class AppState:
             self.haptic("light")
 
     def haptic(self, strength="medium"):
-        """Короткий тактильный отклик: light / medium / heavy. Только Android и если включено в настройках."""
+        """Короткий тактильный отклик: light / medium / heavy. Только на телефоне и если включено в настройках."""
         if not self.haptics_on():
             return False
         if self._haptics is None:
@@ -426,13 +426,13 @@ class AppState:
             self.open_tab(3)
         elif ctrl and key == "K":
             self.open_sub("compare")
-        elif ctrl and key == "M" and not notify.is_android():
+        elif ctrl and key == "M" and not notify.is_mobile():
             self.toggle_mini()
         elif ctrl and key == "L":
             if self.mini:
                 self.toggle_mini()
             self.open_sub("live")
-        elif ctrl and key == "H" and not notify.is_android():
+        elif ctrl and key == "H" and not notify.is_mobile():
             self.minimize()
         elif key == "ESCAPE" and self.sub:
             self.close_sub()

@@ -30,6 +30,11 @@ adaptive_icon_background = "#15151E"
 # Виджет на главный экран — своё расширение packages/flet_home_widget (Java AppWidgetProvider).
 dependencies = ["pyjnius", "flet-permission-handler==1.0.5", "flet-audio==1.0.5", "flet-home-widget"]
 
+[tool.flet.ios]
+# iPhone: радио проигрывается через flet-audio, вибрация — встроенный сервис Flet.
+# Расшифровки радио, системных уведомлений и виджета нет — вместо уведомлений плашка в приложении.
+dependencies = ["flet-audio==1.0.5"]
+
 [tool.flet.android.dev_packages]
 flet-home-widget = "packages/flet_home_widget"
 
