@@ -29,6 +29,7 @@ def stop(proc):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # консоль Windows в CI — cp1252
     exe = os.path.abspath(sys.argv[1])
     tmp = tempfile.mkdtemp(prefix="f1hub-smoke-")
     log_path = os.path.join(tmp, "f1_hub.log")

@@ -99,7 +99,7 @@ def driver_page(out, failures):
         failures.append("страница пилота: нет списка пилотов")
         return
     adb("shell", "input", "tap", str(point[0]), str(point[1] + 260))
-    if not wait_for("СТАТИСТИКА СЕЗОНА", timeout=30):
+    if not wait_for("Статистика сезона", timeout=30):
         failures.append("страница пилота не открылась")
         return
     shot(out, "04b_driver_page")
