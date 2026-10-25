@@ -1113,6 +1113,19 @@ class UiSmokeTest(unittest.TestCase):
         back.on_click(Ctl())
         asyncio.run(tasks.pop()())
         self.assertEqual(len(page.views), 1)                   # сняли — фото улетает обратно
+        # системная «назад» Android: ответ Flutter (confirm_pop) — пока страница ещё зарегистрирована
+        clickable(page.added[0], "ANTONELLI")[0].on_click(Ctl())
+        asyncio.run(tasks.pop()())
+        view = page.views[1]
+        seen = []
+
+        async def confirm_pop(allow):
+            seen.append((allow, len(page.views)))
+        asyncio.run(view.on_confirm_pop(Ctl(control=Ctl(confirm_pop=confirm_pop))))
+        while tasks:
+            asyncio.run(tasks.pop()())
+        self.assertEqual(seen, [(False, 2)])                   # ответили до снятия страницы
+        self.assertEqual(len(page.views), 1)
 
     def test_live_track_map(self):
         import base64

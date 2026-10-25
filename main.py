@@ -287,7 +287,7 @@ def main(page: ft.Page):
             view = ft.View(route="/" + state.sub, controls=[ft.SafeArea(holder, expand=True,
                                                                         avoid_intrusions_bottom=False)],
                            bgcolor=ds.BG, padding=0, can_pop=False)
-            view.on_confirm_pop = on_confirm_pop          # «назад» Android: снимаем страницу сами (с анимацией)
+            view.on_confirm_pop = on_overlay_pop          # «назад» Android: снимаем страницу сами (с анимацией)
             overlay.update(view=view, body=holder)
             page.views.append(view)
             with contextlib.suppress(Exception):
@@ -371,6 +371,12 @@ def main(page: ft.Page):
     async def on_confirm_pop(e):
         handled = state.go_back()
         await e.control.confirm_pop(not handled)
+
+    async def on_overlay_pop(e):
+        """«Назад» на странице пилота: сначала ответить Flutter (страница ещё зарегистрирована), потом закрыть её.
+        Наоборот нельзя — ответ пришёл бы к уже снятой странице (RuntimeError «Control … is not registered»)."""
+        await e.control.confirm_pop(False)
+        state.go_back()
 
     try:
         root = page.views[0]
