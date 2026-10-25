@@ -7,7 +7,7 @@ from design_system import *
 from services import predictions as pr
 from ui.components import *
 from ui.fmt import fmt_clock, fmt_date_full, plural
-from ui.widgets import button, screen
+from ui.widgets import button, screen, touch
 
 SLOTS = [("pole", "Поул"), ("p1", "1-е место"), ("p2", "2-е место"), ("p3", "3-е место")]
 
@@ -119,12 +119,12 @@ def _picker(state, season, race, saved):
     for d in state.standings:
         chosen = draft.get(slot) == d["driver_id"]
         color = get_team_color(d["team"])
-        chips.append(ft.Container(
+        chips.append(touch(ft.Container(
             ft.Text(d["code"], size=FONT_CAPTION, color=readable_on(color) if chosen else TEXT_SECONDARY,
                     font_family=FONT_ITALIC),
             bgcolor=color if chosen else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
-            padding=ft.Padding.symmetric(horizontal=12, vertical=8),
-            on_click=lambda e, i=d["driver_id"]: choose_driver(i), tooltip=d["name"]))
+            padding=ft.Padding.symmetric(horizontal=12),
+            on_click=lambda e, i=d["driver_id"]: choose_driver(i), tooltip=d["name"]), 32))
     ready = all(draft.get(k) for k, _ in SLOTS)
     changed = any(draft.get(k) != saved.get(k) for k, _ in SLOTS)
     can_save = ready and changed

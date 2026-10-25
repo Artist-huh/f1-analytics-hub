@@ -1079,6 +1079,64 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.build("home_edit"), "Вернуть как было")[0].on_click(Ctl())
         self.assertEqual(hb.layout(), [(k, True) for k in hb.BLOCKS])
 
+    def test_touch_targets_at_least_48dp(self):
+        """Всё, на что нажимают, — не меньше 48 dp (минимум Android; у iOS — 44 pt). Высота оценивается по
+        явной высоте, отступам и размерам текста/иконок; кнопки Flutter (IconButton, TextButton…) — 48 сами."""
+        from services import live
+        native = {"IconButton", "TextButton", "FilledTonalButton", "ElevatedButton", "OutlinedButton", "Switch",
+                  "Checkbox", "Radio", "Dropdown", "TextField"}
+
+        def pad_v(p):
+            if isinstance(p, (int, float)):
+                return 2 * p
+            kind, kw = (p.args[0] if getattr(p, "args", None) else ""), getattr(p, "kw", {})
+            if "symmetric" in str(kind):
+                return 2 * kw.get("vertical", 0)
+            if "only" in str(kind):
+                return kw.get("top", 0) + kw.get("bottom", 0)
+            if "all" in str(kind):
+                return 2 * (p.args[1] if len(p.args) > 1 else 0)
+            return 0
+
+        def height(n):
+            kind, h = type(n).__name__, getattr(n, "height", None)
+            if isinstance(h, (int, float)):
+                return h
+            if kind in native:
+                return 48
+            if kind == "Text":
+                return (getattr(n, "size", None) or 14) * 1.35
+            if kind == "Icon":
+                return getattr(n, "size", None) or 24
+            kids = [c for c in n.children() if type(c).__name__ not in ("Padding", "Border", "LinearGradient",
+                                                                        "Animation", "BoxShadow", "Alignment")]
+            if kind == "Column":
+                inner = sum(height(c) for c in kids) + (getattr(n, "spacing", 0) or 0) * max(0, len(kids) - 1)
+            else:
+                inner = max((height(c) for c in kids), default=0)
+            return inner + pad_v(getattr(n, "padding", None) or 0)
+
+        fill_db()
+        add_podium()
+        self.state.load()
+        self.state.ui["driver_id"] = "leclerc"
+        row = {"position": 1, "code": "LEC", "number": 16, "name": "", "team": "Ferrari", "colour": None, "gap": "",
+               "interval": "", "tyre": "M", "tyre_age": 1, "pits": 0}
+        live._state["data"] = {"session": {"name": "Race", "type": "Race", "country": "", "location": "", "circuit": "",
+                                           "start": 0, "end": 0, "year": 2026},
+                               "live": True, "racing": True, "lap": 1, "messages": [], "radio": [], "track": None,
+                               "updated": time.time(), "rows": [row]}
+        from ui.screens import mini
+        screens = list(self.all_screens()) + [("mini", mini.build)]
+        small = []
+        for name, build in screens:
+            for n in walk(build(self.state)):
+                if callable(getattr(n, "on_click", None)) and type(n).__name__ not in native:
+                    h = height(n)
+                    if h < 47.5:
+                        small.append(f"{name}: {type(n).__name__} ~{h:.0f}px {(texts(n) or [''])[0]!r}")
+        self.assertEqual(small, [])
+
     def test_hero_tags_unique_per_screen(self):
         """Flutter падает, если на одном экране два Hero с одним тегом — проверяем все экраны."""
         fill_db()

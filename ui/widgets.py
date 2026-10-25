@@ -45,18 +45,32 @@ def card(content, bgcolor=SURFACE, size="m", on_click=None, border=None, **kw):
                         **kw)
 
 
+def touch(visual, height):
+    """Зона нажатия не меньше TOUCH (48 dp — минимум Android): сам элемент остаётся прежнего размера
+    (height), а нажатие, «рябь» и подсказка переносятся на прозрачную рамку вокруг — как у чипов Material."""
+    visual.height = height
+    if getattr(visual, "alignment", None) is None:
+        visual.alignment = ft.Alignment.CENTER
+    handler, tip = getattr(visual, "on_click", None), getattr(visual, "tooltip", None)
+    visual.on_click, visual.ink, visual.tooltip = None, False, None
+    # Row(tight) не даёт выровненному элементу растянуться на всю ширину (в строках с переносом)
+    return ft.Container(ft.Row([visual], tight=True, spacing=0), on_click=handler, tooltip=tip,
+                        ink=handler is not None, border_radius=getattr(visual, "border_radius", None),
+                        padding=ft.Padding.symmetric(vertical=max(0, (TOUCH - height) / 2)))
+
+
 def pill(label, selected, on_click):
     """Вкладка-переключатель: выбранная — красная со свечением."""
-    return ft.Container(
+    return touch(ft.Container(
         content=txt(label, 13, ON_ACCENT if selected else MUTED, bold=True),
         gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
                                    colors=[ACCENT_GLOW, F1_RED]) if selected else None,
         bgcolor=None if selected else RAISED,
         border_radius=RADIUS_FULL,
-        padding=ft.Padding.symmetric(horizontal=18, vertical=10),
+        padding=ft.Padding.symmetric(horizontal=18),
         on_click=on_click, ink=True,
         animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
-    )
+    ), 38)
 
 
 def button(label, on_click, primary=True, icon=None):
@@ -124,12 +138,12 @@ def status_chip(state, compact=False):
                        shadow=ft.BoxShadow(blur_radius=8, color=ft.Colors.with_opacity(0.8, color)))
     items = [dot] + ([] if compact else [txt(label, 12, TEXT)])
     items.append(ft.Icon(ft.Icons.REFRESH_ROUNDED, color=MUTED, size=16))
-    return ft.Container(
+    return touch(ft.Container(
         content=ft.Row(items, spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, tight=True),
-        bgcolor=RAISED, border_radius=RADIUS_FULL, height=36,
+        bgcolor=RAISED, border_radius=RADIUS_FULL,
         padding=ft.Padding.symmetric(horizontal=12), on_click=lambda e: state.refresh_now(), ink=True,
         tooltip=f"{label} · обновить данные (F5)",
-    )
+    ), 36)
 
 
 def empty_state(state, title, hint):

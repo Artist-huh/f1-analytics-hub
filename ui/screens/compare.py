@@ -6,7 +6,7 @@ from services import stats as st
 from ui.components import *
 from ui.fmt import plural, short_name, to_int
 from ui.state import MAX_COMPARE
-from ui.widgets import empty_state, screen
+from ui.widgets import empty_state, screen, touch
 
 # (подпись, ключ, меньше-лучше, формат)
 METRICS = [
@@ -109,10 +109,10 @@ def _build_selector(state, drivers):
         ))
 
     presets = _presets(state)
-    chips = [ft.Container(ft.Text(label, size=FONT_CAPTION, color=TEXT_SECONDARY, weight=ft.FontWeight.W_600),
-                          bgcolor=SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
-                          padding=ft.Padding.symmetric(horizontal=12, vertical=8),
-                          on_click=lambda e, p=preset: state.set_compare(p))
+    chips = [touch(ft.Container(ft.Text(label, size=FONT_CAPTION, color=TEXT_SECONDARY, weight=ft.FontWeight.W_600),
+                                bgcolor=SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
+                                padding=ft.Padding.symmetric(horizontal=12),
+                                on_click=lambda e, p=preset: state.set_compare(p)), 32)
              for label, preset in presets]
     return AnimatedCard(ft.Column([
         ft.Row(cells, vertical_alignment=ft.CrossAxisAlignment.START, spacing=SPACE_XXS),

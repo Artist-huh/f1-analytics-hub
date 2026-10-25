@@ -320,8 +320,8 @@ class SectionHeader(ft.Container):
             row.append(ft.Container(
                 ft.Row([ft.Text(action_text, size=FONT_BODY_SMALL, color=ACCENT_TEXT, weight=ft.FontWeight.W_600),
                         ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=ACCENT_TEXT, size=18)], spacing=0, tight=True),
-                on_click=on_action, ink=True, border_radius=RADIUS_SM,
-                padding=ft.Padding.symmetric(horizontal=SPACE_XS, vertical=SPACE_XS)))
+                on_click=on_action, ink=True, border_radius=RADIUS_SM, height=TOUCH,   # зона нажатия 48 dp
+                alignment=ft.Alignment.CENTER, padding=ft.Padding.symmetric(horizontal=SPACE_XS)))
         super().__init__(
             content=ft.Row(row, vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XS),
             padding=ft.Padding.only(top=SPACE_SM),

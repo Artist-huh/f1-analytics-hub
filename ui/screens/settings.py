@@ -5,7 +5,7 @@ from design_system import *
 from services import db, log, media, notify
 from services import f1_api as api
 from ui.fmt import fmt_updated
-from ui.widgets import button, card, dropdown, pill, screen, txt
+from ui.widgets import button, card, dropdown, pill, screen, touch, txt
 
 INTERVALS = {"5": "каждые 5 минут", "10": "каждые 10 минут", "30": "каждые 30 минут"}
 STATE_TEXT = {"live": "данные свежие", "cached": "показаны сохранённые данные", "empty": "данных нет"}
@@ -46,12 +46,12 @@ def _theme_card(state):
         for c in state.constructors:
             color = ds.get_team_color(c["name"])
             active = ds.team_key(c["name"]) == ds.team_key(chosen_team)
-            chips.append(ft.Container(
+            chips.append(touch(ft.Container(
                 ft.Row([ft.Container(width=12, height=12, bgcolor=color, border_radius=6),
                         txt(c["name"], 12, TEXT, bold=active)], spacing=6, tight=True),
                 bgcolor=RAISED, border=ft.Border.all(2, color) if active else None, border_radius=20, ink=True,
-                padding=ft.Padding.symmetric(horizontal=12, vertical=8),
-                on_click=lambda e, n=c["name"]: state.set_theme("team", n)))
+                padding=ft.Padding.symmetric(horizontal=12),
+                on_click=lambda e, n=c["name"]: state.set_theme("team", n)), 34))
         items.append(ft.Row(chips, wrap=True, spacing=6, run_spacing=6))
     current_scale = f"{ds.FONT_SCALE:g}" if ds.FONT_SCALE != 1 else "1.0"
     items += [txt("Размер текста", 14, bold=True),

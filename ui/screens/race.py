@@ -8,7 +8,7 @@ from ui.components import *
 from ui.fmt import plural, short_name
 from ui.screens.race_radio import radio_section
 from ui.screens.race_strategy import finishing_order, tyres_section
-from ui.widgets import pill, retry_block, screen
+from ui.widgets import pill, retry_block, screen, touch
 
 TABS = [("tyres", "Шины"), ("positions", "Позиции"), ("pace", "Темп"), ("quali", "Квалификация"),
         ("radio", "Радио")]
@@ -134,12 +134,12 @@ def pace_section(state, race):
         d = _driver(state, driver_id)
         active = driver_id in picked
         color = get_team_color(d["team"])
-        chips.append(ft.Container(
+        chips.append(touch(ft.Container(
             ft.Text(code, size=FONT_CAPTION, color=readable_on(color) if active else TEXT_SECONDARY,
                     font_family=FONT_ITALIC),
             bgcolor=color if active else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
-            padding=ft.Padding.symmetric(horizontal=12, vertical=8), on_click=lambda e, i=driver_id: toggle(i),
-            tooltip=f"{d['name']}: показать на графике"))
+            padding=ft.Padding.symmetric(horizontal=12), on_click=lambda e, i=driver_id: toggle(i),
+            tooltip=f"{d['name']}: показать на графике"), 32))
     series, rows = [], []
     colors_used = []
     for driver_id in picked:

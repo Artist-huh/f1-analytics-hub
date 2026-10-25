@@ -21,7 +21,7 @@ ROW_GAP = 4
 
 
 def row_height():
-    return scaled(46)
+    return scaled(48)                 # зона нажатия строки — не меньше 48 dp
 
 
 def gap_seconds(text):

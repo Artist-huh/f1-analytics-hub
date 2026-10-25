@@ -76,7 +76,7 @@ def _build_hero(state, driver, is_mobile):
                                      expand=True,
                                      max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)], spacing=SPACE_XS),
                      on_click=lambda e: _open_team_of(state, team), ink=True, border_radius=RADIUS_SM,
-                     tooltip="Страница команды"),
+                     height=TOUCH, tooltip="Страница команды"),                    # зона нажатия 48 dp
         ft.Container(expand=True),
         ft.Row([
             _hero_value(f"P{driver['position']}", "в зачёте"),
