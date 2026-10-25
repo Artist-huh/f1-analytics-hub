@@ -46,17 +46,29 @@ def leader_text(r, data):
     return "лидер" if data["racing"] else (r.get("best") or "")
 
 
-SECTOR_COLORS = {"overall": "#A855F7", "personal": "#22C55E", "normal": "#F5C518"}   # как на графике F1
+# Сектор передаётся не только цветом: ещё высотой полоски и текстом (подсказка, экранный диктор)
+SECTOR_STYLE = {"overall": ("SECTOR_OVERALL", 7, "лучший в сессии"),
+                "personal": ("SECTOR_PERSONAL", 5, "личный лучший"),
+                "normal": ("SECTOR_NORMAL", 3, "пройден"), "none": ("LINE_STRONG", 3, "ещё не пройден")}
 
 
 def sector_bars():
-    """Три полоски секторов (цвета ставит apply)."""
-    return [ft.Container(width=scaled(12), height=4, border_radius=2, bgcolor=LINE_STRONG) for _ in range(3)]
+    """Три полоски секторов в общей рамке (вид и подпись ставит paint_sectors)."""
+    bars = [ft.Container(width=scaled(12), height=3, border_radius=2, bgcolor=LINE_STRONG) for _ in range(3)]
+    return ft.Container(ft.Row(bars, spacing=2, tight=True, vertical_alignment=ft.CrossAxisAlignment.END),
+                        height=8, data=bars, tooltip="Секторы")
 
 
-def paint_sectors(bars, states):
-    for bar, st in zip(bars, (list(states or []) + ["none"] * 3)[:3], strict=False):
-        bar.bgcolor = SECTOR_COLORS.get(st, LINE_STRONG)
+def paint_sectors(group, states):
+    """Цвет, высота и подпись каждой полоски; -> текст подписи («Секторы: 1 — лучший в сессии, …»)."""
+    import design_system as ds
+    parts = []
+    for i, (bar, st) in enumerate(zip(group.data, (list(states or []) + ["none"] * 3)[:3], strict=False), start=1):
+        token, height, label = SECTOR_STYLE.get(st, SECTOR_STYLE["none"])
+        bar.bgcolor, bar.height = getattr(ds, token), height
+        parts.append(f"{i} — {label}")
+    group.tooltip = "Секторы: " + ", ".join(parts)
+    return group.tooltip
 
 
 def _badge_colors(pos):
@@ -99,7 +111,7 @@ class LiveTable:
                   if avatars else []),
                 ft.Column([ft.Row([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                                            font_family=FONT_ITALIC, no_wrap=True),
-                                   ft.Row(bars, spacing=2, tight=True)], spacing=6, tight=True),
+                                   bars], spacing=6, tight=True),
                            ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1,
                                    overflow=ft.TextOverflow.ELLIPSIS)], spacing=2, expand=True),
                 gap_box, tyre_slot, pits_box,
@@ -182,6 +194,8 @@ def driver_card(state, row, data):
                           ft.Text(label, size=FONT_CAPTION, color=TEXT_MUTED)], spacing=0, expand=True)
     bars = sector_bars()
     paint_sectors(bars, row.get("sectors"))
+    states = (list(row.get("sectors") or []) + ["none"] * 3)[:3]
+    legend = ", ".join(f"С{i}: {SECTOR_STYLE.get(s, SECTOR_STYLE['none'])[2]}" for i, s in enumerate(states, start=1))
     gap = row["gap"]
     tyre = f"{TYRE_RU.get(row['tyre'], row['tyre'] or '—')}" + (f", {row['tyre_age']} кр." if row.get("tyre_age")
                                                                   is not None else "")
@@ -193,7 +207,8 @@ def driver_card(state, row, data):
                                    font_family=FONT_DISPLAY_ITALIC),
                            ft.Text(d["name"] if d else row.get("name", ""), size=FONT_BODY_SMALL, color=TEXT_MUTED)],
                           spacing=0, expand=True),
-                ft.Column([ft.Text("Секторы", size=FONT_CAPTION, color=TEXT_MUTED), ft.Row(bars, spacing=3)],
+                ft.Column([ft.Text("Секторы", size=FONT_CAPTION, color=TEXT_MUTED), bars,
+                           ft.Text(legend, size=FONT_TINY, color=TEXT_MUTED)],
                           spacing=4, horizontal_alignment=ft.CrossAxisAlignment.END)],
                spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Row([stat("отрыв", gap or leader_text(row, data)), stat("последний круг", row.get("last")),

@@ -969,7 +969,6 @@ class UiSmokeTest(unittest.TestCase):
 
     def test_live_weather_sectors_favorites_card(self):
         from services import f1live, live
-        from ui.screens import live_table as lt
         self.assertEqual([f1live.sector_state(s) for s in ({"Value": "31.2", "OverallFastest": True},
                                                            {"Value": "31.2", "PersonalFastest": True},
                                                            {"Value": "31.2"}, {"Value": ""})],
@@ -996,8 +995,11 @@ class UiSmokeTest(unittest.TestCase):
         for expected in ("воздух 29°", "трасса 39°", "25 %", "2.1 м/с", "сухо"):
             self.assertIn(expected, t)
         rows = self.state.ui["live_table"].rows
-        self.assertEqual([b.bgcolor for b in rows["LEC"]["sectors"]][:2],
-                         [lt.SECTOR_COLORS["overall"], lt.SECTOR_COLORS["personal"]])
+        bars = rows["LEC"]["sectors"].data
+        self.assertEqual([b.bgcolor for b in bars][:2], [design_system.SECTOR_OVERALL, design_system.SECTOR_PERSONAL])
+        self.assertEqual([b.height for b in bars], [7, 5, 3])                    # не только цвет — ещё высота
+        self.assertEqual(rows["LEC"]["sectors"].tooltip,                         # и текст для диктора
+                         "Секторы: 1 — лучший в сессии, 2 — личный лучший, 3 — ещё не пройден")
         self.assertTrue(rows["LEC"]["favorite"])                                   # любимый — рамка цвета команды
         self.assertFalse(rows["ANT"]["favorite"])
         gesture = next(n for n in walk(rows["ANT"]["box"]) if type(n).__name__ == "GestureDetector")

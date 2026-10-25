@@ -62,6 +62,14 @@ class ContrastTest(unittest.TestCase):
             with self.subTest(font=family):
                 self.assertTrue(os.path.isfile(os.path.join(root, path)), path)
 
+    def test_sector_colors_visible_in_both_themes(self):
+        """Полоски секторов — не текст, но несут смысл: не меньше 3:1 к карточке (WCAG 1.4.11) в обеих темах."""
+        for name in ("dark", "oled", "light"):
+            ds.apply_theme(name)
+            for token in ("SECTOR_OVERALL", "SECTOR_PERSONAL", "SECTOR_NORMAL"):
+                with self.subTest(theme=name, token=token):
+                    self.assertGreaterEqual(ds.contrast(getattr(ds, token), ds.SURFACE), 3.0)
+
     def test_contrast_formula(self):
         self.assertAlmostEqual(ds.contrast("#000000", "#FFFFFF"), 21.0)
         self.assertAlmostEqual(ds.contrast("#777777", "#777777"), 1.0)
