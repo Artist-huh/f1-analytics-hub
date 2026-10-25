@@ -327,7 +327,7 @@ def _build_quick_actions(state):
     actions = [
         (ft.Icons.FLAG_ROUNDED, "Разбор", "race", lambda e: _open_last_race(state)),
         (ft.Icons.COMPARE_ARROWS_ROUNDED, "Сравнение", "compare", lambda e: state.open_sub("compare")),
-        (ft.Icons.SPORTS_SCORE, "Прогнозы", "predict", lambda e: state.open_sub("predict")),
+        (ft.Icons.SPORTS_SCORE_ROUNDED, "Прогнозы", "predict", lambda e: state.open_sub("predict")),
         (ft.Icons.STAR_ROUNDED, "Избранное", "favorites", lambda e: state.open_sub("favorites")),
     ]
     cards = [

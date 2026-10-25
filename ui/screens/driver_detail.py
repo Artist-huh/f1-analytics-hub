@@ -47,7 +47,7 @@ def build(state):
     elif state.results_loading(driver["driver_id"]):
         sections.append(skeleton("Загружаем результаты гонок…", "rows", 5))
     else:
-        sections.append(empty_block(ft.Icons.FLAG_OUTLINED, "Результатов пока нет",
+        sections.append(empty_block(ft.Icons.FLAG_ROUNDED, "Результатов пока нет",
                                     "Появятся после первой гонки пилота или после обновления данных.", art="flag"))
 
     return screen(state, short_name(driver["name"]), sections, subtitle=f"Сезон {driver['season']}", back=True)

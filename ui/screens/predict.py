@@ -33,7 +33,7 @@ def next_open_race(state, now=None):
 def build(state):
     season = state.schedule[0].get("season", "") if state.schedule else ""
     if not state.schedule or not state.standings:
-        return screen(state, "Прогнозы", [empty_block(ft.Icons.SPORTS_SCORE, "Нет данных сезона",
+        return screen(state, "Прогнозы", [empty_block(ft.Icons.SPORTS_SCORE_ROUNDED, "Нет данных сезона",
                                                       "Обнови данные, когда будет интернет.",
                                                       ("Обновить", lambda e: state.refresh_now()))], back=True)
     picks = pr.load_season(season)

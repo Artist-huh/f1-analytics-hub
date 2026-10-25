@@ -55,7 +55,7 @@ def _build_search_and_filters(state, drivers, on_search):
     search_field = ft.TextField(
         value=state.ui["drv_q"],
         hint_text="Имя, код или команда",
-        prefix_icon=ft.Icons.SEARCH,
+        prefix_icon=ft.Icons.SEARCH_ROUNDED,
         border=field_border(LINE_STRONG, F1_RED),
         bgcolor=SURFACE,
         color=TEXT_PRIMARY,

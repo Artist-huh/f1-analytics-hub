@@ -23,7 +23,7 @@ BLOCKS = {
     "drivers": ("Лидеры: пилоты", ft.Icons.PERSON_ROUNDED, "compare"),
     "teams": ("Лидеры: команды", ft.Icons.GROUPS_ROUNDED, "history"),
     "favorites": ("Избранные пилоты", ft.Icons.STAR_ROUNDED, "favorites"),
-    "predict": ("Прогнозы", ft.Icons.SPORTS_SCORE, "predict"),
+    "predict": ("Прогнозы", ft.Icons.SPORTS_SCORE_ROUNDED, "predict"),
     "radio": ("Радио команд", ft.Icons.RADIO_ROUNDED, "live"),
     "weather": ("Погода на трассе", ft.Icons.WB_SUNNY_ROUNDED, "mini"),
 }

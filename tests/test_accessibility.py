@@ -94,6 +94,23 @@ class ContrastTest(unittest.TestCase):
                     found += [f"{f}: {m}" for m in re.findall(r"[\"']#[0-9A-Fa-f]{6}[\"']", text)]
         self.assertEqual(found, [])
 
+    def test_icons_one_style(self):
+        """Один стиль иконок — _ROUNDED. Контурные только там, где они значат «не выбрано» (навигация, радио)."""
+        import os
+        import re
+        allowed = {"HOME_OUTLINED", "EMOJI_EVENTS_OUTLINED", "CALENDAR_TODAY_OUTLINED", "CIRCLE_OUTLINED"}
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        paths = [os.path.join(root, "main.py")] + [os.path.join(folder, f)
+                                                   for folder, _, files in os.walk(os.path.join(root, "ui"))
+                                                   for f in files if f.endswith(".py")]
+        found = []
+        for path in paths:
+            with open(path, encoding="utf-8") as fh:
+                names = re.findall(r"ft\.Icons\.([A-Z0-9_]+)", fh.read())
+            found += [f"{os.path.basename(path)}: {n}" for n in names
+                      if not n.endswith("_ROUNDED") and n not in allowed]
+        self.assertEqual(found, [])
+
     def test_contrast_formula(self):
         self.assertAlmostEqual(ds.contrast("#000000", "#FFFFFF"), 21.0)
         self.assertAlmostEqual(ds.contrast("#777777", "#777777"), 1.0)

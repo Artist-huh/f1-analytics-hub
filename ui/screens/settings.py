@@ -122,7 +122,7 @@ def build(state):
             dropdown(label="Автообновление", value=minutes,
                      options=[ft.DropdownOption(key=k, text=v) for k, v in INTERVALS.items()],
                      on_select=on_interval),
-            button("Обновить сейчас", lambda e: state.refresh_now(), icon=ft.Icons.REFRESH),
+            button("Обновить сейчас", lambda e: state.refresh_now(), icon=ft.Icons.REFRESH_ROUNDED),
             txt("Лимит Jolpica — около 200 запросов в час; при таких интервалах приложение укладывается с запасом.",
                 11, DIM),
         ], spacing=10)),
@@ -132,7 +132,7 @@ def build(state):
             txt(f"База: {db.db_path()}", 11, DIM),
             txt(f"Журнал: {log.log_path() or 'отключён'}", 11, DIM),
             button("Очистить сохранённые данные", lambda e: _confirm_clear(state), primary=False,
-                   icon=ft.Icons.DELETE_OUTLINE),
+                   icon=ft.Icons.DELETE_ROUNDED),
             txt("Избранные пилоты и настройки останутся. Данные загрузятся заново.", 11, DIM),
         ], spacing=10)),
         card(ft.Column([

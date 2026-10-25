@@ -195,7 +195,7 @@ def weather_strip(w):
     if w.get("track") is not None:
         items.append(chip(ft.Icons.ROUTE_ROUNDED, f"трасса {w['track']:.0f}°", DANGER))
     if w.get("humidity") is not None:
-        items.append(chip(ft.Icons.WATER_DROP_OUTLINED, f"{w['humidity']:.0f} %", SECTION_COLORS["race"]))
+        items.append(chip(ft.Icons.WATER_DROP_ROUNDED, f"{w['humidity']:.0f} %", SECTION_COLORS["race"]))
     if w.get("wind") is not None:
         items.append(chip(ft.Icons.AIR_ROUNDED, f"{w['wind']:.1f} м/с"))
     items.append(chip(ft.Icons.UMBRELLA_ROUNDED, "дождь", SECTION_COLORS["race"]) if w.get("rain") else

@@ -50,7 +50,7 @@ def build(state):
     chips = []
     for i, letter in enumerate(t["stints"]):
         if i:
-            chips.append(ft.Icon(ft.Icons.CHEVRON_RIGHT, color=DIM, size=18))
+            chips.append(ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=DIM, size=18))
         chips.append(tyre_chip(letter))
     body = [
         dropdown(label="Трасса", value=chosen, options=[ft.DropdownOption(key=n, text=n) for n in TRACKS],
