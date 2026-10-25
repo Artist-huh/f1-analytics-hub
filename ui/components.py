@@ -47,12 +47,24 @@ def content_width(state):
 
 
 # ---------------------------------------------------------------- анимации
+def anim(ms, curve=ft.AnimationCurve.EASE_OUT):
+    """Анимация или None, если включено «меньше движения» (флаг читается при каждом вызове)."""
+    import design_system as ds
+    return None if ds.REDUCE_MOTION else ft.Animation(ms, curve)
+
+
+def motion_on():
+    import design_system as ds
+    return not ds.REDUCE_MOTION
+
+
 class FadeIn(ft.Container):
     """Плавное появление: прозрачность и лёгкий сдвиг снизу. index задаёт «лесенку» —
     у каждого следующего элемента анимация чуть длиннее. При обычной перерисовке
     (enabled=False) элемент появляется сразу, без анимации."""
 
     def __init__(self, content, index=0, enabled=True, **kwargs):
+        enabled = enabled and motion_on()
         duration = ANIM_NORMAL + min(index, 10) * 45
         super().__init__(
             content=content,
@@ -89,8 +101,8 @@ class AnimatedCard(ft.Container):
             ink=on_click is not None,
             on_click=on_click,
             shadow=shadow(1),
-            animate=ft.Animation(ANIM_FAST, ft.AnimationCurve.EASE_OUT),
-            animate_scale=ft.Animation(ANIM_FAST, ft.AnimationCurve.EASE_OUT),
+            animate=anim(ANIM_FAST),
+            animate_scale=anim(ANIM_FAST),
             **kwargs,
         )
         self._border = self.border
@@ -100,7 +112,8 @@ class AnimatedCard(ft.Container):
 
     def _handle_hover(self, e):
         hovered = e.data in (True, "true")
-        self.scale = 1.015 if hovered else 1.0
+        if motion_on():                                # «меньше движения» — без подъёма, только рамка
+            self.scale = 1.015 if hovered else 1.0
         self.shadow = shadow(self.elevation_end if hovered else 1)
         self.border = ft.Border.all(1, self._accent) if hovered else self._border
         self.update()
@@ -221,7 +234,7 @@ def skeleton(caption, kind="rows", count=5):
     return ft.Column([
         ft.Text(caption, size=FONT_CAPTION, color=TEXT_MUTED),
         ft.Shimmer(ft.Column(shapes, spacing=SPACE_XS), base_color=SURFACE_ELEVATED,
-                   highlight_color=LINE_STRONG, period=1400),
+                   highlight_color=LINE_STRONG, period=1400) if motion_on() else ft.Column(shapes, spacing=SPACE_XS),
     ], spacing=SPACE_XS)
 
 

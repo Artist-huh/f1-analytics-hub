@@ -13,7 +13,6 @@ from services import track_map
 from ui.components import *
 
 DOT = 14
-GLIDE_MS = 4800        # чуть меньше интервала снимков: точка успевает доехать до следующего
 CONTENT_PAD = 2 * SPACE_SM
 
 
@@ -46,7 +45,7 @@ class TrackMap:
                         ft.Text(info.get("code") or number, size=9, color=TEXT_PRIMARY, font_family=FONT_ITALIC)],
                        spacing=2, tight=True),
                 left=0, top=0, visible=False, tooltip=info.get("code") or number,
-                animate_position=ft.Animation(GLIDE_MS, ft.AnimationCurve.LINEAR))
+                animate_position=anim(ANIM_GLIDE, ft.AnimationCurve.LINEAR))
             self.dots[str(number)] = dot
             layers.append(dot)
         self.stack = ft.Stack(layers, width=width, height=self.height)

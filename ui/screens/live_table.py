@@ -15,7 +15,6 @@ from design_system import *
 from ui.components import *
 from ui.fmt import plural
 
-MOVE_MS = 450          # перестановка строк
 FLASH_SECONDS = 1.2    # подсветка изменившегося отрыва
 ROW_GAP = 4
 
@@ -95,7 +94,7 @@ class LiveTable:
             gap_text = ft.Text("", size=FONT_BODY_SMALL, font_family=FONT_MONO, text_align=ft.TextAlign.RIGHT)
             gap_box = ft.Container(gap_text, width=scaled(78), alignment=ft.Alignment.CENTER_RIGHT,
                                    border_radius=6, padding=ft.Padding.symmetric(horizontal=4),
-                                   animate=ft.Animation(400, ft.AnimationCurve.EASE_OUT))
+                                   animate=anim(ANIM_SLOW))
             tyre_slot = ft.Container(tyre_badge(r["tyre"], r["tyre_age"]))
             pits_text = ft.Text("", size=FONT_CAPTION, color=TEXT_SECONDARY, font_family=FONT_MONO)
             pits_box = ft.Container(pits_text, width=scaled(22), alignment=ft.Alignment.CENTER)
@@ -123,7 +122,7 @@ class LiveTable:
             box = ft.Container(gesture, on_long_press=lambda e, c=code: show_driver_card(state, c),
                                tooltip=f"{code}: нажми — страница пилота, свайп или долгое нажатие — карточка",
                 left=0, right=0, top=i * (row_height() + ROW_GAP), height=row_height(),
-                animate_position=ft.Animation(MOVE_MS, ft.AnimationCurve.EASE_IN_OUT),
+                animate_position=anim(ANIM_MOVE, ft.AnimationCurve.EASE_IN_OUT),
                 bgcolor=bg, border_radius=CARD_SIZES["s"][1], border=border,
                 padding=ft.Padding.symmetric(horizontal=SPACE_XS, vertical=4),
                 on_click=(lambda e, i=d["driver_id"]: state.open_driver(i)) if d else None, ink=bool(d))

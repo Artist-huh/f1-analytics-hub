@@ -80,7 +80,7 @@ OVERLAY_SUBS = {"driver_detail"}
 TICK_SECONDS = 30
 MAX_CONTENT_WIDTH = 1100   # шире контент не растягиваем — по бокам поля
 NARROW_WIDTH = 400         # уже — компактные подписи
-SWITCH_MS = 280            # смена экранов
+SWITCH_MS = ds.ANIM_SCREEN  # смена экранов
 logger = log.get("main")
 
 
@@ -127,14 +127,15 @@ def run_on_ui(page, fn):
 def apply_page_theme(page, nav=None):
     """Цвета окна, темы Flutter и нижнего меню — из текущей палитры (ds.*, не копии в этом модуле)."""
     page.theme_mode = ft.ThemeMode.LIGHT if ds.IS_LIGHT else ft.ThemeMode.DARK
-    zoom = ft.PageTransitionTheme.ZOOM
+    # «меньше движения» — переходы страниц без анимации
+    zoom = ft.PageTransitionTheme.NONE if ds.REDUCE_MOTION else ft.PageTransitionTheme.ZOOM
     page.theme = ft.Theme(
         color_scheme_seed=ds.F1_RED,
         color_scheme=ft.ColorScheme(primary=ds.F1_RED, on_primary=ds.ON_ACCENT, secondary=ds.F1_RED,
                                     surface=ds.SURFACE, on_surface=ds.TEXT_PRIMARY),
         # у перехода на страницу пилота должна быть длительность — иначе фото (Hero) «перелетает» мгновенно
         page_transitions=ft.PageTransitionsTheme(android=zoom, windows=zoom, linux=zoom, macos=zoom,
-                                                 ios=ft.PageTransitionTheme.CUPERTINO),
+                                                 ios=zoom if ds.REDUCE_MOTION else ft.PageTransitionTheme.CUPERTINO),
     )
     page.dark_theme = page.theme
     page.bgcolor = ds.BG
@@ -194,6 +195,8 @@ def main(page: ft.Page):
     # Тема оформления из настроек (до построения первого экрана)
     saved_theme = f1_api.get_setting("theme", "dark")
     saved_scale = f1_api.get_setting("font_scale", "1.0")
+    saved_motion = f1_api.get_setting("reduce_motion")          # "1" / "0" — выбор пользователя, None — как в системе
+    ds.apply_reduce_motion(saved_motion == "1")
     if saved_theme != "dark" or saved_scale != "1.0":
         theming.apply(saved_theme, f1_api.get_setting("theme_team"), font_scale=saved_scale)
         refresh_screens()
@@ -319,7 +322,7 @@ def main(page: ft.Page):
         state.fresh = key != shown["key"]
         shown["key"] = key
         state.countdown = None
-        switcher.duration = ft.Duration(milliseconds=SWITCH_MS if state.fresh else 0)
+        switcher.duration = ft.Duration(milliseconds=SWITCH_MS if state.fresh and not ds.REDUCE_MOTION else 0)
         switcher.content = ft.Container(build_screen(state), expand=True, key=str(time.monotonic()))
         nav.selected_index = state.tab
         page.navigation_bar = None if state.mini or state.sub == "welcome" else nav
@@ -429,6 +432,21 @@ def main(page: ft.Page):
 
     threading.Thread(target=ticker, name="f1-ticker", daemon=True).start()
     update_widget()                            # сразу после запуска — данные из кэша
+
+    async def follow_system_motion():
+        """Пользователь не выбирал «меньше движения» сам — берём системную настройку."""
+        try:
+            features = await ft.SemanticsService().get_accessibility_features()
+        except Exception as exc:
+            logger.info("настройки доступности системы недоступны: %r", exc)
+            return
+        if features.disable_animations or features.reduce_motion:
+            logger.info("в системе отключены анимации — включаем «меньше движения»")
+            ds.apply_reduce_motion(True)
+            state.on_theme_change(ds.THEME, ds.THEME_TEAM)
+
+    if saved_motion is None and getattr(page, "run_task", None):
+        page.run_task(follow_system_motion)
 
 
 if __name__ == "__main__":

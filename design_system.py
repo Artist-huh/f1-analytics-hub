@@ -132,9 +132,22 @@ CARD_SIZES = {"s": (SPACE_XS, 12), "m": (SPACE_SM, RADIUS_MD), "l": (SPACE_MD, R
 TOUCH = 48
 
 # === АНИМАЦИИ (мс) ===
-ANIM_FAST = 150
-ANIM_NORMAL = 250
-ANIM_SLOW = 400
+ANIM_FAST = 150      # отклик на наведение и нажатие
+ANIM_NORMAL = 250    # появление, переключатели
+ANIM_SLOW = 400      # подсветка изменившихся данных
+ANIM_SCREEN = 280    # смена экранов
+ANIM_MOVE = 450      # перестановка строк Live Timing
+ANIM_GLIDE = 4800    # точка пилота на схеме — чуть меньше интервала снимков (5 с)
+
+# «Меньше движения»: системная настройка (Android «Отключить анимацию», iOS «Уменьшение движения»)
+# или переключатель в настройках. Читается в момент построения (ui.components.anim).
+REDUCE_MOTION = False
+
+
+def apply_reduce_motion(on):
+    global REDUCE_MOTION
+    REDUCE_MOTION = bool(on)
+    return REDUCE_MOTION
 
 
 def shadow(level=1, color="#000000"):

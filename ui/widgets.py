@@ -5,6 +5,7 @@ from design_system import (
     ACCENT,
     ACCENT_DEEP,
     ACCENT_GLOW,
+    ANIM_NORMAL,
     CARD_SIZES,
     DANGER,
     DIM,
@@ -26,6 +27,7 @@ from design_system import (
     WARN,
     glow,
 )
+from ui.components import anim
 
 
 def txt(value, size=14, color=TEXT, bold=False, head=False, **kw):
@@ -69,7 +71,7 @@ def pill(label, selected, on_click):
         border_radius=RADIUS_FULL,
         padding=ft.Padding.symmetric(horizontal=18),
         on_click=on_click, ink=True,
-        animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
+        animate=anim(ANIM_NORMAL),
     ), 38)
 
 

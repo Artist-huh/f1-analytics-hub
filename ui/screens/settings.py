@@ -54,6 +54,13 @@ def _theme_card(state):
                 on_click=lambda e, n=c["name"]: state.set_theme("team", n)), 34))
         items.append(ft.Row(chips, wrap=True, spacing=6, run_spacing=6))
     current_scale = f"{ds.FONT_SCALE:g}" if ds.FONT_SCALE != 1 else "1.0"
+    items += [ft.Row([
+        ft.Column([txt("Меньше движения", 14, bold=True),
+                   txt("Без анимаций — для чувствительных к движению и слабых устройств. По умолчанию — как в системе.",
+                       11, MUTED)], spacing=1, expand=True),
+        ft.Switch(value=ds.REDUCE_MOTION, active_color=ACCENT, tooltip="Меньше движения",
+                  on_change=lambda e: state.set_reduce_motion(bool(e.control.value))),
+    ], vertical_alignment=ft.CrossAxisAlignment.CENTER)]
     items += [txt("Размер текста", 14, bold=True),
               ft.Row([pill(label, key == current_scale, lambda e, k=key: state.set_font_scale(float(k)))
                       for key, label in ds.FONT_SCALES.items()], wrap=True, spacing=6, run_spacing=6)]

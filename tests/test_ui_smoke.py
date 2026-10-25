@@ -1139,6 +1139,54 @@ class UiSmokeTest(unittest.TestCase):
                         small.append(f"{name}: {type(n).__name__} ~{h:.0f}px {(texts(n) or [''])[0]!r}")
         self.assertEqual(small, [])
 
+    def test_reduce_motion(self):
+        """«Меньше движения»: ни одной анимации в интерфейсе; переключатель в настройках; системная настройка."""
+        from services import live
+        self.addCleanup(design_system.apply_reduce_motion, False)
+        fill_db()
+        self.state.load()
+        live._state["data"] = {"session": {"name": "Race", "type": "Race", "country": "", "location": "", "circuit": "",
+                                           "start": 0, "end": 0, "year": 2026},
+                               "live": True, "racing": True, "lap": 1, "messages": [], "radio": [], "track": None,
+                               "updated": time.time(),
+                               "rows": [{"position": 1, "code": "LEC", "number": 16, "name": "", "team": "Ferrari",
+                                         "colour": None, "gap": "", "interval": "", "tyre": "M", "tyre_age": 1,
+                                         "pits": 0}]}
+        anim_props = ("animate", "animate_position", "animate_opacity", "animate_offset", "animate_scale")
+
+        def animated(tree):
+            return [f"{type(n).__name__}.{p}" for n in walk(tree) for p in anim_props if getattr(n, p, None)]
+        self.state.sub = "live"
+        self.assertTrue(animated(self.build("live")))                            # обычный режим — анимации есть
+        calls = []
+        self.state.on_theme_change = lambda name, team: calls.append(name)
+        self.state.sub = "settings"
+        switch = [n for n in walk(self.build("settings")) if getattr(n, "tooltip", None) == "Меньше движения"][0]
+        switch.on_change(Ctl(control=Ctl(value=True)))
+        self.assertTrue(design_system.REDUCE_MOTION)
+        self.assertEqual(db.get_setting("reduce_motion"), "1")
+        self.assertEqual(calls, ["dark"])
+        self.state.ui["driver_id"] = "leclerc"
+        for name, build in list(self.all_screens()):
+            self.state.sub = None if name.startswith("tab") else name
+            with self.subTest(screen=name):
+                tree = build(self.state)
+                self.assertEqual(animated(tree), [])
+                self.assertNotIn("Shimmer", {type(n).__name__ for n in walk(tree)})
+        # системная настройка «Отключить анимацию» при первом запуске (пользователь сам не выбирал)
+        design_system.apply_reduce_motion(False)
+        with db._connect() as con:
+            con.execute("DELETE FROM settings WHERE key='reduce_motion'")
+        features = types.SimpleNamespace(disable_animations=True, reduce_motion=False)
+
+        async def get_features():
+            return features
+        with mock.patch.object(sys.modules["flet"], "SemanticsService",
+                               return_value=types.SimpleNamespace(get_accessibility_features=get_features),
+                               create=True):
+            self._main_with_loop()
+        self.assertTrue(design_system.REDUCE_MOTION)
+
     def test_hero_tags_unique_per_screen(self):
         """Flutter падает, если на одном экране два Hero с одним тегом — проверяем все экраны."""
         fill_db()
@@ -1261,7 +1309,8 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(sent[-1][1], "Итоги: Japanese GP")
         t = texts(self.build("settings"))
         self.assertIn("УВЕДОМЛЕНИЯ".lower(), " ".join(t).lower())
-        switches = [n for n in walk(self.build("settings")) if type(n).__name__ == "Switch"]
+        switches = [n for n in walk(self.build("settings"))
+                    if type(n).__name__ == "Switch" and getattr(n, "tooltip", None) != "Меньше движения"]
         switches[0].on_change(Ctl(control=Ctl(value=False)))
         self.assertFalse(self.state.notifications_on("sessions"))
         self.assertEqual(self.state.check_notifications(now=quali["ts"] - 100), [])  # выключено
@@ -1427,6 +1476,9 @@ class UiSmokeTest(unittest.TestCase):
         with mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()), \
              mock.patch("threading.Thread.start"):
             app.main(page)
+        startup, tasks[:] = list(tasks), []          # стартовые задачи (проверка настроек системы) — сразу
+        for task in startup:
+            asyncio.run(task())
         return page, tasks
 
     def test_render_from_threads_goes_through_event_loop(self):

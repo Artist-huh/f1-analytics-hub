@@ -406,6 +406,13 @@ class AppState:
         ds.apply_font_scale(scale)
         self.on_theme_change(ds.THEME, ds.THEME_TEAM)    # перезагрузка модулей с новыми размерами
 
+    def set_reduce_motion(self, on):
+        """«Меньше движения»: без анимаций появления, подъёма карточек, скольжения строк и переходов."""
+        import design_system as ds
+        api.set_setting("reduce_motion", "1" if on else "0")
+        ds.apply_reduce_motion(on)
+        self.on_theme_change(ds.THEME, ds.THEME_TEAM)    # переходы страниц и экраны — заново
+
     # ---------- клавиатура ----------
     def on_key(self, key, ctrl=False):
         """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Ctrl+M — мини-виджет,
