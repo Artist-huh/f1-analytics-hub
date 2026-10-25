@@ -70,6 +70,30 @@ class ContrastTest(unittest.TestCase):
                 with self.subTest(theme=name, token=token):
                     self.assertGreaterEqual(ds.contrast(getattr(ds, token), ds.SURFACE), 3.0)
 
+    def test_heatmap_cells_readable(self):
+        """Цифры места в клетках карты сезона читаются на любом фоне клетки (4.5:1) во всех темах."""
+        for name in ("dark", "light"):
+            ds.apply_theme(name)
+            for p in range(1, 11):
+                bg = ds.POSITION_COLORS.get(p) or ds.POINTS_GREENS[p - 4]
+                fg = ds.INK if p in ds.POSITION_COLORS else ds.readable_on(bg)
+                with self.subTest(theme=name, position=p):
+                    self.assertGreaterEqual(ds.contrast(fg, bg), 4.5)
+
+    def test_no_hardcoded_hex_in_screens(self):
+        """Цвета живут в дизайн-системе: в экранах нет «зашитых» #RRGGBB (их не видит тест контраста)."""
+        import os
+        import re
+        root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ui")
+        found = []
+        for folder, _, files in os.walk(root):
+            for f in files:
+                if f.endswith(".py"):
+                    with open(os.path.join(folder, f), encoding="utf-8") as fh:
+                        text = fh.read()
+                    found += [f"{f}: {m}" for m in re.findall(r"[\"']#[0-9A-Fa-f]{6}[\"']", text)]
+        self.assertEqual(found, [])
+
     def test_contrast_formula(self):
         self.assertAlmostEqual(ds.contrast("#000000", "#FFFFFF"), 21.0)
         self.assertAlmostEqual(ds.contrast("#777777", "#777777"), 1.0)

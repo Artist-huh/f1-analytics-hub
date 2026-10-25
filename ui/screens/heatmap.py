@@ -8,18 +8,17 @@ from ui.widgets import pill
 
 CELL = 24
 LABEL_W = 46
-POINTS_GREENS = ["#22C55E", "#1FB257", "#1C9F4F", "#198C47", "#16793F", "#136637", "#10532F"]   # P4 … P10
 
 
 def cell_color(position_text):
     """Цвет клетки по месту: подиум — медали, 4–10 — зелёная шкала, ниже — серый, сход — красный."""
     p = to_int(position_text)
     if p is None:
-        return (DANGER, ON_COLOR) if position_text and position_text != "W" else (None, TEXT_DIM)
+        return (DANGER, readable_on(DANGER)) if position_text and position_text != "W" else (None, TEXT_DIM)
     if p in POSITION_COLORS:
         return POSITION_COLORS[p], INK
     if p <= 10:
-        return POINTS_GREENS[p - 4], ON_COLOR
+        return POINTS_GREENS[p - 4], readable_on(POINTS_GREENS[p - 4])   # белый на светло-зелёном не читался
     return SURFACE_ELEVATED, TEXT_MUTED
 
 

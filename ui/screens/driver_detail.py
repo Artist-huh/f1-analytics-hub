@@ -148,7 +148,7 @@ def _build_stats(driver, s, has_results):
         ("Победы", s["wins"], ft.Icons.MILITARY_TECH_ROUNDED, GOLD),
         ("Подиумы", s["podiums"], ft.Icons.WORKSPACE_PREMIUM_ROUNDED, POSITION_COLORS[3]),
         ("Поулы", s["poles"], ft.Icons.TIMER_ROUNDED, ACCENT_TEXT),
-        ("Быстрые круги", s["fastest_laps"], ft.Icons.SPEED_ROUNDED, "#B36BFF"),
+        ("Быстрые круги", s["fastest_laps"], ft.Icons.SPEED_ROUNDED, SECTOR_OVERALL),   # фиолетовый F1
         ("Сходы", s["dnf"], ft.Icons.CANCEL_ROUNDED, TEXT_MUTED),
         ("Лучший финиш", best, ft.Icons.TRENDING_UP_ROUNDED, SUCCESS),
         ("Средний финиш", st.fmt_avg(s["avg_finish"]), ft.Icons.TIMELINE_ROUNDED, INFO),
@@ -216,7 +216,7 @@ def _build_race_results(state, driver, results):
         flag_src, iso = state.flag(country=r["country"])
         extras = []
         if str(r.get("fastest_rank")) == "1":
-            extras.append(ft.Icon(ft.Icons.SPEED_ROUNDED, color="#B36BFF", size=16, tooltip="Быстрый круг"))
+            extras.append(ft.Icon(ft.Icons.SPEED_ROUNDED, color=SECTOR_OVERALL, size=16, tooltip="Быстрый круг"))
         if quali.get(r["round"]) == "1":
             extras.append(ft.Icon(ft.Icons.TIMER_ROUNDED, color=ACCENT_TEXT, size=16, tooltip="Поул"))
         badge = PositionBadge(pos, size=34) if pos else ft.Container(

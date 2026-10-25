@@ -263,6 +263,9 @@ TYRE_COLORS = {"SOFT": "#FF3333", "MEDIUM": "#FFD12E", "HARD": "#F0F0F0",
 TYRES = {"S": TYRE_COLORS["SOFT"], "M": TYRE_COLORS["MEDIUM"], "H": TYRE_COLORS["HARD"]}
 
 # === ПОЗИЦИИ ===
+# Очковая зона P4…P10 на карте сезона — от светлого к тёмному зелёному (цвет цифр — readable_on)
+POINTS_GREENS = ["#22C55E", "#1FB257", "#1C9F4F", "#178443", "#16793F", "#136637", "#10532F"]
+
 POSITION_COLORS = {1: "#FFC93C", 2: "#C9CED6", 3: "#D9894A"}   # золото, серебро, бронза
 
 

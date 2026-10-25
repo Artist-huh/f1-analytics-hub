@@ -90,7 +90,7 @@ def _stats(team, s):
     items = [("Подиумы", s["podiums"], ft.Icons.WORKSPACE_PREMIUM_ROUNDED, POSITION_COLORS[3]),
              ("Дубли 1–2", s["one_two"], ft.Icons.FILTER_2_ROUNDED, GOLD),
              ("Поулы", s["poles"], ft.Icons.TIMER_ROUNDED, ACCENT_TEXT),
-             ("Быстрые круги", s["fastest_laps"], ft.Icons.SPEED_ROUNDED, "#B36BFF"),
+             ("Быстрые круги", s["fastest_laps"], ft.Icons.SPEED_ROUNDED, SECTOR_OVERALL),
              ("Сходы", s["dnf"], ft.Icons.CANCEL_ROUNDED, TEXT_MUTED),
              ("Гонок", len({r["round"] for r in s["races"]}), ft.Icons.FLAG_ROUNDED, INFO)]
     cards = [ft.Container(StatCard(label, value, icon, color, compact=True, expand=False),
