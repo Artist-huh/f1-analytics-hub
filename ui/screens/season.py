@@ -3,7 +3,7 @@ import flet as ft
 
 from design_system import *
 from ui.components import *
-from ui.rows import driver_row, team_row
+from ui.rows import driver_row, team_row, tower
 from ui.screens import heatmap
 from ui.widgets import empty_state, pill, screen
 
@@ -66,8 +66,8 @@ def _build_driver_standings(state, standings, leader_points, favs_view=False):
                         color=ACCENT_TEXT if gap <= 0 else TEXT_DIM),
             ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.END, width=52),
         ], spacing=0, tight=True, vertical_alignment=ft.CrossAxisAlignment.CENTER)
-        rows.append(driver_row(state, d, trailing=trailing))
-    return rows
+        rows.append(driver_row(state, d, trailing=trailing, flat=True))
+    return [tower(rows)]
 
 
 def _build_constructor_standings(state, is_mobile):

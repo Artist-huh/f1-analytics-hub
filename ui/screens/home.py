@@ -1,4 +1,6 @@
 """Главный экран: ближайшая гонка, подиум последней гонки, лидеры чемпионата, быстрый доступ"""
+import contextlib
+import math
 import time
 
 import flet as ft
@@ -8,7 +10,7 @@ from services import f1_api as api
 from services import live
 from ui.components import *
 from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_day, plural, short_name
-from ui.rows import driver_row, team_row
+from ui.rows import driver_row, team_row, tower
 from ui.screens import home_blocks as hb
 from ui.widgets import empty_state, screen
 
@@ -74,33 +76,89 @@ def _block(state, key, is_mobile):
 # СЕКЦИИ
 # ========================================
 
+LIGHTS = 5                 # стартовые огни: загораются по одному за каждый день до гонки
+
+
+def lights_lit(seconds_left, live):
+    """Сколько огней горит: 5 — гонка в ближайшие сутки, 0 — больше пяти дней или гонка уже идёт (огни погасли)."""
+    if live:
+        return 0
+    return max(0, min(LIGHTS, LIGHTS + 1 - math.ceil(max(seconds_left, 0) / 86400)))
+
+
+def start_lights(state, lit):
+    """Пять стартовых огней F1: корпус и по два стекла. При первом показе экрана загораются по очереди."""
+    lamps = []
+    units = []
+    for _unit in range(LIGHTS):
+        pair = [ft.Container(width=14, height=14, border_radius=7, bgcolor=LIGHT_OFF, animate=anim(ANIM_FAST))
+                for _ in range(2)]
+        lamps.append(pair)
+        units.append(ft.Container(ft.Column(pair, spacing=4, tight=True), bgcolor=LIGHT_HOUSING,
+                                  border_radius=RADIUS_SM, padding=ft.Padding.symmetric(horizontal=5, vertical=6)))
+
+    def light(i):
+        for lamp in lamps[i]:
+            lamp.bgcolor = LIGHT_ON
+            lamp.shadow = glow(LIGHT_ON, 0.7)
+
+    run_task = getattr(state.page, "run_task", None)
+    if lit and state.fresh and motion_on() and run_task:
+        async def sequence():
+            import asyncio
+            for i in range(lit):
+                await asyncio.sleep(0.35)
+                light(i)
+                with contextlib.suppress(RuntimeError, AssertionError, AttributeError):   # экран уже сменился
+                    row.update()
+        run_task(sequence)
+    else:
+        for i in range(lit):
+            light(i)
+    tip = (f"Огни загораются по одному за каждый день до гонки: горит {lit} из {LIGHTS}" if lit else
+           "Огни загорятся за пять дней до гонки, по одному в день")
+    row = ft.Row(units, spacing=6, tight=True, tooltip=tip)
+    return row
+
+
+def _hero_outline(state, race):
+    """Контур трассы ближайшей гонки (кэш навсегда) или None, пока не загружен."""
+    from services import archive, track_map
+    year = int(state.season or time.strftime("%Y"))
+    meetings = archive.get(track_map.meetings_key(year), lambda: track_map.fetch_meetings(year), 7 * 86400,
+                           state.render)
+    key = track_map.circuit_for(meetings, race["start_ts"])
+    if not key:
+        return None
+    return archive.get(track_map.outline_key(key), lambda: track_map.fetch_outline(key, year), None, state.render)
+
+
 def _build_next_race_hero(race, state, is_mobile):
-    """Hero: красный градиент, флаг страны, обратный отсчёт курсивом."""
+    """Hero «стартовая решётка»: карбон, контур трассы, обратный отсчёт и пять стартовых огней."""
+    from ui.screens.live_track import outline_canvas
     live = race["state"] == "live"
     countdown = ft.Text(
         "LIVE" if live else fmt_countdown(race["seconds_left"]),
         size=FONT_H1 if is_mobile else FONT_DISPLAY,
-        color=ON_COLOR,
+        color=LIGHT_ON if live else ON_COLOR,
         font_family=FONT_DISPLAY_ITALIC,
     )
     if not live:
         state.countdown = (countdown, race["round"])  # main.ticker обновляет этот текст на месте
     flag_src, iso = state.flag(country=race["country"])
-    sprint = any(s["key"] == "Sprint" for s in race["sessions"])
-
-    badge_items = [ft.Text("ГОНКА ИДЁТ" if live else f"ЭТАП {race['round']}", size=FONT_CAPTION,
-                           color=ON_ACCENT, font_family=FONT_ITALIC)]
-    if sprint:
-        badge_items.append(ft.Text("· СПРИНТ", size=FONT_CAPTION, color=ON_ACCENT, font_family=FONT_ITALIC))
-    badge = ft.Container(ft.Row(badge_items, spacing=4, tight=True),
-                         bgcolor=ft.Colors.with_opacity(0.22, BG_DEEPEST), border_radius=RADIUS_FULL,
-                         padding=ft.Padding.symmetric(horizontal=10, vertical=4))
+    soft = ft.Colors.with_opacity(0.72, ON_COLOR)
+    total = len(state.schedule)
+    stage = "Гонка идёт" if live else f"Этап {race['round']} из {total}" if total else f"Этап {race['round']}"
+    if any(s["key"] == "Sprint" for s in race["sessions"]):
+        stage += ", спринт"
 
     timer = ft.Column([
         countdown,
-        ft.Text("в эфире" if live else f"до старта · {fmt_day(race['start_ts'])}, {fmt_clock(race['start_ts'])}",
-                size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, ON_COLOR)),
+        ft.Text("Огни погасли — гонка в эфире" if live else
+                f"Старт {fmt_day(race['start_ts'])} в {fmt_clock(race['start_ts'])}",
+                size=FONT_BODY_SMALL, color=soft),
     ], spacing=0)
+    lights = start_lights(state, lights_lit(race["seconds_left"], live))
 
     button = ft.Container(
         ft.Row([ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, color=F1_RED, size=18),
@@ -109,34 +167,40 @@ def _build_next_race_hero(race, state, is_mobile):
         padding=ft.Padding.symmetric(horizontal=SPACE_LG), ink=True,
         on_click=lambda e: state.open_tab(2),
     )
-    bottom = (ft.Column([timer, button], spacing=SPACE_MD, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+    bottom = (ft.Column([ft.Row([timer, lights], alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                vertical_alignment=ft.CrossAxisAlignment.END, wrap=True, run_spacing=SPACE_SM),
+                         button], spacing=SPACE_MD, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
               if is_mobile else
-              ft.Row([ft.Container(timer, expand=True), button], spacing=SPACE_MD,
+              ft.Row([ft.Container(timer, expand=True), lights, button], spacing=SPACE_LG,
                      vertical_alignment=ft.CrossAxisAlignment.END))
 
+    outline = _hero_outline(state, race)
+    track = None
+    if outline:
+        from services import track_map
+        w = min(content_width(state) - 2 * SPACE_LG, 520)
+        h = track_map.fitted_height(outline, w, pad=6, max_ratio=0.4)
+        track = ft.Container(outline_canvas(outline, w, h, ft.Colors.with_opacity(0.55, ON_COLOR), 3, LIGHT_ON),
+                             alignment=ft.Alignment.CENTER, tooltip=f"Трасса: {race['circuit']}",
+                             padding=ft.Padding.symmetric(vertical=SPACE_XS))
+    body = ft.Column([
+        ft.Row([flag(flag_src, 18, iso), ft.Text(stage, size=FONT_BODY_SMALL, color=soft)],
+               spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ft.Column([
+            ft.Text(race["race_name"], size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
+            ft.Text(race["circuit"], size=FONT_BODY_SMALL, color=soft, max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS),
+        ], spacing=2),
+        *([track] if track else []),
+        bottom,
+    ], spacing=SPACE_SM)
+
     return ft.Container(
-        content=ft.Stack([
-            # «шахматный флаг» — декоративные полосы справа
-            ft.Container(ft.Icon(ft.Icons.SPORTS_SCORE_ROUNDED, size=150,
-                                 color=ft.Colors.with_opacity(0.10, ON_COLOR)),
-                         right=-20, top=-20),
-            ft.Column([
-                ft.Row([badge, ft.Container(expand=True), flag(flag_src, 22, iso)],
-                       vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                ft.Column([
-                    ft.Text(race["race_name"], size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
-                    ft.Text(f"{race['circuit']} · {race['locality']}", size=FONT_BODY_SMALL,
-                            color=ft.Colors.with_opacity(0.85, ON_COLOR), max_lines=1,
-                            overflow=ft.TextOverflow.ELLIPSIS),
-                ], spacing=2),
-                bottom,
-            ], spacing=SPACE_MD),
-        ]),
+        content=body,
         padding=SPACE_LG,
-        gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                   colors=[ACCENT_GLOW, F1_RED, ACCENT_DEEP]),
+        gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT, colors=HERO_CARBON),
+        border=ft.Border.all(1, ft.Colors.with_opacity(0.08, ON_COLOR)),
         border_radius=RADIUS_LG,
-        shadow=glow(strength=0.35),
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         on_click=lambda e: state.open_tab(2),
         ink=True,
@@ -180,8 +244,8 @@ def _build_live_card(state):
                                                         begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT))
         upcoming = next_session(state.schedule)
         title = "Live Timing"
-        hint = (f"{SESSION_NAMES.get(upcoming[1], upcoming[1])} · через {fmt_countdown(upcoming[2] - time.time())} · "
-                "сейчас — итог последней сессии" if upcoming else "Итог последней сессии")
+        hint = (f"{SESSION_NAMES.get(upcoming[1], upcoming[1])} через {fmt_countdown(upcoming[2] - time.time())}. "
+                "Пока здесь итог прошлой сессии" if upcoming else "Итог прошлой сессии")
     return AnimatedCard(ft.Row([
         badge,
         ft.Column([ft.Text(title, size=FONT_BODY_LARGE, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600,
@@ -289,7 +353,7 @@ def _build_top_drivers(state, drivers):
     return ft.Column([
         SectionHeader("Чемпионат пилотов", subtitle="Топ-5", action_text="Все",
                       on_action=lambda e: _open_championship(state, "drivers")),
-        ft.Column([driver_row(state, d) for d in drivers], spacing=SPACE_XS),
+        tower([driver_row(state, d, flat=True) for d in drivers]),
     ], spacing=SPACE_SM)
 
 

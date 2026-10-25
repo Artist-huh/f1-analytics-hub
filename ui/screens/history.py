@@ -92,7 +92,7 @@ def _champion_hero(state, data, year):
     top, bottom = get_team_gradient(lead["team"]) if team_key(lead["team"]) else (F1_RED, ACCENT_DEEP)
     flag_src, iso = state.flag(nationality=lead.get("nationality"))
     team_champ = data["constructors"][0]["name"] if data["constructors"] else None
-    lines = [ft.Text("ЧЕМПИОН МИРА" if finished else "ЛИДЕР ЧЕМПИОНАТА", size=FONT_CAPTION, color=ON_COLOR,
+    lines = [ft.Text("Чемпион мира" if finished else "Лидер чемпионата", size=FONT_CAPTION, color=ON_COLOR,
                      font_family=FONT_ITALIC),
              ft.Text(lead["name"], size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
              ft.Row([flag(flag_src, 14, iso), ft.Text(lead["team"], size=FONT_BODY_SMALL, color=ON_COLOR)], spacing=6),

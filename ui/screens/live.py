@@ -79,7 +79,7 @@ def build(state):
 
 
 def _status_line(state, data):
-    """«Сессия идёт · Круг 31 из 56» / «осталось 00:41:12» / «Итог последней сессии»."""
+    """«Сессия идёт, круг 31 из 56» / «Сессия идёт, осталось 00:41:12» / «Итог последней сессии»."""
     s = data["session"]
     total = None
     place = (s["location"] or "").lower()
@@ -89,11 +89,11 @@ def _status_line(state, data):
         info = track_info(nxt)
         total = info[1] if info else None
     total = data.get("total_laps") or total
-    lap = f"Круг {data['lap']}" + (f" из {total}" if total else "") if data["lap"] and data["racing"] else ""
+    lap = f"круг {data['lap']}" + (f" из {total}" if total else "") if data["lap"] and data["racing"] else ""
     if not lap and data.get("remaining") and data["live"]:
         lap = f"осталось {data['remaining']}"
     status = "Сессия идёт" if data["live"] else "Итог последней сессии"
-    return " · ".join(x for x in (status, lap) if x)
+    return ", ".join(x for x in (status, lap) if x)
 
 
 def _header(state, data):
@@ -106,19 +106,26 @@ def _header(state, data):
                              bgcolor=DANGER, border_radius=RADIUS_FULL,
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
     else:
-        badge = ft.Container(ft.Text("ФИНИШ", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC),
-                             bgcolor=ft.Colors.with_opacity(0.25, BG_DEEPEST), border_radius=RADIUS_FULL,
+        badge = ft.Container(ft.Row([ft.Icon(ft.Icons.SPORTS_SCORE_ROUNDED, color=ON_COLOR, size=14),
+                                     ft.Text("Финиш", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
+                                    spacing=4, tight=True),
+                             bgcolor=ft.Colors.with_opacity(0.12, ON_COLOR), border_radius=RADIUS_FULL,
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
-    updated = ft.Text(f"обновлено в {fmt_clock(data['updated'])}", size=FONT_CAPTION, color=ON_COLOR)
+    soft = ft.Colors.with_opacity(0.78, ON_COLOR)
+    updated = ft.Text(f"обновлено в {fmt_clock(data['updated'])}", size=FONT_CAPTION, color=soft)
     status = ft.Text(_status_line(state, data), size=FONT_BODY_SMALL, color=ON_COLOR)
     state.ui["live_head"] = {"updated": updated, "status": status}     # обновляются на месте (update_in_place)
     return ft.Container(ft.Column([
         ft.Row([badge, ft.Container(expand=True), updated]),
-        ft.Text(f"{name} · {s['circuit']} {s['year'] or ''}", size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
+        ft.Column([ft.Text(name, size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
+                   ft.Text(f"{s['circuit']} {s['year'] or ''}".strip(), size=FONT_BODY_SMALL, color=soft)], spacing=0),
         status,
-    ], spacing=SPACE_XS), gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                                     colors=GRADIENT_RED),
-        border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3))
+    ], spacing=SPACE_XS),
+        # красный — только пока сессия идёт; итог прошлой — на карбоне, как герой главной
+        gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
+                                   colors=GRADIENT_RED if data["live"] else HERO_CARBON),
+        border=None if data["live"] else ft.Border.all(1, ft.Colors.with_opacity(0.08, ON_COLOR)),
+        border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3) if data["live"] else None)
 
 
 def tyre_badge(letter, age):

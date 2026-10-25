@@ -74,6 +74,18 @@ class TrackMap:
             self.stack.update()
 
 
+def outline_canvas(outline, width, height, color, stroke=3.0, start_color=None):
+    """Контур трассы одной линией (герой главной): canvas width × height и точка старта."""
+    to_screen = track_map.project(outline, width, height, pad=stroke * 2)
+    pts = [to_screen(x, y) for x, y in zip(outline["x"], outline["y"], strict=True)]
+    path = [cv.Path.MoveTo(*pts[0])] + [cv.Path.LineTo(*p) for p in pts[1:]] + [cv.Path.Close()]
+    shapes = [cv.Path(path, paint=ft.Paint(color=color, stroke_width=stroke, style=ft.PaintingStyle.STROKE,
+                                           stroke_join=ft.StrokeJoin.ROUND))]
+    if start_color:
+        shapes.append(cv.Circle(*pts[0], stroke * 1.8, paint=ft.Paint(color=start_color)))
+    return cv.Canvas(shapes=shapes, width=width, height=height)
+
+
 def track_section(state, data):
     """Вкладка «Трасса»: контур из кэша (или загрузка) и точки пилотов."""
     from services import archive

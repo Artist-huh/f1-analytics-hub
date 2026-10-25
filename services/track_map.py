@@ -1,4 +1,4 @@
-"""Схема трассы для Live Timing: контур (MultiViewer API, бесплатно) и позиции машин (поток F1, Position.z).
+"""Схема трассы для Live Timing и главной: контур (MultiViewer API, бесплатно) и позиции машин (поток F1, Position.z).
 
 Обе системы координат совпадают — это координаты F1 live timing. Контур кэшируется навсегда (archive),
 позиции приходят в каждом снимке. Проекция на экран — чистая функция project().
@@ -7,10 +7,13 @@ import base64
 import json
 import math
 import zlib
+from datetime import datetime
 
 import requests
 
 API = "https://api.multiviewer.app/api/v1/circuits"
+MEETINGS = "https://api.openf1.org/v1/meetings"
+MEETING_DAYS = 5               # этап (практики) начинается за 2–3 дня до гонки
 TIMEOUT = (5, 20)
 MAX_POINTS = 320                 # контуру хватает — меньше данных в окно и быстрее рисование
 
@@ -46,6 +49,40 @@ def fetch_outline(circuit_key, year):
         return {"x": xs[::step], "y": ys[::step], "rotation": float(d.get("rotation") or 0), "corners": corners,
                 "name": d.get("circuitName", "")}
     raise TrackMapError(f"контур трассы {circuit_key} не загружен: {last}")
+
+
+def meetings_key(year):
+    return f"meetings:{year}"
+
+
+def fetch_meetings(year):
+    """Этапы сезона из расписания OpenF1 (бесплатно): [(начало этапа, ключ трассы)] — ключ тот же, что у контуров."""
+    try:
+        resp = requests.get(MEETINGS, params={"year": year}, timeout=TIMEOUT,
+                            headers={"User-Agent": "f1-analytics-hub"})
+        resp.raise_for_status()
+        rows = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise TrackMapError(f"расписание этапов {year} не загружено: {exc}") from exc
+    out = []
+    for m in rows if isinstance(rows, list) else []:
+        try:
+            start = datetime.fromisoformat(m["date_start"]).timestamp()
+        except (KeyError, TypeError, ValueError):
+            continue
+        if m.get("circuit_key") and "test" not in (m.get("meeting_name") or "").lower():
+            out.append((start, m["circuit_key"]))
+    if not out:
+        raise TrackMapError(f"в расписании {year} нет этапов")
+    return out
+
+
+def circuit_for(meetings, race_ts):
+    """Ключ трассы гонки: этап, который начался не раньше чем за MEETING_DAYS дней до старта гонки."""
+    for start, key in meetings or []:
+        if 0 <= race_ts - start <= MEETING_DAYS * 86400:
+            return key
+    return None
 
 
 def decode_positions(z):

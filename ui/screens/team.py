@@ -5,7 +5,7 @@ from design_system import *
 from services import stats as st
 from ui.components import *
 from ui.fmt import plural, short_name, to_int
-from ui.rows import driver_row
+from ui.rows import driver_row, tower
 from ui.widgets import screen
 
 
@@ -100,7 +100,7 @@ def _stats(team, s):
 
 
 def _drivers(state, drivers):
-    rows = [driver_row(state, d) for d in drivers]
+    rows = [tower([driver_row(state, d, flat=True) for d in drivers])]
     actions = []
     if len(drivers) >= 2:
         actions.append(GradientButton("Сравнить пилотов команды", icon=ft.Icons.COMPARE_ARROWS_ROUNDED,

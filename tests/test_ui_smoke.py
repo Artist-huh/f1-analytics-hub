@@ -274,7 +274,7 @@ class UiSmokeTest(unittest.TestCase):
         self.state.load()
         t = texts(self.build("tab0"))
         self.assertLess(t.index("Live Timing"), t.index("Сравнение"))            # первым, выше быстрого доступа
-        self.assertTrue(any(x.startswith("Квалификация · через") for x in t))    # ближайшая сессия
+        self.assertTrue(any(x.startswith("Квалификация через") for x in t))    # ближайшая сессия
         race = self.state.schedule[3]
         with mock.patch.object(self.state, "live_now", return_value=(race, "Qualifying")):
             tree = self.build("tab0")
@@ -320,7 +320,7 @@ class UiSmokeTest(unittest.TestCase):
         fill_db()
         self.state.load()
         t = texts(self.build("tab0"))
-        for expected in ("F1 Hub", "Сезон 2026", "ЭТАП 4", "Italian Grand Prix", "3 д 5 ч",
+        for expected in ("F1 Hub", "Сезон 2026", "Этап 4 из 5", "Italian Grand Prix", "3 д 5 ч",
                          "Antonelli", "Mercedes", "3/5", "Leclerc"):
             self.assertIn(expected, t)
         self.assertNotIn("Andrea Kimi Antonelli", t)    # телефон: в строках таблицы — фамилии
@@ -328,7 +328,38 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Andrea Kimi Antonelli", texts(self.build("tab0")))   # десктоп: полное имя
         self.assertIsNotNone(self.state.countdown)        # отсчёт зарегистрирован для ticker
         self.assertEqual(self.state.countdown[1], "4")
-        self.assertNotIn("ПОСЛЕДНЯЯ ГОНКА", t)             # подиум неполный — секцию не показываем
+        self.assertNotIn("Последняя гонка", t)             # подиум неполный — секцию не показываем
+
+    def test_home_hero_start_grid(self):
+        """Герой главной: стартовые огни по дням до гонки и контур трассы из расписания OpenF1 + MultiViewer."""
+        import design_system as ds
+        from services import track_map
+        from ui.screens import home
+        self.assertEqual([home.lights_lit(d * 86400 - 60, False) for d in (7, 6, 5, 3, 1)], [0, 0, 1, 3, 5])
+        self.assertEqual(home.lights_lit(600, True), 0)                       # гонка идёт — огни погасли
+        self.assertEqual(track_map.circuit_for([(1000, 9), (1000 + 7 * 86400, 65)], 1000 + 9 * 86400), 65)
+        self.assertIsNone(track_map.circuit_for([(1000, 9)], 1000 + 6 * 86400))
+        resp = mock.Mock(status_code=200, json=lambda: [
+            {"meeting_name": "Pre-Season Testing", "circuit_key": 63, "date_start": "2026-02-11T07:00:00+00:00"},
+            {"meeting_name": "Mexico City Grand Prix", "circuit_key": 65, "date_start": "2026-10-30T18:30:00+00:00"},
+            {"meeting_name": "Broken", "circuit_key": 1, "date_start": None}])
+        with mock.patch.object(track_map.requests, "get", return_value=resp):
+            self.assertEqual([k for _, k in track_map.fetch_meetings(2026)], [65])   # без тестов и битых строк
+        fill_db()
+        self.state.load()
+
+        def tips(tree):
+            return [str(n.tooltip) for n in walk(tree) if isinstance(getattr(n, "tooltip", None), str)]
+
+        tree = self.build("tab0")
+        self.assertIn("Огни загораются по одному за каждый день до гонки: горит 2 из 5", tips(tree))   # 3 д 5 ч
+        self.assertEqual(sum(1 for n in walk(tree) if getattr(n, "bgcolor", None) == ds.LIGHT_ON), 4)
+        self.assertFalse([t for t in tips(tree) if t.startswith("Трасса")])  # контура ещё нет в кэше — без него
+        race = self.state.next_race()
+        db.save_archive(track_map.meetings_key(2026), [[race["start_ts"] - 2 * 86400, 39]])
+        db.save_archive(track_map.outline_key(39), {"x": [0, 10, 20, 20, 10, 0, -5, -8, -5, 0],
+                                                    "y": [0, 0, 5, 15, 20, 20, 15, 10, 5, 2], "rotation": 0})
+        self.assertIn("Трасса: Autodromo Nazionale di Monza", tips(self.build("tab0")))
 
     def test_home_last_race_podium(self):
         fill_db()
@@ -336,7 +367,7 @@ class UiSmokeTest(unittest.TestCase):
         self.state.load()
         tree = self.build("tab0")
         t = texts(tree)
-        self.assertIn("ПОСЛЕДНЯЯ ГОНКА", t)
+        self.assertIn("Последняя гонка", t)
         self.assertIn("Этап 3 · Japanese Grand Prix", t)
         avatars = [n for n in walk(tree)
                    if type(n).__name__ == "DriverAvatar" and callable(getattr(n, "on_click", None))]
@@ -399,7 +430,7 @@ class UiSmokeTest(unittest.TestCase):
         dialog = self.page.dialogs[0]
         dt = texts(dialog)
         self.assertIn("3. Japanese Grand Prix", dt)
-        self.assertIn("ПОДИУМ", dt)
+        self.assertIn("Подиум", dt)
         self.assertIn("Liam Lawson", dt)
         clickable(dialog, "Charles Leclerc")[0].on_click(Ctl())   # из подиума — на страницу пилота
         self.assertEqual((self.state.sub, self.page.dialogs), ("driver_detail", []))
@@ -460,8 +491,8 @@ class UiSmokeTest(unittest.TestCase):
         self.assertAlmostEqual(s["race_points"], 32.5)
         self.state.open_driver("leclerc")
         t = texts(self.build("driver_detail"))
-        for expected in ("LECLERC", "Charles", "P4", "Поулы", "Быстрые круги", "РЕЗУЛЬТАТЫ ГОНОК", "Japanese GP",
-                         "НАБОР ОЧКОВ", "Этап 2 · квал. P1 · старт 4 · 8 мар"):
+        for expected in ("LECLERC", "Charles", "P4", "Поулы", "Быстрые круги", "Результаты гонок", "Japanese GP",
+                         "Набор очков", "Этап 2 · квал. P1 · старт 4 · 8 мар"):
             self.assertIn(expected, t)
 
     def test_every_driver_has_full_detail_page(self):
@@ -472,7 +503,7 @@ class UiSmokeTest(unittest.TestCase):
             with self.subTest(driver=d["driver_id"]):
                 self.state.ui["driver_id"] = d["driver_id"]
                 t = texts(self.build("driver_detail"))
-                self.assertIn("РЕЗУЛЬТАТЫ ГОНОК", t)
+                self.assertIn("Результаты гонок", t)
                 self.assertNotIn("Результатов пока нет", t)
 
     def test_compare_defaults_metrics_and_leaders(self):
@@ -487,7 +518,7 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(compare.metric_values(self.state, drivers_, "poles"), [0, 1])
         t = texts(self.build("compare"))
         for expected in ("Поулы", "Быстрые круги", "Средняя квалификация", "Гонки: кто финишировал выше",
-                         "Квалификации", "НАБОР ОЧКОВ"):
+                         "Квалификации", "Набор очков"):
             self.assertIn(expected, t)
 
     def test_compare_add_remove_and_presets(self):
@@ -497,7 +528,7 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.page.dialogs[-1], "Liam Lawson")[0].on_click(Ctl())
         self.assertEqual(self.page.dialogs, [])
         self.assertEqual(self.state.compare_ids(), ["antonelli", "leclerc", "lawson"])
-        self.assertIn("КТО ЧАЩЕ БЫЛ ВПЕРЕДИ", texts(self.build("compare")))   # 3+ пилота — общий счёт
+        self.assertIn("Кто чаще был впереди", texts(self.build("compare")))   # 3+ пилота — общий счёт
         remove = [n for n in walk(self.build("compare")) if getattr(n, "tooltip", None) == "Убрать из сравнения"]
         self.assertEqual(len(remove), 3)
         remove[0].on_click(Ctl())
@@ -551,7 +582,7 @@ class UiSmokeTest(unittest.TestCase):
         clickable(self.build("driver_detail"), "Ferrari")[0].on_click(Ctl())   # логотип у пилота -> команда
         self.assertEqual((self.state.sub, self.state.ui["team"]), ("team", "Ferrari"))
         t = texts(self.build("team"))
-        for expected in ("FERRARI", "P2", "285", "СЕЗОН КОМАНДЫ", "Leclerc", "НАБОР ОЧКОВ"):
+        for expected in ("FERRARI", "P2", "285", "Сезон команды", "Leclerc", "Набор очков"):
             self.assertIn(expected, t)
         self.state.ui["team"] = "Unknown"
         self.assertIn("Команда не выбрана", texts(self.build("team")))
@@ -572,8 +603,8 @@ class UiSmokeTest(unittest.TestCase):
                          "team": "McLaren", "driver_id": "norris"}]}
         db.save_archive(archive.season_key(2025), season_2025)
         t = texts(self.build("history"))
-        for expected in ("ЧЕМПИОН МИРА", "Lando Norris", "Кубок конструкторов: McLaren", "ЛИЧНЫЙ ЗАЧЁТ",
-                         "ПОБЕДИТЕЛИ ГОНОК", "Больше всего побед: Lando Norris — 1"):
+        for expected in ("Чемпион мира", "Lando Norris", "Кубок конструкторов: McLaren", "Личный зачёт",
+                         "Победители гонок", "Больше всего побед: Lando Norris — 1"):
             self.assertIn(expected, t)
         with mock.patch.object(archive, "season", return_value=None), \
              mock.patch.object(archive, "loading", return_value=True):
@@ -587,7 +618,7 @@ class UiSmokeTest(unittest.TestCase):
             self.state.ui["hist_view"] = "champions"
             tree = self.build("history")
             t = texts(tree)
-            self.assertIn("РЕКОРДЫ", t)
+            self.assertIn("Рекорды", t)
             self.assertIn("2026: Andrea Kimi Antonelli", t)            # текущий сезон — лидер
             clickable(tree, "Max Verstappen")[0].on_click(Ctl())       # год -> сезон
             self.assertEqual((self.state.ui["hist_view"], self.state.ui["hist_year"]), ("season", 2024))
@@ -617,8 +648,8 @@ class UiSmokeTest(unittest.TestCase):
         tree = self.build("circuit")
         t = texts(tree)
         for expected in ("Italian Grand Prix", "5,793 км", "53", "Первый Гран-при", "2004",
-                         "Charles Leclerc — 2", "1:21.046 — Rubens Barrichello, 2004", "ПОСЛЕДНИЕ ПОБЕДИТЕЛИ",
-                         "ПОСЛЕДНИЕ ПОУЛЫ", "РАСПИСАНИЕ УИК-ЭНДА"):
+                         "Charles Leclerc — 2", "1:21.046 — Rubens Barrichello, 2004", "Последние победители",
+                         "Последние поулы", "Расписание уик-энда"):
             self.assertIn(expected, t)
         track = [str(n.src) for n in walk(tree) if type(n).__name__ == "Image"]
         self.assertTrue(any("2026trackmonzawhiteoutline.webp" in src for src in track))
@@ -664,7 +695,7 @@ class UiSmokeTest(unittest.TestCase):
                                "updated": time.time()}
         tree = self.build("live")
         t = texts(tree)
-        for expected in ("LIVE", "Гонка · Monza 2026", "Сессия идёт · Круг 62 из 53", "+2.500", "лидер",
+        for expected in ("LIVE", "Гонка", "Monza 2026", "Сессия идёт, круг 62 из 53", "+2.500", "лидер",
                          "CHEQUERED FLAG", "44"):
             self.assertIn(expected, t)
         clickable(tree, "Интервал")[0].on_click(Ctl())
@@ -1322,7 +1353,7 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.check_notifications(), ["2026:3:result"])
         self.assertEqual(sent[-1][1], "Итоги: Japanese GP")
         t = texts(self.build("settings"))
-        self.assertIn("УВЕДОМЛЕНИЯ".lower(), " ".join(t).lower())
+        self.assertIn("Уведомления".lower(), " ".join(t).lower())
         switches = [n for n in walk(self.build("settings"))
                     if type(n).__name__ == "Switch" and getattr(n, "tooltip", None) != "Меньше движения"]
         switches[0].on_change(Ctl(control=Ctl(value=False)))
@@ -1334,11 +1365,11 @@ class UiSmokeTest(unittest.TestCase):
         self.state.load()
         self.assertEqual(self.state.season_left()[:2], (2, 0))      # этапы 4 и 5 впереди, спринтов нет
         t = texts(self.build("title"))
-        self.assertIn("ЧЕМПИОН МИРА", t)                            # отрыв 78 > 50 оставшихся очков
+        self.assertIn("Чемпион мира", t)                            # отрыв 78 > 50 оставшихся очков
         self.assertIn("Остальные 2 уже не могут догнать лидера (204 очков).", t)
         self.state.ui["title_kind"] = "teams"
         t = texts(self.build("title"))
-        self.assertIn("МОЖЕТ ОФОРМИТЬ ТИТУЛ", t)                     # 358 против 285 при 86 оставшихся
+        self.assertIn("Может оформить титул", t)                     # 358 против 285 при 86 оставшихся
         self.assertIn("Для этого достаточно не уступить Ferrari.", t)
         home = self.build("tab0")
         self.assertIn("Antonelli — чемпион мира", texts(home))

@@ -77,7 +77,7 @@ def _champion(state, row, view):
     name, _, color, _ = _who(state, row, view)
     return AnimatedCard(ft.Row([
         _avatar(state, row, view, 64),
-        ft.Column([ft.Text("ЧЕМПИОН МИРА" if view == "drivers" else "ОБЛАДАТЕЛЬ КУБКА КОНСТРУКТОРОВ",
+        ft.Column([ft.Text("Чемпион мира" if view == "drivers" else "Обладатель Кубка конструкторов",
                            size=FONT_CAPTION, color=GOLD, font_family=FONT_ITALIC),
                    ft.Text(name, size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_HEADING),
                    ft.Text(f"Титул оформлен досрочно · {row['points']} очков", size=FONT_BODY_SMALL,
@@ -97,7 +97,7 @@ def _next_clinch(state, rows, race, view):
     name = short_name(leader["name"]) if view == "drivers" else leader["name"]
     return AnimatedCard(ft.Row([
         _avatar(state, leader, view, 52),
-        ft.Column([ft.Text("МОЖЕТ ОФОРМИТЬ ТИТУЛ", size=FONT_CAPTION, color=ACCENT_TEXT, font_family=FONT_ITALIC),
+        ft.Column([ft.Text("Может оформить титул", size=FONT_CAPTION, color=ACCENT_TEXT, font_family=FONT_ITALIC),
                    ft.Text(f"{name} — уже на этапе «{where}»", size=FONT_BODY, color=TEXT_PRIMARY,
                            weight=ft.FontWeight.W_600),
                    ft.Text(f"Для этого {cond}.", size=FONT_BODY_SMALL, color=TEXT_SECONDARY)],

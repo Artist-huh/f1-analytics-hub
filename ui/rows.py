@@ -6,18 +6,18 @@ from ui.components import *
 from ui.fmt import plural, short_name
 
 
-def driver_row(state, d, trailing=None, subtitle=None):
+def driver_row(state, d, trailing=None, subtitle=None, flat=False):
     """Строка пилота: позиция, фото, флаг и имя, команда, очки.
-    На узком экране (телефон) — фамилия вместо полного имени и без отдельной полосы команды."""
+    На узком экране (телефон) — фамилия вместо полного имени и без отдельной полосы команды.
+    flat=True — строка табло (tower): без своей карточки, с полосой цвета команды на всю высоту."""
     color = get_team_color(d["team"])
     flag_src, iso = state.flag(nationality=d.get("nationality"))
     compact = page_width(state) < 480
     name = short_name(d["name"]) if compact else d["name"]
     lead = [PositionBadge(d["position"])]
-    if not compact:
+    if not compact and not flat:
         lead.append(ft.Container(width=3, height=36, bgcolor=color, border_radius=2))
-    return AnimatedCard(
-        content=ft.Row(lead + [
+    row = ft.Row(lead + [
             driver_hero(d["driver_id"], DriverAvatar(d["code"], d["team"], size=40 if compact else 44,
                                                      src=state.photo(d))),
             ft.Column([
@@ -29,11 +29,36 @@ def driver_row(state, d, trailing=None, subtitle=None):
                         overflow=ft.TextOverflow.ELLIPSIS),
             ], spacing=2, expand=True),
             trailing or points_block(d["points"]),
-        ], spacing=SPACE_XS if compact else SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        padding=ft.Padding.symmetric(horizontal=SPACE_SM, vertical=SPACE_XS),
-        on_click=lambda e, i=d["driver_id"]: state.open_driver(i),
-        accent=color,
-    )
+        ], spacing=SPACE_XS if compact else SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+    open_driver = lambda e, i=d["driver_id"]: state.open_driver(i)
+    if flat:
+        return tower_row(row, color, open_driver)
+    return AnimatedCard(content=row, padding=ft.Padding.symmetric(horizontal=SPACE_SM, vertical=SPACE_XS),
+                        on_click=open_driver, accent=color)
+
+
+def tower_row(content, color, on_click):
+    """Строка табло: полоса цвета команды слева на всю высоту, подсветка при наведении."""
+    def hover(e):
+        e.control.bgcolor = SURFACE_RAISED if e.data in (True, "true") else None
+        e.control.update()
+
+    return ft.Container(
+        ft.Row([ft.Container(width=4, bgcolor=color),
+                ft.Container(content, expand=True, padding=ft.Padding.only(left=SPACE_XS, right=SPACE_SM,
+                                                                           top=SPACE_XS, bottom=SPACE_XS))],
+               spacing=0, vertical_alignment=ft.CrossAxisAlignment.STRETCH, intrinsic_height=True),
+        on_click=on_click, on_hover=hover, ink=True, animate=anim(ANIM_FAST),
+        border=ft.Border.only(bottom=ft.BorderSide(1, LINE_SUBTLE)))
+
+
+def tower(rows):
+    """Табло, как на трансляции F1: строки одной панелью через тонкие линии, а не стопка карточек."""
+    return ft.Container(ft.Column(rows, spacing=0), bgcolor=SURFACE, border=ft.Border.all(1, LINE),
+                        border_radius=RADIUS_LG, clip_behavior=ft.ClipBehavior.ANTI_ALIAS, shadow=shadow(1))
+
+
+
 
 
 def team_row(state, c, leader_points, show_car=False):

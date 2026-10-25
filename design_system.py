@@ -41,6 +41,12 @@ DANGER = "#FF5A5C"
 INFO = "#3B82F6"
 GOLD = "#FFC93C"             # звёздочка избранного
 
+# Герой главной — «стартовая решётка»: карбон в любой теме, контур трассы и стартовые огни
+HERO_CARBON = ["#2A2A37", "#101016"]
+LIGHT_ON = "#FF1E10"         # горящий стартовый огонь
+LIGHT_OFF = "#3A1C1E"        # погасший: тёмно-красное стекло
+LIGHT_HOUSING = "#050507"
+
 # Градиенты
 GRADIENT_RED = [ACCENT_GLOW, F1_RED, ACCENT_DEEP]
 GRADIENT_SURFACE = [SURFACE_RAISED, SURFACE]

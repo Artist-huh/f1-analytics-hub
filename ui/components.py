@@ -324,7 +324,7 @@ class SectionHeader(ft.Container):
     """Заголовок секции: красная полоска слева, как в графике F1, и кнопка действия."""
 
     def __init__(self, title: str, subtitle: str = None, action_text: str = None, on_action=None, **kwargs):
-        title_column = [ft.Text(title.upper(), size=FONT_BODY_LARGE, color=TEXT_PRIMARY, font_family=FONT_ITALIC)]
+        title_column = [ft.Text(title, size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_HEADING)]
         if subtitle:
             title_column.append(ft.Text(subtitle, size=FONT_BODY_SMALL, color=TEXT_MUTED))
         row = [ft.Container(width=4, height=22, bgcolor=F1_RED, border_radius=2),

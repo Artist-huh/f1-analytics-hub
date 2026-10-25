@@ -208,7 +208,7 @@ def _show_race_details(state, race, podium):
         lines.append(ft.Text(f"Круг {info[0]} · {info[1]} кругов", size=FONT_BODY_SMALL, color=TEXT_MUTED))
     if podium:
         lines += [ft.Container(height=SPACE_XS),
-                  ft.Text("ПОДИУМ", size=FONT_CAPTION, color=TEXT_MUTED, font_family=FONT_ITALIC)]
+                  ft.Text("Подиум", size=FONT_CAPTION, color=TEXT_MUTED, font_family=FONT_ITALIC)]
         for i, row in enumerate(podium, start=1):
             d = state.driver(row["driver_id"])
             lines.append(ft.Container(
