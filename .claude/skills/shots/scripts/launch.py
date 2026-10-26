@@ -1,0 +1,60 @@
+"""Запуск приложения сразу на нужном экране (для снимков).
+
+Переменные окружения:
+  SHOT   tab0..tab4 (Главная, Чемпионат, Календарь, Пилоты, Ещё) или sub:<имя> — live, compare, settings,
+         driver_detail, team, history, title, predict, strategy, favorites, race_strategy, circuit
+  WIDTH, HEIGHT  размер окна (по умолчанию 440×880 — телефон; 1100×800 — компьютер)
+  LIT    превью стартовых огней на главной: сколько горит (0–5), независимо от даты гонки
+"""
+import os
+import sys
+import threading
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+sys.path.insert(0, REPO)
+os.chdir(REPO)
+
+import flet as ft  # noqa: E402
+
+import main as app  # noqa: E402
+
+target = os.environ.get("SHOT", "tab0")
+width = int(os.environ.get("WIDTH", "440"))
+height = int(os.environ.get("HEIGHT", "880"))
+holder = {}
+orig_init = app.AppState.__init__
+
+
+def init(self, page):
+    orig_init(self, page)
+    holder["state"] = self
+
+
+app.AppState.__init__ = init
+
+
+def wrapped(page):
+    app.main(page)
+    state = holder["state"]
+    page.window.width, page.window.height = width, height
+    page.update()
+    if os.environ.get("LIT"):
+        import ui.screens.home as home
+        home.lights_lit = lambda seconds, live: int(os.environ["LIT"])
+
+    def go():
+        if target.startswith("tab"):
+            state.open_tab(int(target[3:]))
+        else:
+            name = target.split(":", 1)[1]
+            if name == "driver_detail" and state.standings:
+                state.ui["driver_id"] = state.standings[0]["driver_id"]
+            if name == "team" and state.constructors:
+                state.ui["team"] = state.constructors[0]["name"]
+            state.open_sub(name)
+        state.render()
+
+    threading.Timer(2.0, lambda: app.run_on_ui(page, go)).start()
+
+
+ft.run(wrapped, assets_dir=app.ASSETS_DIR)
