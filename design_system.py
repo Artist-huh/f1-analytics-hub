@@ -224,7 +224,19 @@ def get_team_color(team_name: str, variant: str = "color") -> str:
     return team["dark"] if variant in ("dark", "secondary") else team["color"]
 
 
+_GRADIENTS = {}   # команда -> (верх, низ): не зависит от темы, считается один раз (карточек пилотов 20+)
+
+
 def get_team_gradient(team_name: str) -> tuple[str, str]:
+    key = team_key(team_name)
+    if key is None:                       # незнакомая команда — цвета поверхностей темы, не кэшируем
+        return _team_gradient(team_name)
+    if key not in _GRADIENTS:
+        _GRADIENTS[key] = _team_gradient(team_name)
+    return _GRADIENTS[key]
+
+
+def _team_gradient(team_name: str) -> tuple[str, str]:
     """Фон карточек пилота и команды под белым текстом. Светлые цвета (Mercedes, Sauber) сверху
     притемняются до 4.5:1 с белым — на карточках есть и мелкие подписи, не только крупные цифры."""
     team = TEAMS.get(team_key(team_name))

@@ -166,6 +166,7 @@ def _quarantine(path, exc):
     """Повреждённую базу (сбой питания, обрыв записи) откладываем рядом, а не удаляем: иначе приложение
     падало бы при каждом запуске. Новая база заполнится встроенным снимком и из сети."""
     stamp = time.strftime("%Y%m%d-%H%M%S")
+    _settings_cache.clear()                        # настройки из отложенной базы больше не действуют
     for suffix in ("", "-wal", "-shm"):
         src = Path(str(path) + suffix)
         if src.exists():
@@ -528,15 +529,23 @@ def toggle_favorite(driver_id):
 
 
 # ---------- settings ----------
+_settings_cache = {}   # (путь базы, ключ) -> значение: экраны читают настройки при каждом построении
+
+
 def get_setting(key, default=None):
-    with _connect() as con:
-        row = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    return row["value"] if row else default
+    ck = (str(db_path()), key)
+    if ck not in _settings_cache:
+        with _connect() as con:
+            row = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        _settings_cache[ck] = row["value"] if row else None
+    value = _settings_cache[ck]
+    return default if value is None else value
 
 
 def set_setting(key, value):
     with _connect() as con:
         con.execute("INSERT OR REPLACE INTO settings VALUES (?, ?)", (key, str(value)))
+    _settings_cache[(str(db_path()), key)] = str(value)
 
 
 # ---------- обслуживание ----------
