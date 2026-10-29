@@ -677,6 +677,18 @@ class UiSmokeTest(unittest.TestCase):
         track = [str(n.src) for n in walk(tree) if type(n).__name__ == "Image"]
         self.assertTrue(any("2026trackmonzawhiteoutline.webp" in src for src in track))
 
+    def test_live_sources_down_message(self):
+        """Оба источника Live Timing молчат: экран говорит, что дело в источнике, а не в интернете."""
+        from services import live
+        saved = dict(live._state)
+        self.addCleanup(live._state.update, saved)
+        live._state.update(data=None, error=live.SOURCES_DOWN_TEXT, loading=False, error_at=time.time())
+        self.state.sub = "live"
+        t = texts(self.build("live"))
+        self.assertIn("Источники данных недоступны", t)
+        self.assertIn(live.SOURCES_DOWN_TEXT, t)
+        self.assertNotIn("OpenF1 не ответил. Проверь интернет и повтори.", t)
+
     def test_live_timing(self):
         from services import live
         session = {"session_name": "Race", "session_type": "Race"}

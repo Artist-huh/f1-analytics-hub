@@ -26,10 +26,13 @@ def build(state):
         if loading or not error:
             body = [skeleton("Загружаем данные сессии…", "rows", 10)]
         else:
-            locked = error == live.LOCKED_TEXT
-            body = [retry_block("Доступ к данным закрыт до конца сессии" if locked else "Нет данных о сессии",
-                                live.LOCKED_TEXT if locked else "OpenF1 не ответил. Проверь интернет и повтори.",
-                                lambda e: live.refresh(on_done=state.render))]
+            if error == live.SOURCES_DOWN_TEXT:
+                title, hint = "Источники данных недоступны", live.SOURCES_DOWN_TEXT
+            elif error == live.LOCKED_TEXT:
+                title, hint = "Доступ к данным закрыт до конца сессии", live.LOCKED_TEXT
+            else:
+                title, hint = "Нет данных о сессии", "OpenF1 не ответил. Проверь интернет и повтори."
+            body = [retry_block(title, hint, lambda e: live.refresh(on_done=state.render))]
         return screen(state, "Live-тайминг", body, back=True)
 
     mode = state.ui.get("live_gap", "leader")

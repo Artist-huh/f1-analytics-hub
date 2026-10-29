@@ -41,6 +41,18 @@ class LockedError(LiveError):
         return LOCKED_TEXT
 
 
+SOURCES_DOWN_TEXT = ("Не отвечают ни официальный поток F1, ни запасной OpenF1. Похоже, источник изменился или "
+                     "временно закрыт — это не ваш интернет. Повторим сами через пару минут, остальные разделы "
+                     "работают как обычно.")
+
+
+class SourcesDownError(LiveError):
+    """Не ответил ни поток F1, ни OpenF1: живых данных взять неоткуда."""
+
+    def __str__(self):
+        return SOURCES_DOWN_TEXT
+
+
 def _check(endpoint, data):
     if isinstance(data, list):
         return data
@@ -127,14 +139,21 @@ def fetch(now=None):
     """Снимок текущей/последней сессии. Сначала — официальный поток F1 (работает и во время сессии),
     при его ошибке — OpenF1 (во время сессии он закрыт для бесплатного доступа)."""
     from . import f1live
+    stream_error = None
     try:
         data = f1live.fetch(now)
         if data["rows"]:
             return data
         logger.info("поток F1 без таблицы — берём OpenF1")
     except f1live.F1LiveError as exc:
+        stream_error = exc
         logger.warning("поток F1 недоступен (%s) — берём OpenF1", exc)
-    return fetch_openf1(now)
+    try:
+        return fetch_openf1(now)
+    except LiveError as exc:
+        if stream_error is None:
+            raise
+        raise SourcesDownError() from exc       # оба источника молчат — говорим об этом прямо
 
 
 def fetch_openf1(now=None):
@@ -224,7 +243,8 @@ def refresh(on_done=None):
                 logger.exception("live-тайминг: непредвиденная ошибка")
             _state["error"] = str(exc) if isinstance(exc, LiveError) else "Данные live-тайминга не разобраны"
             _state["error_at"] = time.time()
-            _state["locked"] = isinstance(exc, LockedError)
+            # оба источника молчат, а OpenF1 к тому же закрыт на время сессии — спрашиваем так же редко
+            _state["locked"] = isinstance(exc, LockedError) or isinstance(exc.__cause__, LockedError)
             logger.warning("live-тайминг не обновлён: %s", exc)
         finally:
             _state["loading"] = False

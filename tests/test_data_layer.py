@@ -1006,6 +1006,29 @@ class F1LiveTest(unittest.TestCase):
             self.assertEqual(live.fetch()["source"], "F1")
         openf1.assert_not_called()
 
+    def test_both_live_sources_down(self):
+        """Поток F1 закрыли, а OpenF1 во время сессии бесплатно не отвечает: пользователь видит, что дело
+        в источнике, а не в его интернете, и приложение спрашивает редко (как при закрытом OpenF1)."""
+        from services import f1live, live
+        stream_down = mock.patch.object(f1live, "fetch", side_effect=f1live.F1LiveError("negotiate: HTTP 404"))
+        openf1_locked = mock.patch.object(live, "fetch_openf1", side_effect=live.LockedError("401"))
+        with stream_down, openf1_locked:
+            with self.assertRaises(live.SourcesDownError) as ctx:
+                live.fetch()
+            self.assertIsInstance(ctx.exception.__cause__, live.LockedError)
+            saved = dict(live._state)
+            self.addCleanup(live._state.update, saved)
+            done = threading.Event()
+            live._state.update(loading=False, data=None)
+            live.refresh(on_done=done.set)
+            self.assertTrue(done.wait(5))
+        self.assertEqual(live._state["error"], live.SOURCES_DOWN_TEXT)
+        self.assertTrue(live._state["locked"])
+        stream_empty = mock.patch.object(f1live, "fetch", return_value={"rows": []})
+        openf1_error = mock.patch.object(live, "fetch_openf1", side_effect=live.LiveError("OpenF1: HTTP 500"))
+        with stream_empty, openf1_error:
+            self.assertRaises(live.LiveError, live.fetch)          # поток жив, но пуст — обычная ошибка OpenF1
+
 
 class HomeWidgetTest(unittest.TestCase):
     SCHEDULE = [{"round": "17", "race_name": "Singapore Grand Prix", "start_ts": 1000.0},
