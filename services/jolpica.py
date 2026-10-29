@@ -53,7 +53,7 @@ def _get(path, params=None):
         resp = _session.get(f"{BASE_URL}/{path}", params=params, timeout=TIMEOUT)
         resp.raise_for_status()
         return resp.json()["MRData"]
-    except (requests.RequestException, ValueError, KeyError) as exc:
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:   # TypeError: JSON-список
         raise ApiError(f"{path}: {exc}") from exc
 
 
@@ -89,11 +89,12 @@ def fetch_standings(season="current"):
                 "number": str(drv.get("permanentNumber", "")),
             })
         return season, str(block.get("round", "0")), rows
-    except (KeyError, TypeError, IndexError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"standings: неожиданный формат ответа ({exc!r})") from exc
 
 
 PAGE = 100   # больше Jolpica за один запрос не отдаёт
+MAX_PAGES = 60   # 6000 строк: круги гонки — ~13 страниц, результаты сезона — 5
 
 
 PAGE_PAUSE = 0.35      # между страницами: Jolpica режет пачки запросов (429)
@@ -116,15 +117,20 @@ def _get_all(path):
     """Все страницы ответа (результаты сезона ~400 строк = 4-5 запросов). -> список Races."""
     races, offset, total = [], 0, None
     while total is None or offset < total:
+        if offset >= MAX_PAGES * PAGE:          # «total» из ответа не верим вслепую: сбойный 10**18 — это
+            raise ApiError(f"{path}: больше {MAX_PAGES} страниц")   # часы запросов в фоне
         if offset:
             time.sleep(PAGE_PAUSE)
         mr = _get_page(path, {"limit": PAGE, "offset": offset})
         try:
             total = int(mr.get("total", 0))
-            races += mr["RaceTable"].get("Races") or []
+            page = mr["RaceTable"].get("Races") or []
+            races += page
             season = str(mr["RaceTable"].get("season", ""))
-        except (KeyError, TypeError, ValueError) as exc:
+        except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
             raise ApiError(f"{path}: неожиданный формат ответа ({exc!r})") from exc
+        if not page:                            # пустая страница — дальше данных нет, сколько бы ни обещал total
+            break
         offset += PAGE
     return season, races
 
@@ -163,7 +169,7 @@ def fetch_season_results():
                     "fastest_rank": str((res.get("FastestLap") or {}).get("rank", "")),
                 })
         return season, str(last_round), rows
-    except (KeyError, TypeError, ValueError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"results: неожиданный формат ответа ({exc!r})") from exc
 
 
@@ -174,7 +180,7 @@ def fetch_qualifying():
         rows = [{"driver_id": q["Driver"]["driverId"], "round": str(race["round"]), "position": str(q["position"])}
                 for race in races for q in race.get("QualifyingResults") or []]
         return season, rows
-    except (KeyError, TypeError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"qualifying: неожиданный формат ответа ({exc!r})") from exc
 
 
@@ -187,7 +193,7 @@ def fetch_sprints():
                  "points": str(r.get("points", "0"))}
                 for race in races for r in race.get("SprintResults") or []]
         return season, rows
-    except (KeyError, TypeError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"sprint: неожиданный формат ответа ({exc!r})") from exc
 
 
@@ -213,7 +219,7 @@ def fetch_constructor_standings(season="current"):
                 "nationality": c.get("nationality", ""),
             })
         return season, str(block.get("round", "0")), rows
-    except (KeyError, TypeError, IndexError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"constructors: неожиданный формат ответа ({exc!r})") from exc
 
 
@@ -258,7 +264,7 @@ def fetch_schedule():
                 "sessions": sessions,
             })
         return season, rows
-    except (KeyError, TypeError, ValueError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"schedule: неожиданный формат ответа ({exc!r})") from exc
 
 
@@ -288,7 +294,7 @@ def fetch_season_archive(year):
     _, races = _get_all(f"{year}/results/1.json")
     try:
         winners = _winner_rows(races)
-    except (KeyError, TypeError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"archive {year}: неожиданный формат ответа ({exc!r})") from exc
     return {"season": str(year), "rounds": rounds, "standings": standings, "constructors": constructors,
             "winners": winners}
@@ -316,7 +322,7 @@ def fetch_circuit_stats(circuit_id):
                                      "team": (res.get("Constructor") or {}).get("name", ""),
                                      "time": (lap.get("Time") or {}).get("time", "")})
         return {"circuit_id": circuit_id, "winners": _winner_rows(wins), "poles": pole_rows, "fastest": fastest_rows}
-    except (KeyError, TypeError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"circuit {circuit_id}: неожиданный формат ответа ({exc!r})") from exc
 
 
@@ -341,7 +347,7 @@ def fetch_race_laps(year, rnd):
                 n = int(lap["number"])
                 for t in lap.get("Timings") or []:
                     out.setdefault(t["driverId"], []).append([n, int(t["position"]), lap_seconds(t.get("time"))])
-    except (KeyError, TypeError, ValueError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"laps {year}/{rnd}: неожиданный формат ответа ({exc!r})") from exc
     for rows in out.values():
         rows.sort()
@@ -361,5 +367,5 @@ def fetch_race_qualifying(year, rnd):
                          "team": (q.get("Constructor") or {}).get("name", ""), "position": q["position"],
                          "q1": q.get("Q1", ""), "q2": q.get("Q2", ""), "q3": q.get("Q3", "")})
         return rows
-    except (KeyError, TypeError, IndexError) as exc:
+    except (KeyError, TypeError, IndexError, ValueError, AttributeError) as exc:
         raise ApiError(f"qualifying {year}/{rnd}: неожиданный формат ответа ({exc!r})") from exc

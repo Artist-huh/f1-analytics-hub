@@ -197,6 +197,30 @@ class DataLayerTest(unittest.TestCase):
                          [("senna", "1"), ("dalmas", "—")])        # неклассифицированные — в конце, «—»
         self.assertEqual([c["position"] for c in db.load_constructors()], ["1", "—"])
 
+    def test_paging_and_malformed_responses(self):
+        """Сбойный ответ не вешает и не роняет загрузку: total=10**18 — не часы запросов (лимит страниц),
+        пустая страница — конец; строка вместо словаря, список вместо объекта — ApiError, а не AttributeError."""
+        pages = []
+
+        def fake(path, params=None):
+            pages.append(params["offset"])
+            return {"total": str(10**18), "RaceTable": {"season": "2026", "Races": [{"round": "1"}]}}
+        with mock.patch.object(jolpica, "_get", fake), mock.patch.object(jolpica.time, "sleep"), \
+                self.assertRaises(jolpica.ApiError):
+            jolpica._get_all("current/results.json")
+        self.assertEqual(len(pages), jolpica.MAX_PAGES)
+        with mock.patch.object(jolpica, "_get", lambda path, params=None: {"total": "500", "RaceTable": {"Races": []}}):
+            self.assertEqual(jolpica._get_all("current/results.json"), ("", []))        # пустая — сразу конец
+        bad_schedule = {"RaceTable": {"season": "2026", "Races": [{"round": "1", "Circuit": {"Location": "Monza"}}]}}
+        for mr in (bad_schedule, {"RaceTable": "x"}, {"StandingsTable": []}, "MRData"):
+            with self.subTest(mr=str(mr)[:40]), mock.patch.object(jolpica, "_get", lambda path, params=None, m=mr: m):
+                for call in (jolpica.fetch_schedule, jolpica.fetch_standings, jolpica.fetch_constructor_standings):
+                    with self.assertRaises(jolpica.ApiError):
+                        call()
+        resp = mock.Mock(status_code=200, json=lambda: ["не объект"], raise_for_status=lambda: None)
+        with mock.patch.object(jolpica._session, "get", return_value=resp), self.assertRaises(jolpica.ApiError):
+            jolpica._get("current.json")
+
     def patch_net(self, **kw):
         fake = router(**kw)
         p = mock.patch.object(jolpica._session, "get", fake)
