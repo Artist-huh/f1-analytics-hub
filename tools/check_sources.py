@@ -45,10 +45,15 @@ def check_f1_stream():
     except f1live.F1LiveError as exc:
         if "HTTP 403" not in str(exc):
             raise
-        # Живой канал (negotiate) не пускает адреса дата-центров, в том числе машины GitHub, а с домашних
-        # адресов работает. Тогда проверяем статический файл того же потока о текущей сессии: отвечает и
-        # формат прежний — значит, поток жив.
+        # Поток не пускает адреса дата-центров (машины GitHub получают 403), а с домашних адресов работает.
+        # Тогда проверяем статический файл того же потока о текущей сессии: отвечает в прежнем формате —
+        # поток жив. Если и он 403 — из облака поток не проверить вовсе: это предупреждение, а поломку
+        # (404, другой формат) поймаем по другому коду ответа; у пользователей приложение само скажет
+        # «Источники данных недоступны».
         resp = requests.get(f"{f1live.STATIC}SessionInfo.json", timeout=f1live.TIMEOUT)
+        if resp.status_code == 403:
+            raise Degraded(f"поток закрыт для адресов облака целиком ({exc}, статика тоже 403) — отсюда не "
+                           "проверить; у пользователей с домашних адресов он работает") from exc
         resp.raise_for_status()
         info = json.loads(resp.content.decode("utf-8-sig"))
         raise Degraded(f"живой канал не пускает адреса облака ({exc}), у пользователей работает; "
@@ -85,7 +90,7 @@ CHECKS = [
 
 
 def main():
-    broken = []
+    broken, warned = [], []
     for name, check, critical in CHECKS:
         started = time.monotonic()
         degraded = False
@@ -99,6 +104,7 @@ def main():
         print(f"{mark}  {name} ({time.monotonic() - started:.1f} с): {result}", flush=True)
         if not ok and (degraded or not critical):
             print(f"::warning title={name}::{result}")
+            warned.append(name)
         if not ok and critical and not degraded:
             broken.append(name)
     if broken:
@@ -106,7 +112,8 @@ def main():
         # аннотация в сводке прогона GitHub
         print(f"::error title=Источники данных::Не отвечает: {', '.join(broken)}")
         return 1
-    print("\nВсе источники отвечают.")
+    print("\nСломанных источников нет, предупреждения: " + ", ".join(warned) if warned
+          else "\nВсе источники отвечают.")
     return 0
 
 
