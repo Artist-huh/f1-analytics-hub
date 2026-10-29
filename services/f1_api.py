@@ -224,7 +224,7 @@ def _signature():
          db.get_meta("results_fetched_at"), db.get_meta("media_fetched_at")],
         sort_keys=True,
     )
-    return get_status()["state"], hashlib.sha1(payload.encode()).hexdigest()
+    return get_status()["state"], hashlib.sha1(payload.encode(), usedforsecurity=False).hexdigest()
 
 
 MAX_CALLBACK_FAILURES = 3   # столько ошибок подряд — подписчик считается закрытой сессией

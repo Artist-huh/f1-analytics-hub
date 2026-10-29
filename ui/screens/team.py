@@ -46,7 +46,7 @@ def build(state):
                                                      ("Кубок конструкторов",
                                                       lambda e: (state.ui.__setitem__("champ", "teams"),
                                                                  state.open_tab(1))))], back=True)
-    drivers = sorted(state.team_drivers(name), key=lambda d: int(d["position"]))
+    drivers = sorted(state.team_drivers(name), key=lambda d: to_int(d["position"], 999))
     s = team_stats(state, name)
     sections = [_hero(state, team, drivers), _stats(team, s), _drivers(state, drivers)]
     if len(drivers) >= 2:

@@ -171,6 +171,32 @@ class DataLayerTest(unittest.TestCase):
         os.environ.pop("F1_HUB_DB", None)
         self.tmp.cleanup()
 
+    def test_unclassified_rows_without_position(self):
+        """Jolpica не даёт position неклассифицированным (58 сезонов из 76, бывало и в 2014–2017): только
+        positionText «-». Раньше весь ответ падал с KeyError — «История» не открывалась почти ни для одного года,
+        а такой текущий зачёт навсегда остановил бы обновление."""
+        drv = lambda i, n: {"driverId": i, "givenName": n, "familyName": n, "code": n[:3].upper()}
+        standings = {"StandingsTable": {"season": "1988", "StandingsLists": [{"round": "16", "DriverStandings": [
+            {"position": "1", "positionText": "1", "points": "90", "wins": "8", "Driver": drv("senna", "Senna"),
+             "Constructors": [{"name": "McLaren"}]},
+            {"positionText": "-", "points": "0", "wins": "0", "Driver": drv("dalmas", "Dalmas"),
+             "Constructors": [{"name": "Larrousse"}]}]}]}}
+        teams = {"StandingsTable": {"season": "1988", "StandingsLists": [{"round": "16", "ConstructorStandings": [
+            {"positionText": "-", "points": "0", "wins": "0",
+             "Constructor": {"constructorId": "euro", "name": "EuroBrun", "nationality": "Italian"}},
+            {"position": "1", "points": "199", "wins": "15",
+             "Constructor": {"constructorId": "mclaren", "name": "McLaren", "nationality": "British"}}]}]}}
+        with mock.patch.object(jolpica, "_get", side_effect=lambda path, params=None:
+                               standings if "driverStandings" in path else teams):
+            _, rnd, rows = jolpica.fetch_standings("1988")
+            _, _, cons = jolpica.fetch_constructor_standings("1988")
+        self.assertEqual([r["position"] for r in rows], ["1", "-"])
+        db.save_standings("1988", rnd, rows)              # сохраняется, а не падает на int("-")
+        db.save_constructors("1988", rnd, cons)
+        self.assertEqual([(r["driver_id"], r["position"]) for r in db.load_standings()],
+                         [("senna", "1"), ("dalmas", "—")])        # неклассифицированные — в конце, «—»
+        self.assertEqual([c["position"] for c in db.load_constructors()], ["1", "—"])
+
     def patch_net(self, **kw):
         fake = router(**kw)
         p = mock.patch.object(jolpica._session, "get", fake)

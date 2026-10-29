@@ -3,7 +3,7 @@ import flet as ft
 
 from design_system import *
 from ui.components import *
-from ui.fmt import plural
+from ui.fmt import plural, to_int
 from ui.rows import driver_row
 from ui.widgets import screen
 
@@ -49,14 +49,15 @@ def _build_quick_stats(state, drivers):
     total_points = sum(float(d["points"]) for d in drivers)
     total_wins = sum(state.driver_stats(d["driver_id"])["wins"] for d in drivers)
     total_podiums = sum(state.driver_stats(d["driver_id"])["podiums"] for d in drivers)
-    best_position = min(int(d["position"]) for d in drivers)
+    best_position = min(to_int(d["position"], 999) for d in drivers)   # «—» у неклассифицированных
     compact = is_narrow(state)
     return ft.Row([
         StatCard("Очков", f"{total_points:g}", ft.Icons.EMOJI_EVENTS_ROUNDED, TEXT_PRIMARY, compact=compact),
         StatCard("Побед", str(total_wins), ft.Icons.MILITARY_TECH_ROUNDED, GOLD, compact=compact),
         StatCard("Подиумов", str(total_podiums), ft.Icons.WORKSPACE_PREMIUM_ROUNDED, POSITION_COLORS[3],
                  compact=compact),
-        StatCard("Лучшее место", f"P{best_position}", ft.Icons.TRENDING_UP_ROUNDED, ACCENT_TEXT, compact=compact),
+        StatCard("Лучшее место", f"P{best_position}" if best_position < 999 else "—",
+                 ft.Icons.TRENDING_UP_ROUNDED, ACCENT_TEXT, compact=compact),
     ], spacing=SPACE_XS)
 
 

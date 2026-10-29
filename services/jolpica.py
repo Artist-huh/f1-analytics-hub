@@ -57,6 +57,12 @@ def _get(path, params=None):
         raise ApiError(f"{path}: {exc}") from exc
 
 
+def _place(item):
+    """Место в зачёте. Неклассифицированным (0 очков почти во всех сезонах до 2002-го, бывает и сейчас)
+    Jolpica не даёт position — только positionText «-»: тогда место «—», а не ошибка всего ответа."""
+    return str(item.get("position") or item.get("positionText") or "—")
+
+
 def fetch_standings(season="current"):
     """-> (season, round, rows). rows пустой, если сезон ещё не начался."""
     mr = _get(f"{season}/driverStandings.json", params={"limit": 100})
@@ -72,7 +78,7 @@ def fetch_standings(season="current"):
             drv = item["Driver"]
             teams = item.get("Constructors") or []
             rows.append({
-                "position": str(item["position"]),
+                "position": _place(item),
                 "points": str(item["points"]),
                 "wins": str(item["wins"]),
                 "driver_id": drv["driverId"],
@@ -199,7 +205,7 @@ def fetch_constructor_standings(season="current"):
         for item in block["ConstructorStandings"]:
             c = item["Constructor"]
             rows.append({
-                "position": str(item["position"]),
+                "position": _place(item),
                 "points": str(item["points"]),
                 "wins": str(item["wins"]),
                 "constructor_id": c["constructorId"],

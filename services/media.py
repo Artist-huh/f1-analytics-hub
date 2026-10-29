@@ -176,7 +176,7 @@ def cache_dir():
 
 def _cache_file(url):
     ext = ".png" if url.endswith(".png") else ".webp"
-    return cache_dir() / (hashlib.sha1(url.encode()).hexdigest()[:20] + ext)
+    return cache_dir() / (hashlib.sha1(url.encode(), usedforsecurity=False).hexdigest()[:20] + ext)
 
 
 def bundled_dir():

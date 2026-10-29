@@ -231,10 +231,21 @@ def _latest_season(con, key):
 
 
 # ---------- standings ----------
+UNPLACED = 999   # неклассифицированный в зачёте («—»): в конце таблицы, схема столбца не меняется
+
+
+def _place_in(position):
+    return int(position) if str(position).isdigit() else UNPLACED
+
+
+def _place_out(value):
+    return "—" if value is None or value >= UNPLACED else str(value)
+
+
 def save_standings(season, rnd, rows, fetched=None):
     """Атомарно заменяет весь зачёт сезона."""
     data = [
-        (season, r["driver_id"], int(r["position"]), float(r["points"]), int(r["wins"]),
+        (season, r["driver_id"], _place_in(r["position"]), float(r["points"]), int(r["wins"]),
          r.get("code", ""), r["name"], r.get("team", ""), r.get("nationality", ""), r.get("number", ""))
         for r in rows
     ]
@@ -255,7 +266,7 @@ def load_standings():
         rows = con.execute("SELECT * FROM standings WHERE season=? ORDER BY position", (season,)).fetchall()
     return [
         {
-            "position": str(r["position"]),
+            "position": _place_out(r["position"]),
             "points": _fmt_points(r["points"]),
             "wins": str(r["wins"]),
             "driver_id": r["driver_id"],
@@ -371,7 +382,7 @@ def load_sprints():
 # ---------- constructor standings ----------
 def save_constructors(season, rnd, rows, fetched=None):
     data = [
-        (season, r["constructor_id"], int(r["position"]), float(r["points"]),
+        (season, r["constructor_id"], _place_in(r["position"]), float(r["points"]),
          int(r["wins"]), r["name"], r.get("nationality", ""))
         for r in rows
     ]
@@ -392,7 +403,7 @@ def load_constructors():
             "SELECT * FROM constructor_standings WHERE season=? ORDER BY position", (season,)).fetchall()
     return [
         {
-            "position": str(r["position"]),
+            "position": _place_out(r["position"]),
             "points": _fmt_points(r["points"]),
             "wins": str(r["wins"]),
             "constructor_id": r["constructor_id"],
