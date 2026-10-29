@@ -59,7 +59,8 @@ def build_section(state):
             ft.Row([ft.Container(width=3, height=16, bgcolor=get_team_color(d["team"]), border_radius=2),
                     ft.Text(d["code"] or short_name(d["name"])[:3].upper(), size=FONT_CAPTION, color=TEXT_PRIMARY,
                             font_family=FONT_ITALIC)], spacing=4),
-            width=LABEL_W, on_click=lambda e, i=d["driver_id"]: state.open_driver(i), ink=True)]
+            # без нажатия: строка карты — 24 px, зону 48 dp не вместить; страница пилота — из таблицы рядом
+            width=LABEL_W, tooltip=d["name"])]
         for rnd in rounds:
             pos = places.get(rnd, "")
             bg, fg = cell_color(pos)

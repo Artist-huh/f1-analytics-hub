@@ -81,15 +81,19 @@ def _build_selector(state, drivers):
         cells.append(ft.Container(
             ft.Column([
                 ft.Stack([
-                    DriverAvatar(d["code"], d["team"], size=52 if narrow else 64, src=state.photo(d),
-                                 on_click=lambda e, i=d["driver_id"]: state.open_driver(i)),
+                    ft.Container(DriverAvatar(d["code"], d["team"], size=52 if narrow else 64, src=state.photo(d),
+                                              on_click=lambda e, i=d["driver_id"]: state.open_driver(i)),
+                                 left=0, top=12),
+                    # крестик 24 px, зона нажатия 48 dp — над правым верхним углом фото
                     ft.Container(
-                        ft.Icon(ft.Icons.CLOSE_ROUNDED, size=14, color=TEXT_PRIMARY),
-                        width=24, height=24, border_radius=12, bgcolor=SURFACE_ELEVATED,
-                        alignment=ft.Alignment.CENTER, right=-4, top=-4, ink=True,
+                        ft.Container(ft.Icon(ft.Icons.CLOSE_ROUNDED, size=14, color=TEXT_PRIMARY),
+                                     width=24, height=24, border_radius=12, bgcolor=SURFACE_ELEVATED,
+                                     alignment=ft.Alignment.CENTER),
+                        width=TOUCH, height=TOUCH, right=0, top=0, alignment=ft.Alignment.CENTER,
+                        border_radius=TOUCH / 2, ink=True,
                         on_click=lambda e, i=d["driver_id"]: remove(i), tooltip="Убрать из сравнения",
                     ) if len(drivers) > 2 else ft.Container(),
-                ], width=(52 if narrow else 64) + 4),
+                ], width=(52 if narrow else 64) + 24, height=(52 if narrow else 64) + 12),
                 ft.Text(d["code"] or short_name(d["name"]), size=FONT_BODY, color=TEXT_PRIMARY,
                         font_family=FONT_ITALIC),
                 ft.Container(height=3, width=36, bgcolor=color, border_radius=2),

@@ -221,7 +221,7 @@ def _show_race_details(state, race, podium):
                               spacing=0, expand=True),
                     ft.Text(f"+{row['points']}", size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC),
                 ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                ink=True, border_radius=RADIUS_SM, padding=4,
+                ink=True, border_radius=RADIUS_SM, padding=ft.Padding.symmetric(horizontal=4, vertical=6),   # 48 dp
                 on_click=(lambda e, i=row["driver_id"]: _open_driver_from_dialog(state, i)) if d else None,
             ))
     lines += [ft.Container(height=SPACE_XS), session_list(race), ft.Container(height=SPACE_XS)]

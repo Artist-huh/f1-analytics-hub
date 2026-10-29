@@ -4,7 +4,7 @@ import flet as ft
 from design_system import *
 from services import f1_api as api
 from ui.components import *
-from ui.widgets import button, screen
+from ui.widgets import button, screen, touch
 
 STEPS = ["Команда", "Пилоты", "Уведомления"]
 
@@ -91,12 +91,12 @@ def _drivers_step(state, w):
     chips = []
     for d in state.standings:
         chosen = d["driver_id"] in w["drivers"]
-        chips.append(ft.Container(
+        chips.append(touch(ft.Container(
             ft.Text(d["name"], size=FONT_BODY_SMALL,
                     color=readable_on(get_team_color(d["team"])) if chosen else TEXT_SECONDARY),
             bgcolor=get_team_color(d["team"]) if chosen else SURFACE_RAISED, border_radius=RADIUS_FULL, ink=True,
-            padding=ft.Padding.symmetric(horizontal=14, vertical=10), on_click=lambda e, i=d["driver_id"]: toggle(i),
-            tooltip=f"{d['name']}, {d['team']}"))
+            padding=ft.Padding.symmetric(horizontal=14), on_click=lambda e, i=d["driver_id"]: toggle(i),
+            tooltip=f"{d['name']}, {d['team']}"), 38))
     n = len(w["drivers"])
     return [ft.Text("Любимые пилоты попадут в «Избранное»: их результаты — отдельным списком и в уведомлениях.",
                     size=FONT_BODY, color=TEXT_SECONDARY),

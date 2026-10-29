@@ -140,7 +140,8 @@ def _standings(state, data):
             state.render()
         out.append(ft.Container(ft.Text("Свернуть" if show_all else f"Показать всех ({len(rows)})",
                                         size=FONT_BODY_SMALL, color=ACCENT_TEXT, weight=ft.FontWeight.W_600),
-                                on_click=toggle, ink=True, padding=SPACE_XS, border_radius=RADIUS_SM))
+                                on_click=toggle, ink=True, border_radius=RADIUS_SM, height=TOUCH,
+                                alignment=ft.Alignment.CENTER_LEFT, padding=ft.Padding.symmetric(horizontal=SPACE_XS)))
     return out
 
 

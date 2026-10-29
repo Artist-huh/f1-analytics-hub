@@ -916,8 +916,9 @@ class UiSmokeTest(unittest.TestCase):
             self.assertIn(expected, t)
         clickable(tree, "Квалификации")[0].on_click(Ctl())
         self.assertEqual(heatmap.season_grid(self.state, "quali")[0][1][1], {"1": "4", "2": "1", "3": "3"})
-        clickable(self.build("tab1"), "LEC")[0].on_click(Ctl())             # пилот -> его страница
-        self.assertEqual(self.state.ui["driver_id"], "leclerc")
+        tips = [n.tooltip for n in walk(self.build("tab1")) if getattr(n, "tooltip", None)]
+        self.assertIn("Charles Leclerc", tips)      # код пилота: имя в подсказке (нажатия нет — строка 24 px < 48 dp)
+        self.assertFalse(clickable(self.build("tab1"), "LEC"))
 
     def test_race_strategy(self):
         from services import live
@@ -1177,11 +1178,24 @@ class UiSmokeTest(unittest.TestCase):
                                            "start": 0, "end": 0, "year": 2026},
                                "live": True, "racing": True, "lap": 1, "messages": [], "radio": [], "track": None,
                                "updated": time.time(), "rows": [row]}
-        from ui.screens import mini
+        from ui.screens import calendar, heatmap, mini
+        from ui.widgets import banner
         screens = list(self.all_screens()) + [("mini", mini.build)]
+
+        def special():
+            """Состояния, которых нет на экранах по умолчанию: плашка без сети, 3 пилота в сравнении, карта сезона."""
+            self.state.status = dict(self.state.status, state="stale", error="timeout", updated_at=time.time())
+            yield "banner", banner(self.state)
+            self.state.set_compare([d["driver_id"] for d in self.state.standings[:3]])
+            yield "compare3", app.SUBS["compare"](self.state)
+            yield "heatmap", sys.modules["flet"].Column(heatmap.build_section(self.state))
+            race, podium = self.state.last_race()
+            calendar._show_race_details(self.state, race, podium)
+            yield "race_dialog", self.page.dialogs[-1]
+
         small = []
-        for name, build in screens:
-            for n in walk(build(self.state)):
+        for name, tree in [(n, b(self.state)) for n, b in screens] + list(special()):
+            for n in walk(tree):
                 if callable(getattr(n, "on_click", None)) and type(n).__name__ not in native:
                     h = height(n)
                     if h < 47.5:
