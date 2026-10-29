@@ -399,19 +399,24 @@ def _build_quick_actions(state):
         (ft.Icons.SPORTS_SCORE_ROUNDED, "Прогнозы", "predict", lambda e: state.open_sub("predict")),
         (ft.Icons.STAR_ROUNDED, "Избранное", "favorites", lambda e: state.open_sub("favorites")),
     ]
+    # четыре в ряд не помещаются (узкий экран при крупном тексте) — сетка 2×2: слова не режутся посередине
+    grid = content_width(state) < scaled(300)
     cards = [
         AnimatedCard(
             content=ft.Column([
                 icon_badge(icon, SECTION_COLORS[section]),
-                ft.Text(label, size=FONT_CAPTION, color=TEXT_PRIMARY, max_lines=1),
+                ft.Text(label, size=FONT_CAPTION, color=TEXT_PRIMARY, max_lines=1, no_wrap=True),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_XS),
             padding=ft.Padding.symmetric(horizontal=SPACE_XXS, vertical=SPACE_SM),
             on_click=handler,
-            expand=True,
+            expand=None if grid else True,
+            col=6 if grid else None,
             accent=SECTION_COLORS[section],
         )
         for icon, label, section, handler in actions
     ]
+    if grid:
+        return ft.ResponsiveRow(cards, spacing=SPACE_XS, run_spacing=SPACE_XS)
     return ft.Row(cards, spacing=SPACE_XS)
 
 

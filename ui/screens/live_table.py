@@ -76,8 +76,12 @@ def _badge_colors(pos):
 
 
 class LiveTable:
-    def __init__(self, state, data, mode, avatars, tyre_badge):
-        self.state, self.mode, self.avatars = state, mode, avatars
+    def __init__(self, state, data, mode, avatars, tyre_badge, tight=False):
+        """tight — узкий экран при крупном тексте: без колонки пит-стопов, секторы во второй строке."""
+        self.state, self.mode, self.avatars, self.tight = state, mode, avatars, tight
+        if tight:
+            plain = tyre_badge
+            tyre_badge = lambda letter, age: plain(letter, age, compact=True)
         self.codes = [r["code"] for r in data["rows"]]
         self.rows = {}
         self.prev = {}
@@ -92,7 +96,7 @@ class LiveTable:
             badge = ft.Container(pos_text, width=28, height=28, bgcolor=bg, border_radius=RADIUS_SM,
                                  alignment=ft.Alignment.CENTER)
             gap_text = ft.Text("", size=FONT_BODY_SMALL, font_family=FONT_MONO, text_align=ft.TextAlign.RIGHT)
-            gap_box = ft.Container(gap_text, width=scaled(78), alignment=ft.Alignment.CENTER_RIGHT,
+            gap_box = ft.Container(gap_text, width=scaled(70 if tight else 78), alignment=ft.Alignment.CENTER_RIGHT,
                                    border_radius=6, padding=ft.Padding.symmetric(horizontal=4),
                                    animate=anim(ANIM_SLOW))
             tyre_slot = ft.Container(tyre_badge(r["tyre"], r["tyre_age"]))
@@ -108,12 +112,15 @@ class LiveTable:
                 ft.Container(width=3, height=30, bgcolor=color, border_radius=2),
                 *([DriverAvatar(r["code"], d["team"] if d else r["team"], size=32, src=state.photo(d) if d else None)]
                   if avatars else []),
+                ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
+                                   font_family=FONT_ITALIC, no_wrap=True), bars], spacing=4, expand=True)
+                if tight else   # узко: секторы под кодом, команду и так показывает цветная полоса
                 ft.Column([ft.Row([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                                            font_family=FONT_ITALIC, no_wrap=True),
                                    bars], spacing=6, tight=True),
                            ft.Text(r["team"], size=FONT_TINY, color=TEXT_MUTED, max_lines=1,
                                    overflow=ft.TextOverflow.ELLIPSIS)], spacing=2, expand=True),
-                gap_box, tyre_slot, pits_box,
+                gap_box, tyre_slot, *([] if tight else [pits_box]),
             ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER)
             code = r["code"]
             # свайп по строке (телефон) или долгое нажатие — мини-карточка пилота, не уходя с экрана

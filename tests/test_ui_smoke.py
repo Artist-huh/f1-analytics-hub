@@ -166,6 +166,16 @@ def click_all(node, state):
     return n
 
 
+def reset_design():
+    """Тема, размер текста и «меньше движения» — общие для процесса. test_handlers нажимал «Очень крупный»
+    и оставлял ×1.3 всем следующим тестам (они проверяли не тот размер, что думали)."""
+    if design_system.FONT_SCALE != 1.0 or design_system.THEME != "dark" or design_system.REDUCE_MOTION:
+        from ui import theming
+        design_system.apply_reduce_motion(False)
+        theming.apply("dark", None, font_scale=1.0)
+        app.refresh_screens()
+
+
 def join_workers(timeout=5.0):
     """Дождаться фоновых потоков экранов (ручное обновление, загрузка результатов):
     иначе поток может открыть временную БД, пока тест её удаляет (WinError 32)."""
@@ -209,6 +219,7 @@ class UiSmokeTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.addCleanup(os.environ.pop, "F1_HUB_DB", None)
         self.addCleanup(api.shutdown)
+        self.addCleanup(reset_design)   # тест нажал «Очень крупный» или тему — следующие не должны это унаследовать
         self.addCleanup(join_workers)   # раньше остальных cleanup: потоки ещё под моками
 
     def all_screens(self):
@@ -1544,6 +1555,35 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("F1 Hub", shown)
         self.assertIn("Italian Grand Prix", shown)
         self.assertEqual(set(page.fonts), set(design_system.FONTS))
+
+    def test_narrow_screen_with_large_text(self):
+        """360 px при «Очень крупном» тексте: в Live колонка пилота схлопывалась в ноль (не было ни кода,
+        ни имени), подписи плиток главной резались посередине слова («Сравне»)."""
+        from services import live
+        self.addCleanup(design_system.apply_font_scale, 1.0)
+        design_system.apply_font_scale(1.3)
+        fill_db()
+        self.state.load()
+        self.page.width = 360
+        live._state["data"] = {"session": {"name": "Race", "type": "Race", "country": "", "location": "", "circuit": "",
+                                           "start": 0, "end": 0, "year": 2026},
+                               "live": True, "racing": True, "lap": 3, "messages": [], "radio": [], "track": None,
+                               "updated": time.time(),
+                               "rows": [{"position": 1, "code": "LEC", "number": 16, "name": "", "team": "Ferrari",
+                                         "colour": None, "gap": "", "interval": "", "tyre": "M", "tyre_age": 4,
+                                         "pits": 1}]}
+        self.state.sub = "live"
+        t = texts(self.build("live"))
+        self.assertIn("LEC", t)
+        self.assertNotIn("Пит", t)                                  # плотная таблица: без колонки пит-стопов
+        self.assertTrue(self.state.ui["live_table"].tight)
+        self.state.sub = None
+        home = self.build("tab0")
+        self.assertTrue(any(type(n).__name__ == "ResponsiveRow" and "Сравнение" in texts(n) for n in walk(home)))
+        self.page.width = 900                                        # широко — как раньше
+        self.state.sub = "live"
+        self.build("live")
+        self.assertFalse(self.state.ui["live_table"].tight)
 
     def test_handler_error_does_not_crash_session(self):
         """Ошибка в обработчике (диск полон, база занята) раньше вызывала Session.error -> красный экран

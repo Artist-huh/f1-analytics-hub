@@ -38,8 +38,12 @@ def wrapped(page):
     state = holder["state"]
     page.window.width, page.window.height = width, height
     page.update()
-    if os.environ.get("THEME"):            # THEME=light | oled | team:Mercedes — только на этот запуск, без сохранения
-        name, _, team = os.environ["THEME"].partition(":")
+    if os.environ.get("THEME") or os.environ.get("FONT"):   # только на этот запуск, без сохранения
+        import design_system as ds
+        from ui import theming
+        name, _, team = (os.environ.get("THEME") or ds.THEME).partition(":")
+        if os.environ.get("FONT"):                          # FONT=1.3 — «Очень крупный» текст
+            theming.apply(name, team or None, font_scale=os.environ["FONT"])
         state.on_theme_change(name, team or None)     # как в приложении: палитра, экраны и нижняя навигация
     if os.environ.get("LIT"):
         import ui.screens.home as home

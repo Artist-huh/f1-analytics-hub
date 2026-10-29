@@ -128,13 +128,18 @@ def _header(state, data):
         border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3) if data["live"] else None)
 
 
-def tyre_badge(letter, age):
+def tyre_badge(letter, age, compact=False):
+    """Кольцо состава и возраст шин; compact — только кольцо (узкая таблица)."""
     color = TYRE_COLORS_SHORT.get(letter, TEXT_DIM)
+    ring = ft.Container(ft.Text(letter or "—", size=FONT_CAPTION, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
+                        width=scaled(24), height=scaled(24), border_radius=12,
+                        border=ft.Border.all(3, readable_text(color, 3.0)),   # жёсткая в светлой теме — серым кольцом
+                        alignment=ft.Alignment.CENTER,
+                        tooltip=f"круг на этих шинах: {age}" if age is not None else None)
+    if compact:
+        return ring
     return ft.Row([
-        ft.Container(ft.Text(letter or "—", size=FONT_CAPTION, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
-                     width=scaled(24), height=scaled(24), border_radius=12,
-                     border=ft.Border.all(3, readable_text(color, 3.0)),   # жёсткая в светлой теме — серым кольцом
-                     alignment=ft.Alignment.CENTER),
+        ring,
         ft.Text(f"{age}" if age is not None else "", size=FONT_CAPTION, color=TEXT_MUTED, width=scaled(20),
                 font_family=FONT_MONO),
     ], spacing=4, tight=True)
@@ -142,16 +147,20 @@ def tyre_badge(letter, age):
 
 def _table(state, data, mode):
     """Таблица на месте обновляемых строк (live_table.LiveTable): обгоны анимируются, отрывы подсвечиваются."""
-    avatars = not (large_text() and is_narrow(state))     # крупный текст на телефоне: место — под код пилота
-    table = LiveTable(state, data, mode, avatars, tyre_badge)
+    # узко для такого размера текста (360 px при «Крупном» и «Очень крупном»): колонка пилота схлопывалась в ноль
+    tight = content_width(state) < scaled(300)   # 360 px: при ×1.0 помещается, при ×1.3 — уже нет
+    avatars = not tight and not (large_text() and is_narrow(state))   # крупный текст на телефоне: место — под код
+    table = LiveTable(state, data, mode, avatars, tyre_badge, tight=tight)
     state.ui["live_table"] = table
     head = ft.Row([ft.Text("Поз.", size=FONT_TINY, color=TEXT_DIM, width=70 if avatars else 30),
-                   ft.Text("Пилот", size=FONT_TINY, color=TEXT_DIM, expand=True),
+                   ft.Text("Пилот", size=FONT_TINY, color=TEXT_DIM, expand=True, no_wrap=True),
                    ft.Text("Отрыв" if mode == "leader" else "Интервал", size=FONT_TINY, color=TEXT_DIM,
-                           width=scaled(78),
+                           width=scaled(70 if tight else 78), no_wrap=True,
                            text_align=ft.TextAlign.RIGHT),
-                   ft.Text("Шины", size=FONT_TINY, color=TEXT_DIM, width=scaled(48), no_wrap=True),
-                   ft.Text("Пит", size=FONT_TINY, color=TEXT_DIM, width=scaled(22), no_wrap=True)], spacing=SPACE_XS)
+                   ft.Text("Шины", size=FONT_TINY, color=TEXT_DIM, width=scaled(28 if tight else 48), no_wrap=True),
+                   *([] if tight else [ft.Text("Пит", size=FONT_TINY, color=TEXT_DIM, width=scaled(22),
+                                               no_wrap=True)])],
+                  spacing=SPACE_XS)
     return ft.Column([ft.Container(head, padding=ft.Padding.symmetric(horizontal=SPACE_XS)), table.stack],
                      spacing=SPACE_XXS)
 

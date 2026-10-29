@@ -57,7 +57,7 @@ def _build_hero(state, driver, is_mobile):
     """Портрет на градиенте команды, номер, флаг, логотип команды, позиция и очки."""
     team = driver["team"]
     top, bottom = get_team_gradient(team)
-    height = 230 if is_mobile else 280
+    height = scaled(230 if is_mobile else 280)   # растёт с текстом: иначе при «Очень крупном» очки срезаются
     flag_src, iso = state.flag(nationality=driver.get("nationality"))
     parts = driver["name"].split()
     first, last = " ".join(parts[:-1]), parts[-1]
