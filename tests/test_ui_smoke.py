@@ -1588,6 +1588,35 @@ class UiSmokeTest(unittest.TestCase):
         self.build("live")
         self.assertFalse(self.state.ui["live_table"].tight)
 
+    def test_driver_hero_photo_does_not_cover_text(self):
+        """360 px при «Очень крупном» тексте: фото пилота шириной 0.8 высоты карточки заезжало на имя,
+        команду и очки (видно на снимке /shots). Теперь фото и колонка текста делят ширину карточки."""
+        for width in (360, 440, 1100):
+            for scale in (1.0, 1.3):
+                card_w = width - 2 * design_system.SPACE_MD
+                height = round((230 if width < 800 else 280) * scale)
+                for last in ("NORRIS", "ANTONELLI", "HULKENBERG"):
+                    with self.subTest(width=width, scale=scale, last=last):
+                        photo_w, info_w, size, _ = driver_detail.hero_layout(card_w, height, width < 800, last)
+                        self.assertLessEqual(photo_w + info_w + driver_detail.HERO_GAP, card_w)   # не внахлёст
+                        self.assertGreaterEqual(photo_w, 120)                                     # лицо видно
+                        self.assertLessEqual(size * len(last) * 0.7, info_w)                      # фамилия целиком
+
+    def test_nationality_in_russian(self):
+        from ui.fmt import NATIONS_RU, nation_ru
+        self.assertEqual(nation_ru("Italian"), "Италия")
+        self.assertEqual(nation_ru("Monegasque"), "Монако")
+        self.assertEqual(nation_ru("Martian"), "Martian")                  # неизвестное — как пришло
+        self.assertEqual(nation_ru(None), "")
+        missing = set(design_system.NATIONALITY_ISO) - set(NATIONS_RU)
+        self.assertEqual(missing, set())                                   # у кого есть флаг — есть и название
+        fill_db()
+        self.state.load()
+        self.state.open_driver("leclerc")
+        t = texts(self.build("driver_detail"))
+        self.assertIn("Монако", t)
+        self.assertNotIn("Monegasque", t)
+
     def test_handler_error_does_not_crash_session(self):
         """Ошибка в обработчике (диск полон, база занята) раньше вызывала Session.error -> красный экран
         «сессия упала». После запуска она только пишется в журнал, а пользователь видит плашку."""

@@ -16,6 +16,25 @@ SESSION_NAMES = {
 }
 
 
+# Jolpica отдаёт гражданство по-английски («Italian») — в интерфейсе показываем страну по-русски
+NATIONS_RU = {
+    "American": "США", "Argentine": "Аргентина", "Australian": "Австралия", "Austrian": "Австрия",
+    "Belgian": "Бельгия", "Brazilian": "Бразилия", "British": "Великобритания", "Canadian": "Канада",
+    "Chinese": "Китай", "Colombian": "Колумбия", "Czech": "Чехия", "Danish": "Дания", "Dutch": "Нидерланды",
+    "Emirati": "ОАЭ", "Estonian": "Эстония", "Finnish": "Финляндия", "French": "Франция", "German": "Германия",
+    "Hungarian": "Венгрия", "Indian": "Индия", "Indonesian": "Индонезия", "Irish": "Ирландия",
+    "Israeli": "Израиль", "Italian": "Италия", "Japanese": "Япония", "Mexican": "Мексика", "Monegasque": "Монако",
+    "New Zealander": "Новая Зеландия", "Polish": "Польша", "Portuguese": "Португалия", "Russian": "Россия",
+    "Saudi": "Саудовская Аравия", "South African": "ЮАР", "Spanish": "Испания", "Swedish": "Швеция",
+    "Swiss": "Швейцария", "Thai": "Таиланд", "Venezuelan": "Венесуэла",
+}
+
+
+def nation_ru(nationality):
+    """«Italian» -> «Италия»; неизвестное оставляем как есть, чтобы не терять данные."""
+    return NATIONS_RU.get((nationality or "").strip(), nationality or "")
+
+
 def plural(n, one, few, many):
     """1 очко, 2 очка, 5 очков."""
     n = abs(int(n))

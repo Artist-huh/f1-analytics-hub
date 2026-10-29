@@ -4,7 +4,7 @@ import flet as ft
 from design_system import *
 from services import stats as st
 from ui.components import *
-from ui.fmt import MONTHS, plural, short_name, to_int
+from ui.fmt import MONTHS, nation_ru, plural, short_name, to_int
 from ui.widgets import screen
 
 
@@ -53,6 +53,20 @@ def build(state):
     return screen(state, short_name(driver["name"]), sections, subtitle=f"Сезон {driver['season']}", back=True)
 
 
+HERO_GAP = SPACE_LG + SPACE_MD + SPACE_XS   # отступ фото справа, текста слева и зазор между ними
+
+
+def hero_layout(card_w, height, is_mobile, last):
+    """-> (ширина фото, ширина текста, размер фамилии, тесно ли).
+    Фото справа, текст слева — не внахлёст: на узком экране фото уже (обрезается по бокам, лицо остаётся),
+    а колонка текста берёт остаток ширины. Фамилия — одной строкой: перенос посреди слова хуже, чем шрифт
+    поменьше (0.7 — ширина буквы курсива Exo 2 в долях кегля, с запасом)."""
+    photo_w = min(round(height * 0.8), round(card_w * 0.45))
+    info_w = min(200 if is_mobile else 260, card_w - photo_w - HERO_GAP)
+    last_size = min(FONT_H1 if not is_mobile else FONT_H2, max(FONT_BODY, int(info_w / (len(last) * 0.7))))
+    return photo_w, info_w, last_size, info_w < 170
+
+
 def _build_hero(state, driver, is_mobile):
     """Портрет на градиенте команды, номер, флаг, логотип команды, позиция и очки."""
     team = driver["team"]
@@ -61,15 +75,17 @@ def _build_hero(state, driver, is_mobile):
     flag_src, iso = state.flag(nationality=driver.get("nationality"))
     parts = driver["name"].split()
     first, last = " ".join(parts[:-1]), parts[-1]
+    photo_w, info_w, last_size, tight = hero_layout(content_width(state), height, is_mobile, last)
 
     info = ft.Column([
-        ft.Row([flag(flag_src, 16, iso), ft.Text(driver.get("nationality", ""), size=FONT_CAPTION,
-                                                  color=ON_COLOR)],
+        ft.Row([flag(flag_src, 16, iso), ft.Text(nation_ru(driver.get("nationality", "")), size=FONT_CAPTION,
+                                                  color=ON_COLOR, expand=True, max_lines=1,
+                                                  overflow=ft.TextOverflow.ELLIPSIS)],
                spacing=6),
         ft.Column([
             ft.Text(first, size=FONT_BODY_LARGE, color=ON_COLOR),
-            ft.Text(last.upper(), size=FONT_H1 if not is_mobile else FONT_H2, color=ON_COLOR,
-                    font_family=FONT_DISPLAY_ITALIC),
+            ft.Text(last.upper(), size=last_size, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC,
+                    max_lines=1, no_wrap=True),
         ], spacing=0),
         ft.Container(ft.Row([TeamLogo(team, state.team_logo(team), size=30),
                              ft.Text(team, size=FONT_BODY_SMALL, color=ON_COLOR, weight=ft.FontWeight.W_600,
@@ -79,19 +95,19 @@ def _build_hero(state, driver, is_mobile):
                      height=TOUCH, tooltip="Страница команды"),                    # зона нажатия 48 dp
         ft.Container(expand=True),
         ft.Row([
-            _hero_value(f"P{driver['position']}", "в зачёте"),
-            _hero_value(driver["points"], plural(float(driver["points"]), "очко", "очка", "очков")),
-        ], spacing=SPACE_LG),
-    ], spacing=SPACE_XS, width=200 if is_mobile else 260)
+            _hero_value(f"P{driver['position']}", "в зачёте", tight),
+            _hero_value(driver["points"], plural(float(driver["points"]), "очко", "очка", "очков"), tight),
+        ], spacing=SPACE_SM if tight else SPACE_LG),
+    ], spacing=SPACE_XS, width=info_w)
 
     return ft.Container(
         content=ft.Stack([
             ft.Container(ft.Text(driver.get("number") or "", size=180, font_family=FONT_DISPLAY_ITALIC,
                                  color=ft.Colors.with_opacity(0.15, ON_COLOR)), right=10, top=-40),
             ft.Container(driver_hero(driver["driver_id"],
-                                     image(state.photo(driver, "hero"), width=round(height * 0.8), height=height,
+                                     image(state.photo(driver, "hero"), width=photo_w, height=height,
                                            fit=ft.BoxFit.COVER, label=f"Фото: {driver['name']}",
-                                           fallback=ft.Container(width=round(height * 0.8), height=height))),
+                                           fallback=ft.Container(width=photo_w, height=height))),
                          right=SPACE_LG, top=PHOTO_DROP + 4),   # голова не у края
             ft.Container(info, left=SPACE_MD, top=SPACE_MD, bottom=SPACE_MD),
         ], height=height, clip_behavior=ft.ClipBehavior.HARD_EDGE),
@@ -111,9 +127,9 @@ def _open_team_of(state, team_name):
     state.open_team(match)
 
 
-def _hero_value(value, label):
+def _hero_value(value, label, tight=False):
     return ft.Column([
-        ft.Text(str(value), size=FONT_H2, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
+        ft.Text(str(value), size=FONT_H3 if tight else FONT_H2, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
         ft.Text(label, size=FONT_CAPTION, color=ON_COLOR),
     ], spacing=0)
 

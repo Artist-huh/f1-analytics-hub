@@ -4,7 +4,7 @@ import flet as ft
 from design_system import *
 from services import archive
 from ui.components import *
-from ui.fmt import plural
+from ui.fmt import nation_ru, plural
 from ui.widgets import dropdown, pill, retry_block, screen
 
 
@@ -227,7 +227,7 @@ def _champions_view(state):
     out.append(ft.ResponsiveRow([
         ft.Container(leaderboard("Больше всего титулов — пилоты", rec["drivers"]), col={"xs": 12, "md": 4}),
         ft.Container(leaderboard("Кубков конструкторов — команды", rec["teams"]), col={"xs": 12, "md": 4}),
-        ft.Container(leaderboard("Титулов по странам", [(_nation(n), k) for n, k in rec["nations"]]),
+        ft.Container(leaderboard("Титулов по странам", [(nation_ru(n), k) for n, k in rec["nations"]]),
                      col={"xs": 12, "md": 4}),
     ], spacing=SPACE_XS, run_spacing=SPACE_XS))
     best = rec["best_wins"]
@@ -260,14 +260,3 @@ def _champions_view(state):
 def _open_year(state, year):
     state.ui.update(hist_view="season", hist_year=year, hist_all=False)
     state.render()
-
-
-NATIONS_RU = {"British": "Великобритания", "German": "Германия", "Brazilian": "Бразилия", "Finnish": "Финляндия",
-              "French": "Франция", "Australian": "Австралия", "Austrian": "Австрия", "Argentine": "Аргентина",
-              "Italian": "Италия", "American": "США", "Spanish": "Испания", "Dutch": "Нидерланды",
-              "Canadian": "Канада", "New Zealander": "Новая Зеландия", "South African": "ЮАР", "Swiss": "Швейцария",
-              "Mexican": "Мексика", "Belgian": "Бельгия", "Swedish": "Швеция", "Monegasque": "Монако"}
-
-
-def _nation(nationality):
-    return NATIONS_RU.get(nationality, nationality)
