@@ -1,0 +1,64 @@
+name: Снимки экранов
+
+# Снимает ключевые экраны в режиме FROZEN (данные data/seed.json, без сети, часы стоят) и сравнивает
+# с эталонами tests/visual/ci-windows — ловит вёрстку, которую тесты на заглушке Flet не видят.
+# Снимки и картинки отличий (*-diff.png) — в артефакте прогона.
+# Обновить эталоны после намеренной правки дизайна: запустить вручную с update=true и закоммитить
+# снимки из артефакта (папка golden) в tests/visual/ci-windows.
+on:
+  push:
+    branches: [main]
+    paths: ["ui/**", "design_system.py", "main.py", "assets/**", "data/seed.json",
+            ".claude/skills/shots/scripts/**", "tools/visual_check.py", "tests/visual/**",
+            ".github/workflows/visual.yml"]
+  pull_request:
+    paths: ["ui/**", "design_system.py", "main.py", "assets/**", "data/seed.json",
+            ".claude/skills/shots/scripts/**", "tools/visual_check.py", "tests/visual/**"]
+  workflow_dispatch:
+    inputs:
+      update:
+        description: "Перезаписать эталоны (после намеренной правки дизайна)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  screens:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    # скрипты /shots запускают приложение из venv проекта
+    - name: venv и зависимости
+      shell: bash
+      run: |
+        python -m venv venv
+        venv/Scripts/python.exe -m pip install -q -r requirements.txt pillow -c constraints.txt
+
+    - name: Снимки и сравнение с эталоном
+      shell: bash
+      env:
+        PYTHONIOENCODING: utf-8
+        WAIT: "30"          # на машине GitHub окно открывается медленнее
+      run: |
+        if [ "${{ inputs.update }}" = "true" ]; then
+          venv/Scripts/python.exe tools/visual_check.py shots --golden shots/golden --update
+        else
+          venv/Scripts/python.exe tools/visual_check.py shots
+        fi
+
+    - name: Снимки в артефакт
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: screens
+        path: shots/
+        retention-days: 14

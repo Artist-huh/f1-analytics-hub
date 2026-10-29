@@ -6,6 +6,9 @@
   WIDTH, HEIGHT  размер окна (по умолчанию 440×880 — телефон; 1100×800 — компьютер)
   LIT    превью стартовых огней на главной: сколько горит (0–5), независимо от даты гонки
   SCROLL прокрутить экран: end — до конца, число — на столько px вниз
+  FROZEN=1  одинаковый снимок при каждом запуске (для сравнения с эталоном, tools/visual_check.py):
+         данные — встроенный снимок data/seed.json во временной базе, сеть отключена, часы стоят на
+         времени снимка плюс час
 """
 import os
 import sys
@@ -14,6 +17,39 @@ import threading
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 sys.path.insert(0, REPO)
 os.chdir(REPO)
+
+
+def freeze():
+    """Режим FROZEN: до импорта приложения — своя пустая база (в неё загрузится data/seed.json), без сети,
+    время — от момента снимка. Настройки и база пользователя не трогаются."""
+    import json
+    import tempfile
+    import time
+
+    os.environ["F1_HUB_DB"] = os.path.join(tempfile.mkdtemp(prefix="f1-frozen-"), "frozen.db")
+    with open(os.path.join(REPO, "data", "seed.json"), encoding="utf-8") as f:
+        t0 = json.load(f)["exported_at"] + 3600
+    start, real_localtime, real_strftime = time.monotonic(), time.localtime, time.strftime
+    time.time = lambda: t0 + (time.monotonic() - start)
+    time.localtime = lambda secs=None: real_localtime(time.time() if secs is None else secs)
+    time.strftime = lambda fmt, t=None: real_strftime(fmt, time.localtime() if t is None else t)
+
+    import requests
+
+    def offline(*args, **kwargs):
+        raise requests.ConnectionError("FROZEN: сеть отключена для снимков")
+
+    requests.adapters.HTTPAdapter.send = offline
+    from services import f1live
+
+    def no_stream(topics=None):
+        raise f1live.F1LiveError("FROZEN: сеть отключена для снимков")
+
+    f1live.fetch_state = no_stream
+
+
+if os.environ.get("FROZEN"):
+    freeze()
 
 import flet as ft  # noqa: E402
 
