@@ -199,7 +199,8 @@ def _build_metrics(state, drivers):
             border=ft.Border.all(1, LINE_SUBTLE),
         ))
     header = ft.Row([ft.Container(ft.Text(d["code"] or short_name(d["name"]), size=FONT_BODY_SMALL,
-                                          color=colors[i], font_family=FONT_ITALIC, text_align=ft.TextAlign.CENTER),
+                                          color=readable_text(colors[i]), font_family=FONT_ITALIC,
+                                          text_align=ft.TextAlign.CENTER),
                                   expand=True)
                      for i, d in enumerate(drivers)], spacing=SPACE_XXS)
     return ft.Column([SectionHeader("Показатели сезона", subtitle="Лучшее значение выделено цветом команды"),
@@ -243,10 +244,10 @@ def _score_card(title, a, b, c1, c2):
     return AnimatedCard(ft.Column([
         ft.Text(title, size=FONT_CAPTION, color=TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
         ft.Row([
-            ft.Text(str(a), size=FONT_H1, color=c1, font_family=FONT_DISPLAY_ITALIC, expand=True,
+            ft.Text(str(a), size=FONT_H1, color=readable_text(c1, 3.0), font_family=FONT_DISPLAY_ITALIC, expand=True,
                     text_align=ft.TextAlign.CENTER),
             ft.Text(":", size=FONT_H2, color=TEXT_DIM),
-            ft.Text(str(b), size=FONT_H1, color=c2, font_family=FONT_DISPLAY_ITALIC, expand=True,
+            ft.Text(str(b), size=FONT_H1, color=readable_text(c2, 3.0), font_family=FONT_DISPLAY_ITALIC, expand=True,
                     text_align=ft.TextAlign.CENTER),
         ]),
         ft.Row([ft.Container(expand=a or None, height=5, bgcolor=c1, border_radius=3),
@@ -267,11 +268,11 @@ def _build_duel(state, d1, d2, results):
         first_won = b is None or (a is not None and a < b)
         lines.append(ft.Row([
             ft.Text(f"P{p1}" if a else p1, size=FONT_BODY_SMALL, weight=ft.FontWeight.BOLD, width=40,
-                    color=c1 if first_won else TEXT_DIM, text_align=ft.TextAlign.CENTER),
+                    color=readable_text(c1) if first_won else TEXT_DIM, text_align=ft.TextAlign.CENTER),
             ft.Text(f"{rnd}. {name}", size=FONT_BODY_SMALL, color=TEXT_SECONDARY, expand=True,
                     text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
             ft.Text(f"P{p2}" if b else p2, size=FONT_BODY_SMALL, weight=ft.FontWeight.BOLD, width=40,
-                    color=c2 if not first_won else TEXT_DIM, text_align=ft.TextAlign.CENTER),
+                    color=readable_text(c2) if not first_won else TEXT_DIM, text_align=ft.TextAlign.CENTER),
         ]))
     return ft.Column([
         SectionHeader("Личные встречи", subtitle=f"{d1['code']} против {d2['code']}"),

@@ -124,9 +124,9 @@ def _build_driver_card(state, d):
         ft.Row([PositionBadge(d["position"], size=30), flag(flag_src, 14, iso)], spacing=SPACE_XS,
                vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Column([
-            ft.Text(first, size=FONT_BODY_SMALL, color=ft.Colors.with_opacity(0.85, ON_COLOR), max_lines=1),
+            ft.Text(first, size=FONT_BODY_SMALL, color=ON_COLOR, max_lines=1),
             ft.Text(last.upper(), size=FONT_H3, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC, max_lines=1),
-            ft.Text(d["team"], size=FONT_CAPTION, color=ft.Colors.with_opacity(0.75, ON_COLOR), max_lines=1,
+            ft.Text(d["team"], size=FONT_CAPTION, color=ON_COLOR, max_lines=1,
                     overflow=ft.TextOverflow.ELLIPSIS),
         ], spacing=0),
         ft.Container(expand=True),
@@ -139,7 +139,9 @@ def _build_driver_card(state, d):
             ft.Container(number, right=8, top=-18),
             portrait,
             ft.Container(info, left=0, top=0, bottom=0),
-            ft.Container(star_button(fav, lambda e, i=d["driver_id"]: state.toggle_favorite(i)), right=-6, top=-6),
+            # без отрицательного смещения: иначе край карточки срезал часть зоны нажатия 48 dp
+            ft.Container(star_button(fav, lambda e, i=d["driver_id"]: state.toggle_favorite(i), on_photo=True),
+                         right=SPACE_XS, top=0),
         ], height=inner, clip_behavior=ft.ClipBehavior.HARD_EDGE),
         on_click=lambda e, i=d["driver_id"]: state.open_driver(i),
         padding=ft.Padding.only(left=SPACE_MD, top=SPACE_SM, bottom=SPACE_SM),
@@ -157,7 +159,7 @@ def _build_driver_card(state, d):
 def _mini_stat(value, label):
     return ft.Column([
         ft.Text(str(value), size=FONT_H4, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
-        ft.Text(label, size=FONT_TINY, color=ft.Colors.with_opacity(0.75, ON_COLOR)),
+        ft.Text(label, size=FONT_TINY, color=ON_COLOR),   # мелкие подписи — сплошным белым (4.5:1 к градиенту)
     ], spacing=0)
 
 

@@ -31,7 +31,8 @@ ACCENT_GLOW = "#FF2A1F"      # ярче — hover, свечение
 ACCENT_DEEP = "#8E0400"      # темнее — конец градиента
 ACCENT_TEXT = "#FF5A4F"      # красный для мелкого текста (контраст ≥ 4.5:1 на тёмном)
 ACCENT_SOFT = "#3A1416"      # красноватая поверхность (выделение, избранное)
-ON_ACCENT = "#FFFFFF"        # текст и иконки на красном
+ON_ACCENT = "#FFFFFF"        # текст и иконки на акценте (на ACCENT_FILL — всегда белый, ≥ 4.5:1)
+ACCENT_FILL = "#E10600"      # акцент как фон под текстом: в теме команды притемнён до 4.5:1 с белым
 ON_COLOR = "#FFFFFF"         # текст на цветных фонах (градиенты команд, hero) — белый в любой теме
 INK = "#15151E"              # тёмный текст на светлых плашках (медали, белая кнопка) — в любой теме
 
@@ -48,7 +49,13 @@ LIGHT_OFF = "#3A1C1E"        # погасший: тёмно-красное ст�
 LIGHT_HOUSING = "#050507"
 
 # Градиенты
-GRADIENT_RED = [ACCENT_GLOW, F1_RED, ACCENT_DEEP]
+GRADIENT_RED = [ACCENT_GLOW, F1_RED, ACCENT_DEEP]   # только без текста поверх: ярко, но белый на GLOW — 3.75
+GRADIENT_ACCENT = [ACCENT_FILL, ACCENT_DEEP]       # под текстом: кнопки, вкладки, плашки
+
+# LIVE — всегда красный F1, в любой теме (в теме команды акцент меняется, а сигнал «в эфире» — нет)
+LIVE_RED = "#E10600"         # белый на нём — 4.97:1
+LIVE_DEEP = "#8E0400"
+GRADIENT_LIVE = [LIVE_RED, LIVE_DEEP]
 GRADIENT_SURFACE = [SURFACE_RAISED, SURFACE]
 
 # === ТИПОГРАФИКА ===
@@ -219,16 +226,11 @@ def get_team_color(team_name: str, variant: str = "color") -> str:
 
 def get_team_gradient(team_name: str) -> tuple[str, str]:
     """Фон карточек пилота и команды под белым текстом. Светлые цвета (Mercedes, Sauber) сверху
-    притемняются до контраста 3:1 с белым — порог WCAG для крупного текста."""
+    притемняются до 4.5:1 с белым — на карточках есть и мелкие подписи, не только крупные цифры."""
     team = TEAMS.get(team_key(team_name))
     if not team:
         return SURFACE_RAISED, SURFACE
-    top = team["color"]
-    for step in range(1, 11):
-        if contrast(ON_COLOR, top) >= 3.0:
-            break
-        top = _mix(team["color"], team["dark"], step / 10)
-    return top, team["dark"]
+    return _darken_for(ON_COLOR, team["color"], team["dark"]), team["dark"]
 
 
 # === СТРАНЫ: флаги (ISO 3166-1 alpha-2 для flagcdn.com) ===
@@ -267,6 +269,12 @@ def country_iso(country):
 TYRE_COLORS = {"SOFT": "#FF3333", "MEDIUM": "#FFD12E", "HARD": "#F0F0F0",
                "INTERMEDIATE": "#43B02A", "WET": "#0067AD"}
 TYRES = {"S": TYRE_COLORS["SOFT"], "M": TYRE_COLORS["MEDIUM"], "H": TYRE_COLORS["HARD"]}
+
+
+def tyre_edge(color):
+    """Обводка шины, если её цвет сливается с карточкой (белая жёсткая в светлой теме — 1.14:1), иначе None.
+    Цвет шины не меняем — в графике F1 жёсткая белая; обводка — тот же тон, притемнённый до 3:1."""
+    return None if contrast(color, SURFACE) >= 3.0 else readable_text(color, 3.0)
 
 # === ПОЗИЦИИ ===
 # Очковая зона P4…P10 на карте сезона — от светлого к тёмному зелёному (цвет цифр — readable_on)
@@ -331,14 +339,20 @@ THEME_TEAM = None
 IS_LIGHT = False
 
 
+def _hex6(color):
+    """'#f00' -> 'FF0000' (короткую запись тоже понимаем)."""
+    c = color.lstrip("#")
+    return "".join(ch * 2 for ch in c) if len(c) == 3 else c
+
+
 def _mix(a, b, t):
     """Смесь двух цветов #RRGGBB: t=0 — a, t=1 — b."""
-    a, b = a.lstrip("#"), b.lstrip("#")
+    a, b = _hex6(a), _hex6(b)
     return "#" + "".join(f"{round(int(a[i:i + 2], 16) * (1 - t) + int(b[i:i + 2], 16) * t):02X}" for i in (0, 2, 4))
 
 
 def _luminance(color):
-    c = color.lstrip("#")
+    c = _hex6(color)
     ch = [int(c[i:i + 2], 16) / 255 for i in (0, 2, 4)]
     ch = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in ch]
     return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
@@ -371,6 +385,16 @@ def readable_text(color, target=4.5, background=None):
     return TEXT_PRIMARY
 
 
+def _darken_for(fg, color, deep, target=4.5):
+    """Фон цвета color, на котором текст fg набирает target: смешивается с deep, затем с чёрным."""
+    for end in (deep, "#000000"):
+        for step in range(0, 11):
+            candidate = _mix(color, end, step / 10)
+            if contrast(fg, candidate) >= target:
+                return candidate
+    return "#000000"
+
+
 def readable_on(color):
     """Цвет текста на цветной плашке (цвет команды и т. п.): белый или тёмный — что контрастнее."""
     return ON_COLOR if contrast(ON_COLOR, color) >= contrast(INK, color) else INK
@@ -396,6 +420,8 @@ def apply_theme(name="dark", team=None):
         g["ACCENT_TEXT"] = _readable_accent(g["F1_RED"], base["SURFACE_RAISED"]) if team_colors else "#FF5A4F"
         g["ACCENT_SOFT"] = _mix(g["F1_RED"], base["BG"], 0.78)
     g["GRADIENT_RED"] = [g["ACCENT_GLOW"], g["F1_RED"], g["ACCENT_DEEP"]]
+    g["ACCENT_FILL"] = _darken_for(ON_ACCENT, g["F1_RED"], g["ACCENT_DEEP"])
+    g["GRADIENT_ACCENT"] = [g["ACCENT_FILL"], g["ACCENT_DEEP"]]
     g["GRADIENT_SURFACE"] = [g["SURFACE_RAISED"], g["SURFACE"]]
     g["RAISED"], g["TEXT"] = g["SURFACE_RAISED"], g["TEXT_PRIMARY"]
     g["MUTED"], g["DIM"] = g["TEXT_MUTED"], g["TEXT_DIM"]

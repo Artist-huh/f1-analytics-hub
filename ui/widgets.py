@@ -3,17 +3,15 @@ import flet as ft
 
 from design_system import (
     ACCENT,
-    ACCENT_DEEP,
-    ACCENT_GLOW,
     ANIM_NORMAL,
     CARD_SIZES,
     DANGER,
     DIM,
-    F1_RED,
     FONT_DISPLAY_ITALIC,
     FONT_H2,
     FONT_HEADING,
     FONT_SCALE,
+    GRADIENT_ACCENT,
     LINE,
     MUTED,
     OK,
@@ -26,6 +24,7 @@ from design_system import (
     TYRES,
     WARN,
     glow,
+    readable_text,
 )
 from ui.components import anim
 
@@ -62,11 +61,11 @@ def touch(visual, height):
 
 
 def pill(label, selected, on_click):
-    """Вкладка-переключатель: выбранная — красная со свечением."""
+    """Вкладка-переключатель: выбранная — на акценте (GRADIENT_ACCENT: белый текст ≥ 4.5:1 в любой теме)."""
     return touch(ft.Container(
         content=txt(label, 13, ON_ACCENT if selected else MUTED, bold=True),
         gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
-                                   colors=[ACCENT_GLOW, F1_RED]) if selected else None,
+                                   colors=GRADIENT_ACCENT) if selected else None,
         bgcolor=None if selected else RAISED,
         border_radius=RADIUS_FULL,
         padding=ft.Padding.symmetric(horizontal=18),
@@ -75,8 +74,10 @@ def pill(label, selected, on_click):
     ), 38)
 
 
-def button(label, on_click, primary=True, icon=None):
-    fg = ON_ACCENT if primary else TEXT
+def button(label, on_click, primary=True, icon=None, disabled=False):
+    """Кнопка; disabled — приглушённая, без нажатия и «ряби» (видно, что сейчас нажимать нечего)."""
+    primary = primary and not disabled
+    fg = ON_ACCENT if primary else DIM if disabled else TEXT
     row = []
     if icon:
         row.append(ft.Icon(icon, color=fg, size=18))
@@ -84,10 +85,11 @@ def button(label, on_click, primary=True, icon=None):
     return ft.Container(
         content=ft.Row(row, spacing=8, alignment=ft.MainAxisAlignment.CENTER),
         gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
-                                   colors=[ACCENT_GLOW, F1_RED, ACCENT_DEEP]) if primary else None,
+                                   colors=GRADIENT_ACCENT) if primary else None,
         bgcolor=None if primary else RAISED, border_radius=12, height=TOUCH,
-        padding=ft.Padding.symmetric(horizontal=16), on_click=on_click, ink=True,
-        shadow=glow(strength=0.3) if primary else None,
+        padding=ft.Padding.symmetric(horizontal=16), on_click=None if disabled else on_click, ink=not disabled,
+        shadow=glow(strength=0.3) if primary else None, opacity=0.6 if disabled else None,
+        disabled=disabled,
     )
 
 
@@ -122,7 +124,7 @@ def vdivider():
 def tyre_chip(letter):
     return ft.Container(
         content=txt(letter, 13, TEXT, bold=True, head=True), width=30, height=30,
-        border_radius=15, border=ft.Border.all(3, TYRES.get(letter, DIM)),
+        border_radius=15, border=ft.Border.all(3, readable_text(TYRES.get(letter, DIM), 3.0)),
         alignment=ft.Alignment.CENTER,
     )
 

@@ -32,7 +32,7 @@ def _theme_card(state):
                        txt(hint, 10, ON_ACCENT if active else MUTED, text_align=ft.TextAlign.CENTER)],
                       horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
             expand=True, padding=ft.Padding.symmetric(horizontal=4, vertical=10), border_radius=12, ink=True,
-            bgcolor=ACCENT if active else RAISED,
+            bgcolor=ACCENT_FILL if active else RAISED,
             on_click=lambda e, k=key: state.set_theme(k, chosen_team or (default_team if k == "team" else None)),
         )
 

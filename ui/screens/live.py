@@ -103,7 +103,7 @@ def _header(state, data):
         badge = ft.Container(ft.Row([ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
                                      ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
                                     spacing=6, tight=True),
-                             bgcolor=DANGER, border_radius=RADIUS_FULL,
+                             bgcolor=LIVE_RED, border_radius=RADIUS_FULL,      # белый — 4.97:1 в любой теме
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
     else:
         badge = ft.Container(ft.Row([ft.Icon(ft.Icons.SPORTS_SCORE_ROUNDED, color=ON_COLOR, size=14),
@@ -111,7 +111,7 @@ def _header(state, data):
                                     spacing=4, tight=True),
                              bgcolor=ft.Colors.with_opacity(0.12, ON_COLOR), border_radius=RADIUS_FULL,
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
-    soft = ft.Colors.with_opacity(0.78, ON_COLOR)
+    soft = ON_COLOR if data["live"] else ft.Colors.with_opacity(0.78, ON_COLOR)   # на красном — только сплошной белый
     updated = ft.Text(f"обновлено в {fmt_clock(data['updated'])}", size=FONT_CAPTION, color=soft)
     status = ft.Text(_status_line(state, data), size=FONT_BODY_SMALL, color=ON_COLOR)
     state.ui["live_head"] = {"updated": updated, "status": status}     # обновляются на месте (update_in_place)
@@ -123,7 +123,7 @@ def _header(state, data):
     ], spacing=SPACE_XS),
         # красный — только пока сессия идёт; итог прошлой — на карбоне, как герой главной
         gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                   colors=GRADIENT_RED if data["live"] else HERO_CARBON),
+                                   colors=GRADIENT_LIVE if data["live"] else HERO_CARBON),
         border=None if data["live"] else ft.Border.all(1, ft.Colors.with_opacity(0.08, ON_COLOR)),
         border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3) if data["live"] else None)
 
@@ -132,7 +132,8 @@ def tyre_badge(letter, age):
     color = TYRE_COLORS_SHORT.get(letter, TEXT_DIM)
     return ft.Row([
         ft.Container(ft.Text(letter or "—", size=FONT_CAPTION, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
-                     width=scaled(24), height=scaled(24), border_radius=12, border=ft.Border.all(3, color),
+                     width=scaled(24), height=scaled(24), border_radius=12,
+                     border=ft.Border.all(3, readable_text(color, 3.0)),   # жёсткая в светлой теме — серым кольцом
                      alignment=ft.Alignment.CENTER),
         ft.Text(f"{age}" if age is not None else "", size=FONT_CAPTION, color=TEXT_MUTED, width=scaled(20),
                 font_family=FONT_MONO),
@@ -194,7 +195,9 @@ def _structure(data):
 def weather_strip(w):
     """Погода на трассе: воздух, асфальт, влажность, ветер, дождь — строкой чипов."""
     def chip(icon, text, color=TEXT_SECONDARY):
-        return ft.Row([ft.Icon(icon, size=16, color=color), ft.Text(text, size=FONT_CAPTION, color=TEXT_SECONDARY)],
+        # значок — 3:1 и в светлой теме (сырые цвета разделов там 1.5–2.6:1)
+        return ft.Row([ft.Icon(icon, size=16, color=readable_text(color, 3.0)),
+                       ft.Text(text, size=FONT_CAPTION, color=TEXT_SECONDARY)],
                       spacing=4, tight=True)
     items = []
     if w.get("air") is not None:
@@ -213,8 +216,9 @@ def weather_strip(w):
 def _track_status(text):
     """Сейфти-кар, жёлтый или красный флаг — крупной плашкой над таблицей."""
     color = DANGER if "Красный" in text else WARNING
-    return ft.Container(ft.Row([ft.Icon(ft.Icons.FLAG_ROUNDED, color=INK, size=20),
-                                ft.Text(text, size=FONT_BODY, color=INK, weight=ft.FontWeight.BOLD)],
+    fg = readable_on(color)                  # в светлой теме фон темнее — текст белый (тёмный там 2.9:1)
+    return ft.Container(ft.Row([ft.Icon(ft.Icons.FLAG_ROUNDED, color=fg, size=20),
+                                ft.Text(text, size=FONT_BODY, color=fg, weight=ft.FontWeight.BOLD)],
                                spacing=SPACE_XS),
                         bgcolor=color, border_radius=RADIUS_MD, padding=ft.Padding.symmetric(horizontal=SPACE_SM,
                                                                                                vertical=SPACE_XS))

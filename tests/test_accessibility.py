@@ -43,8 +43,38 @@ class ContrastTest(unittest.TestCase):
         for key in ds.TEAMS:
             top, bottom = ds.get_team_gradient(key.replace("_", " "))
             with self.subTest(team=key):
-                self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, top), 3.0)          # крупный текст
+                self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, top), AA)           # на карточках и мелкие подписи
                 self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, bottom), AA)
+
+    def test_text_on_accent_fill_in_every_theme(self):
+        """Кнопки, вкладки, индикатор навигации: белый на ACCENT_FILL и обоих концах GRADIENT_ACCENT — 4.5:1,
+        в том числе в теме любой команды (яркий цвет Mercedes или Sauber под белым был 1.7–1.8:1)."""
+        cases = [("dark", None), ("oled", None), ("light", None)] + [("team", k.replace("_", " ")) for k in ds.TEAMS]
+        for name, team in cases:
+            ds.apply_theme(name, team)
+            for bg in [ds.ACCENT_FILL, *ds.GRADIENT_ACCENT]:
+                with self.subTest(theme=name, team=team, bg=bg):
+                    self.assertGreaterEqual(ds.contrast(ds.ON_ACCENT, bg), AA)
+
+    def test_live_and_flag_badges(self):
+        """LIVE — белый на LIVE_RED; плашки флагов — readable_on(цвет флага) во всех темах."""
+        for name in ("dark", "oled", "light"):
+            ds.apply_theme(name)
+            with self.subTest(theme=name):
+                for bg in (ds.LIVE_RED, *ds.GRADIENT_LIVE):
+                    self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, bg), AA)
+                for flag_bg in (ds.WARNING, ds.DANGER):
+                    self.assertGreaterEqual(ds.contrast(ds.readable_on(flag_bg), flag_bg), AA)
+
+    def test_tyres_visible_on_cards(self):
+        """Шина видна на карточке: её цвет или обводка (tyre_edge) — не меньше 3:1 к SURFACE в обеих темах."""
+        for name in ("dark", "light"):
+            ds.apply_theme(name)
+            for tyre, color in ds.TYRE_COLORS.items():
+                edge = ds.tyre_edge(color) or color
+                with self.subTest(theme=name, tyre=tyre):
+                    self.assertGreaterEqual(ds.contrast(edge, ds.SURFACE), 3.0)
+                    self.assertGreaterEqual(ds.contrast(ds.readable_on(color), color), AA)   # буква на полосе
 
     def test_team_colored_text_on_cards(self):
         for name in ("dark", "light"):

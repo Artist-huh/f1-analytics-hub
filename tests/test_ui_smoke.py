@@ -1561,7 +1561,9 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(design_system.F1_RED, design_system.TEAMS["mercedes"]["color"])
         clickable(page.added[0], "Ferrari")[0].on_click(Ctl())
         self.assertEqual(design_system.F1_RED, design_system.TEAMS["ferrari"]["color"])
-        self.assertEqual(page.navigation_bar.indicator_color, design_system.TEAMS["ferrari"]["color"])
+        nav = page.navigation_bar.indicator_color             # фон под белой иконкой — притемнённый цвет команды
+        self.assertEqual(nav, design_system.ACCENT_FILL)
+        self.assertGreaterEqual(design_system.contrast(design_system.ON_ACCENT, nav), 4.5)
         asyncio.run(tasks.pop()())
         self.assertIn("Мои пилоты и их результаты", texts(app.TABS[4](AppState(page))))   # экраны собираются
 
@@ -1628,7 +1630,7 @@ class UiSmokeTest(unittest.TestCase):
         self.state.mini = True
         with mock.patch.object(self.state, "live_now", return_value=(race, "Race")):
             t = texts(mini.build(self.state))
-        for expected in ("LIVE · Гонка", "круг 31/56", "Сейфти-кар", "LEC", "лидер", "RUS", "+0.4"):
+        for expected in ("LIVE", "Гонка", "круг 31/56", "Сейфти-кар", "LEC", "лидер", "RUS", "+0.4"):
             self.assertIn(expected, t)
         self.assertNotIn("HAM", t)                                # только пятёрка
 

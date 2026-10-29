@@ -120,10 +120,10 @@ class AnimatedCard(ft.Container):
 
 
 class GradientButton(ft.Container):
-    """Главная кнопка: красный градиент F1, белый текст, свечение."""
+    """Главная кнопка: градиент акцента (или команды), белый текст ≥ 4.5:1, свечение."""
 
     def __init__(self, text: str, team_name: str = None, on_click=None, icon=None, expand=False, **kwargs):
-        colors = list(get_team_gradient(team_name)) if team_name else [ACCENT_GLOW, F1_RED, ACCENT_DEEP]
+        colors = list(get_team_gradient(team_name)) if team_name else GRADIENT_ACCENT
         items = []
         if icon:
             items.append(ft.Icon(icon, color=ON_ACCENT, size=20))
@@ -246,10 +246,13 @@ def driver_hero(driver_id, control):
 
 def icon_badge(icon, color, size=40):
     """Иконка раздела: круг с прозрачной подложкой цвета раздела (вместо красного градиента везде)."""
+    import design_system as ds
     tone = readable_text(color, 3.0)
+    for _ in range(2):   # 3:1 к самой подложке (16 % того же цвета поверх карточки), а не к голой карточке
+        tone = readable_text(tone, 3.0, background=ds._mix(SURFACE, tone, 0.16))
     return ft.Container(ft.Icon(icon, size=round(size * 0.55), color=tone), width=size, height=size,
                         border_radius=size / 2, alignment=ft.Alignment.CENTER,
-                        bgcolor=ft.Colors.with_opacity(0.16, tone))
+                        bgcolor=ds._mix(SURFACE, tone, 0.16))
 
 
 class TeamLogo(ft.Container):
@@ -392,11 +395,13 @@ def show_snack(page, message: str, color: str = SURFACE_ELEVATED):
     page.show_dialog(ft.SnackBar(content=ft.Text(message, color=TEXT_PRIMARY), bgcolor=color))
 
 
-def star_button(active, on_click, size=22):
-    """Звёздочка избранного с зоной нажатия 48 px."""
+def star_button(active, on_click, size=22, on_photo=False):
+    """Звёздочка избранного с зоной нажатия 48 px. on_photo — поверх цветной карточки или фото:
+    белая звезда на тёмной круглой подложке (серая и золотая на цвете команды почти не видны)."""
     return ft.IconButton(
         icon=ft.Icons.STAR_ROUNDED if active else ft.Icons.STAR_BORDER_ROUNDED,
-        icon_color=GOLD if active else TEXT_DIM, icon_size=size,
+        icon_color=(GOLD if active else ON_COLOR) if on_photo else (GOLD if active else TEXT_DIM), icon_size=size,
+        bgcolor=ft.Colors.with_opacity(0.55, INK) if on_photo else None,
         tooltip="Убрать из избранного" if active else "В избранное",
         on_click=on_click, width=TOUCH, height=TOUCH,
     )
@@ -437,14 +442,15 @@ def line_chart(series, labels, width, height=200, y_suffix=""):
         if not values:
             continue
         dashed = [6, 4] if idx >= 1 and any(c == color for _, c, _ in series[:idx]) else None
-        paint = ft.Paint(color=color, stroke_width=2.5, style=ft.PaintingStyle.STROKE,
+        line, label = readable_text(color, 3.0), readable_text(color)   # цвет команды: 3:1 линия, 4.5:1 подпись
+        paint = ft.Paint(color=line, stroke_width=2.5, style=ft.PaintingStyle.STROKE,
                          stroke_cap=ft.StrokeCap.ROUND, stroke_join=ft.StrokeJoin.ROUND,
                          stroke_dash_pattern=dashed)
         elements = [cv.Path.MoveTo(x(0), y(values[0]))] + [cv.Path.LineTo(x(i), y(v)) for i, v in enumerate(values)]
         shapes.append(cv.Path(elements, paint=paint))
-        shapes.append(cv.Circle(x(len(values) - 1), y(values[-1]), 4, paint=ft.Paint(color=color)))
+        shapes.append(cv.Circle(x(len(values) - 1), y(values[-1]), 4, paint=ft.Paint(color=line)))
         shapes.append(cv.Text(x(len(values) - 1) + 7, y(values[-1]), f"{values[-1]:g}{y_suffix}",
-                              style=ft.TextStyle(size=11, color=color, weight=ft.FontWeight.BOLD),
+                              style=ft.TextStyle(size=11, color=label, weight=ft.FontWeight.BOLD),
                               alignment=ft.Alignment.CENTER_LEFT))
     return cv.Canvas(shapes=shapes, width=width, height=height)
 
@@ -463,7 +469,7 @@ def _nice_step(raw):
 def legend(series):
     """Подписи к линиям графика."""
     return ft.Row([
-        ft.Row([ft.Container(width=14, height=4, bgcolor=color, border_radius=2),
+        ft.Row([ft.Container(width=14, height=4, bgcolor=readable_text(color, 3.0), border_radius=2),
                 ft.Text(name, size=FONT_CAPTION, color=TEXT_SECONDARY)], spacing=6, tight=True)
         for name, color, _ in series
     ], wrap=True, spacing=SPACE_SM, run_spacing=SPACE_XXS)
@@ -511,14 +517,15 @@ def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False
     for name, color, pts, line_w in series:
         if not pts:
             continue
-        paint = ft.Paint(color=color, stroke_width=line_w, style=ft.PaintingStyle.STROKE,
+        line, label = readable_text(color, 3.0), readable_text(color)
+        paint = ft.Paint(color=line, stroke_width=line_w, style=ft.PaintingStyle.STROKE,
                          stroke_cap=ft.StrokeCap.ROUND, stroke_join=ft.StrokeJoin.ROUND)
         elements = [cv.Path.MoveTo(x(pts[0][0]), y(pts[0][1]))] + [cv.Path.LineTo(x(a), y(b)) for a, b in pts[1:]]
         shapes.append(cv.Path(elements, paint=paint))
         if end_labels and line_w >= 2:
             ex, ey = pts[-1]
-            shapes.append(cv.Circle(x(ex), y(ey), 3.5, paint=ft.Paint(color=color)))
-            end_style = ft.TextStyle(size=10, color=color, weight=ft.FontWeight.BOLD)
+            shapes.append(cv.Circle(x(ex), y(ey), 3.5, paint=ft.Paint(color=line)))
+            end_style = ft.TextStyle(size=10, color=label, weight=ft.FontWeight.BOLD)
             shapes.append(cv.Text(x(ex) + 6, y(ey), name, style=end_style,
                                   alignment=ft.Alignment.CENTER_LEFT))
     return cv.Canvas(shapes=shapes, width=width, height=height)

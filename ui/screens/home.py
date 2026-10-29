@@ -226,7 +226,7 @@ def _build_live_card(state):
         badge = ft.Container(ft.Row([ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
                                      ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC)],
                                     spacing=6, tight=True),
-                             bgcolor=DANGER, border_radius=RADIUS_FULL,
+                             bgcolor=LIVE_RED, border_radius=RADIUS_FULL,      # белый — 4.97:1 в любой теме
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
         title = f"Сейчас: {SESSION_NAMES.get(key, key)}"
         hint = f"{race['race_name']} · позиции, отрывы, шины, радио"
@@ -238,10 +238,8 @@ def _build_live_card(state):
                     f"осталось {data['remaining']}" if data.get("remaining") else "")
             hint = " · ".join(x for x in (top, when, data.get("track") or "") if x)
     else:
-        badge = ft.Container(ft.Icon(ft.Icons.SENSORS_ROUNDED, color=ON_COLOR, size=20), width=40, height=40,
-                             border_radius=20, alignment=ft.Alignment.CENTER,
-                             gradient=ft.LinearGradient(colors=[ACCENT_GLOW, ACCENT_DEEP],
-                                                        begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT))
+        # вне сессии — нейтральный значок: красный только когда идёт эфир
+        badge = icon_badge(ft.Icons.SENSORS_ROUNDED, SECTION_COLORS["live"])
         upcoming = next_session(state.schedule)
         title = "Live Timing"
         hint = (f"{SESSION_NAMES.get(upcoming[1], upcoming[1])} через {fmt_countdown(upcoming[2] - time.time())}. "

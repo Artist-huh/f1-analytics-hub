@@ -43,7 +43,7 @@ def tyres_section(state, race):
     used = sorted({s["tyre"] for r in rows for s in r["stints"]},
                   key=lambda t: "SMHIW?".index(t) if t in "SMHIW" else 9)
     legend_row = ft.Row([ft.Row([ft.Container(width=14, height=14, border_radius=7,
-                                              bgcolor=TYRE_COLOR.get(t, TEXT_DIM)),
+                                              bgcolor=TYRE_COLOR.get(t, TEXT_DIM), border=_edge(t)),
                                  ft.Text(TYRE_NAMES.get(t, t), size=FONT_CAPTION, color=TEXT_SECONDARY)],
                                 spacing=4, tight=True) for t in used], wrap=True, spacing=SPACE_SM)
     stops = [len(r["pits"]) for r in rows]
@@ -58,6 +58,11 @@ def tyres_section(state, race):
         ft.Text("Источник — OpenF1. Порядок — по местам финиша; цифры на полосах — номер круга пит-стопа.",
                 size=FONT_CAPTION, color=TEXT_DIM),
     ]
+
+
+def _edge(tyre):
+    edge = tyre_edge(TYRE_COLOR.get(tyre, TEXT_DIM))
+    return ft.Border.all(1, edge) if edge else None
 
 
 LABEL_W = 46
@@ -85,8 +90,10 @@ def _row(state, r, total):
             segments.append(ft.Container(expand=s["start"] - last - 1))
         color = TYRE_COLOR.get(s["tyre"], TEXT_DIM)
         segments.append(ft.Container(
-            ft.Text(s["tyre"] if s["laps"] >= 5 else "", size=FONT_TINY, color=INK, weight=ft.FontWeight.BOLD),
+            ft.Text(s["tyre"] if s["laps"] >= 5 else "", size=FONT_TINY, color=readable_on(color),
+                    weight=ft.FontWeight.BOLD),
             expand=s["laps"], height=18, bgcolor=color, border_radius=4, alignment=ft.Alignment.CENTER,
+            border=_edge(s["tyre"]),
             tooltip=f"{TYRE_NAMES.get(s['tyre'], s['tyre'])}: круги {s['start']}–{s['end']}"
                     + (f", б/у ({s['age']} кр.)" if s["age"] else ", новые"),
         ))

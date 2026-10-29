@@ -39,15 +39,17 @@ def _live(state, live_now):
             extra = f"осталось {data['remaining']}"
     head = ft.Container(ft.Row([
         ft.Container(width=8, height=8, border_radius=4, bgcolor=ON_COLOR),
-        ft.Text(f"LIVE · {SESSION_NAMES.get(key, key)}", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC,
-                expand=True),
+        ft.Text("LIVE", size=FONT_CAPTION, color=ON_COLOR, font_family=FONT_ITALIC),
+        ft.Text(SESSION_NAMES.get(key, key), size=FONT_CAPTION, color=ON_COLOR, expand=True),
         ft.Text(extra, size=FONT_CAPTION, color=ON_COLOR),
-    ], spacing=6), bgcolor=DANGER, border_radius=RADIUS_FULL, padding=ft.Padding.symmetric(horizontal=10, vertical=3),
+    ], spacing=6), bgcolor=LIVE_RED, border_radius=RADIUS_FULL, padding=ft.Padding.symmetric(horizontal=10, vertical=3),
         on_click=lambda e: _expand_to(state, "live"), ink=True, tooltip="Открыть Live Timing")
     items = [head]
     if data and data.get("track"):
-        items.append(ft.Container(ft.Text(data["track"], size=FONT_CAPTION, color=INK, weight=ft.FontWeight.BOLD),
-                                  bgcolor=WARNING, border_radius=RADIUS_SM,
+        flag_bg = DANGER if "Красный" in data["track"] else WARNING
+        items.append(ft.Container(ft.Text(data["track"], size=FONT_CAPTION, color=readable_on(flag_bg),
+                                          weight=ft.FontWeight.BOLD),
+                                  bgcolor=flag_bg, border_radius=RADIUS_SM,
                                   padding=ft.Padding.symmetric(horizontal=8, vertical=2)))
     if not data:
         items.append(skeleton("Загружаем live timing…", "rows", 3))
@@ -82,7 +84,7 @@ def _countdown(state):
             countdown,
             ft.Text(f"{fmt_day(race['start_ts'])}, {fmt_clock(race['start_ts'])}", size=FONT_CAPTION, color=ON_COLOR),
         ], spacing=0), gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                                  colors=GRADIENT_RED),
+                                                  colors=HERO_CARBON),   # как герой главной: красный — только LIVE
             border_radius=RADIUS_MD, padding=ft.Padding.symmetric(horizontal=SPACE_SM, vertical=SPACE_XS)))
     for d in state.standings[:3]:
         items.append(ft.Row([

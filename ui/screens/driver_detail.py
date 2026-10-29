@@ -64,7 +64,7 @@ def _build_hero(state, driver, is_mobile):
 
     info = ft.Column([
         ft.Row([flag(flag_src, 16, iso), ft.Text(driver.get("nationality", ""), size=FONT_CAPTION,
-                                                  color=ft.Colors.with_opacity(0.85, ON_COLOR))],
+                                                  color=ON_COLOR)],
                spacing=6),
         ft.Column([
             ft.Text(first, size=FONT_BODY_LARGE, color=ON_COLOR),
@@ -114,7 +114,7 @@ def _open_team_of(state, team_name):
 def _hero_value(value, label):
     return ft.Column([
         ft.Text(str(value), size=FONT_H2, color=ON_COLOR, font_family=FONT_DISPLAY_ITALIC),
-        ft.Text(label, size=FONT_CAPTION, color=ft.Colors.with_opacity(0.8, ON_COLOR)),
+        ft.Text(label, size=FONT_CAPTION, color=ON_COLOR),
     ], spacing=0)
 
 

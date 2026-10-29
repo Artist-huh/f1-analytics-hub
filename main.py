@@ -131,7 +131,7 @@ def apply_page_theme(page, nav=None):
     zoom = ft.PageTransitionTheme.NONE if ds.REDUCE_MOTION else ft.PageTransitionTheme.ZOOM
     page.theme = ft.Theme(
         color_scheme_seed=ds.F1_RED,
-        color_scheme=ft.ColorScheme(primary=ds.F1_RED, on_primary=ds.ON_ACCENT, secondary=ds.F1_RED,
+        color_scheme=ft.ColorScheme(primary=ds.ACCENT_FILL, on_primary=ds.ON_ACCENT, secondary=ds.ACCENT_FILL,
                                     surface=ds.SURFACE, on_surface=ds.TEXT_PRIMARY),
         # у перехода на страницу пилота должна быть длительность — иначе фото (Hero) «перелетает» мгновенно
         page_transitions=ft.PageTransitionsTheme(android=zoom, windows=zoom, linux=zoom, macos=zoom,
@@ -143,7 +143,7 @@ def apply_page_theme(page, nav=None):
         page.window.bgcolor = ds.BG
     if nav is not None:
         nav.bgcolor = ds.BG_DEEPEST
-        nav.indicator_color = ds.F1_RED
+        nav.indicator_color = ds.ACCENT_FILL      # белая иконка выбранной вкладки — ≥ 4.5:1 и в теме команды
         nav.border = ft.Border.only(top=ft.BorderSide(1, ds.LINE))
 
 
@@ -154,7 +154,7 @@ def nav_bar(on_change):
     return ft.NavigationBar(
         selected_index=0,
         bgcolor=ds.BG_DEEPEST,
-        indicator_color=ds.F1_RED,
+        indicator_color=ds.ACCENT_FILL,
         label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
         height=72,
         elevation=0,
