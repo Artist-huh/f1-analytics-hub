@@ -1,4 +1,6 @@
 """Экран «Пилоты»: карточки с портретами, поиск и фильтр по команде"""
+import unicodedata
+
 import flet as ft
 
 from design_system import *
@@ -25,6 +27,8 @@ def build(state):
         counter.value = f"Найдено: {len(found)} из {len(all_drivers)}"
         grid.controls = [_build_driver_card(state, d) for d in found] or [
             ft.Container(empty_block(ft.Icons.FILTER_ALT_OFF_ROUNDED, "Пилоты не найдены",
+                                     "Имена здесь латиницей: попробуй «Leclerc» вместо «Леклер»."
+                                     if _cyrillic(state.ui["drv_q"]) else
                                      "Измени запрос или сбрось фильтр команды.",
                                      ("Сбросить поиск", lambda e: reset())), col=12)
         ]
@@ -163,10 +167,20 @@ def _mini_stat(value, label):
     ], spacing=0)
 
 
+def _cyrillic(text):
+    return any("а" <= ch <= "я" or ch == "ё" for ch in str(text or "").lower())
+
+
+def _fold(text):
+    """Для поиска: без регистра и диакритики — «perez» находит Pérez, «hulkenberg» — Hülkenberg."""
+    decomposed = unicodedata.normalize("NFKD", str(text or ""))
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch)).casefold()
+
+
 def filter_drivers(drivers, query, team):
-    """Фильтр по команде и поиск по имени, коду и команде (без учёта регистра)."""
+    """Фильтр по команде и поиск по имени, коду и команде (без учёта регистра и диакритики)."""
     found = [d for d in drivers if not team or d["team"] == team]
-    q = (query or "").strip().lower()
+    q = _fold(query).strip()
     if q:
-        found = [d for d in found if q in d["name"].lower() or q in d["code"].lower() or q in d["team"].lower()]
+        found = [d for d in found if any(q in _fold(d.get(k)) for k in ("name", "code", "team"))]
     return found

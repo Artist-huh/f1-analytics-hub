@@ -466,6 +466,13 @@ class UiSmokeTest(unittest.TestCase):
         self.assertNotIn("LECLERC", texts(grid))
         field.on_change(Ctl(control=Ctl(value="nobody")))
         self.assertIn("Пилоты не найдены", texts(grid))
+        field.on_change(Ctl(control=Ctl(value="Леклер")))                  # по-русски — подсказка про латиницу
+        self.assertTrue(any("латиницей" in t for t in texts(grid)))
+        accented = [dict(rows[0], name="Sergio Pérez"), dict(rows[0], name="Nico Hülkenberg", driver_id="hul")]
+        self.assertEqual([d["name"] for d in drivers.filter_drivers(accented, "perez", None)], ["Sergio Pérez"])
+        self.assertEqual([d["driver_id"] for d in drivers.filter_drivers(accented, "HULKENBERG", None)], ["hul"])
+        for odd in ("a" * 100000, "%_\\[(.*", "\x00", "😀" * 500, None):          # странный ввод — не падает
+            drivers.filter_drivers(rows, odd, None)
 
     def test_driver_photos_flags_and_logos(self):
         fill_db()
