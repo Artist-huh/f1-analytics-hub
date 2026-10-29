@@ -125,10 +125,15 @@ class ContrastTest(unittest.TestCase):
         self.assertEqual(found, [])
 
     def test_icons_one_style(self):
-        """Один стиль иконок — _ROUNDED. Контурные только там, где они значат «не выбрано» (навигация, радио)."""
+        """Один стиль иконок — сплошные _ROUNDED. Контурные (…_OUTLINED, а также …_OUTLINE_ROUNDED и …_BORDER_ROUNDED,
+        у которых имя тоже кончается на _ROUNDED) — только там, где значат «не выбрано»: навигация, радиокнопка,
+        звезда «ещё не в избранном»."""
         import os
         import re
-        allowed = {"HOME_OUTLINED", "EMOJI_EVENTS_OUTLINED", "CALENDAR_TODAY_OUTLINED", "CIRCLE_OUTLINED"}
+        allowed = {("main.py", "HOME_OUTLINED"), ("main.py", "EMOJI_EVENTS_OUTLINED"),
+                   ("main.py", "CALENDAR_TODAY_OUTLINED"), ("main.py", "PERSON_OUTLINE_ROUNDED"),
+                   ("welcome.py", "CIRCLE_OUTLINED"), ("components.py", "STAR_BORDER_ROUNDED"),
+                   ("driver_detail.py", "STAR_BORDER_ROUNDED"), ("favorites.py", "STAR_BORDER_ROUNDED")}
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         paths = [os.path.join(root, "main.py")] + [os.path.join(folder, f)
                                                    for folder, _, files in os.walk(os.path.join(root, "ui"))
@@ -137,8 +142,10 @@ class ContrastTest(unittest.TestCase):
         for path in paths:
             with open(path, encoding="utf-8") as fh:
                 names = re.findall(r"ft\.Icons\.([A-Z0-9_]+)", fh.read())
-            found += [f"{os.path.basename(path)}: {n}" for n in names
-                      if not n.endswith("_ROUNDED") and n not in allowed]
+            name = os.path.basename(path)
+            found += [f"{name}: {n}" for n in names
+                      if (not n.endswith("_ROUNDED") or re.search(r"_(OUTLINE|BORDER)_", n))
+                      and (name, n) not in allowed]
         self.assertEqual(found, [])
 
     def test_no_bright_red_under_text(self):

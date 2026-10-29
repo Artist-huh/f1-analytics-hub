@@ -94,7 +94,7 @@ def build_screen(state):
         logger.exception("ошибка построения экрана (tab=%s, sub=%s)", state.tab, state.sub)
         return ft.Column(
             [
-                ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, size=64, color=DANGER),
+                ft.Icon(ft.Icons.ERROR_ROUNDED, size=64, color=DANGER),
                 ft.Text("Не удалось показать экран", size=FONT_H3, color=TEXT_PRIMARY),
                 ft.Text(repr(exc), size=FONT_BODY_SMALL, color=TEXT_MUTED),
             ],

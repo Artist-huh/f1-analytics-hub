@@ -47,7 +47,7 @@ def _build_driver_standings(state, standings, leader_points, favs_view=False):
     """Таблица пилотов: строки появляются по очереди"""
     if not standings:
         if favs_view:
-            return [empty_block(ft.Icons.STAR_BORDER_ROUNDED, "Нет избранных пилотов",
+            return [empty_block(ft.Icons.STAR_ROUNDED, "Нет избранных пилотов",
                                 "Нажми на звёздочку рядом с пилотом — он появится здесь.",
                                 ("Выбрать пилотов", lambda e: state.open_tab(3)))]
         return [empty_block(ft.Icons.REFRESH_ROUNDED, "Нет данных", "Таблица появится после обновления.",

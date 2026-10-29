@@ -155,7 +155,7 @@ def _show_picker(state, ids):
                     ft.Text(d["name"], size=FONT_BODY, weight=ft.FontWeight.W_600, color=TEXT_PRIMARY),
                     ft.Text(d["team"], size=FONT_CAPTION, color=TEXT_SECONDARY),
                 ], spacing=2, expand=True),
-                ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED, color=ACCENT_TEXT),
+                ft.Icon(ft.Icons.ADD_CIRCLE_ROUNDED, color=ACCENT_TEXT),
             ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=SURFACE_RAISED, border_radius=RADIUS_SM, padding=SPACE_XS, ink=True,
             on_click=lambda e, i=d["driver_id"]: add(i),
@@ -234,7 +234,7 @@ def _build_head_to_head(state, drivers):
         loading = any(state.results_loading(d["driver_id"]) for d in drivers)
         return ft.Column([SectionHeader("Личные встречи"), ft.Row([
             ft.ProgressRing(width=18, height=18, stroke_width=2, color=F1_RED) if loading
-            else ft.Icon(ft.Icons.INFO_OUTLINE_ROUNDED, color=TEXT_DIM, size=18),
+            else ft.Icon(ft.Icons.INFO_ROUNDED, color=TEXT_DIM, size=18),
             ft.Text("Загружаем результаты гонок…" if loading else "Нет общих гонок для сравнения",
                     size=FONT_BODY_SMALL, color=TEXT_MUTED),
         ], spacing=SPACE_SM)], spacing=SPACE_SM)
