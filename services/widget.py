@@ -5,12 +5,10 @@
 """
 import time
 
-from . import log, notify
+from . import log, notify, reference
 
 logger = log.get("widget")
-SESSION_NAMES = {"FirstPractice": "Практика 1", "SecondPractice": "Практика 2", "ThirdPractice": "Практика 3",
-                 "SprintQualifying": "Спринт-квалификация", "SprintShootout": "Спринт-квалификация",
-                 "Sprint": "Спринт", "Qualifying": "Квалификация", "Race": "Гонка"}
+SESSION_NAMES = reference.SESSIONS
 
 
 def widget_data(schedule, standings, live_now=None, live_data=None, now=None):

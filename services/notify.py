@@ -10,7 +10,7 @@
 import os
 import time
 
-from . import log
+from . import log, reference
 
 try:   # статический импорт — чтобы PyInstaller (flet pack) включил пакет в .exe
     from desktop_notifier import DesktopNotifier
@@ -20,8 +20,7 @@ except Exception as _exc:   # нет пакета (Android) или неполн�
     IMPORT_ERROR = repr(_exc)
 
 LEAD = 3600                    # за сколько секунд до старта напоминать
-REMIND_KEYS = {"Qualifying": "Квалификация", "SprintQualifying": "Спринт-квалификация",
-               "SprintShootout": "Спринт-квалификация", "Sprint": "Спринт", "Race": "Гонка"}
+REMIND_KEYS = {k: reference.SESSIONS[k] for k in reference.REMIND_SESSIONS}
 CHANNEL = "f1hub_sessions"
 
 logger = log.get("notify")

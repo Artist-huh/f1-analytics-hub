@@ -1,33 +1,16 @@
 """Форматирование дат, времени и чисел для интерфейса (русская локаль)."""
 import time
 
+from services import reference
+
 MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 WEEKDAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
 
-SESSION_NAMES = {
-    "FirstPractice": "Практика 1",
-    "SecondPractice": "Практика 2",
-    "ThirdPractice": "Практика 3",
-    "SprintQualifying": "Спринт-квалификация",
-    "SprintShootout": "Спринт-квалификация",
-    "Sprint": "Спринт",
-    "Qualifying": "Квалификация",
-    "Race": "Гонка",
-}
+SESSION_NAMES = reference.SESSIONS          # data/reference.json
 
 
 # Jolpica отдаёт гражданство по-английски («Italian») — в интерфейсе показываем страну по-русски
-NATIONS_RU = {
-    "American": "США", "Argentine": "Аргентина", "Australian": "Австралия", "Austrian": "Австрия",
-    "Belgian": "Бельгия", "Brazilian": "Бразилия", "British": "Великобритания", "Canadian": "Канада",
-    "Chinese": "Китай", "Colombian": "Колумбия", "Czech": "Чехия", "Danish": "Дания", "Dutch": "Нидерланды",
-    "Emirati": "ОАЭ", "Estonian": "Эстония", "Finnish": "Финляндия", "French": "Франция", "German": "Германия",
-    "Hungarian": "Венгрия", "Indian": "Индия", "Indonesian": "Индонезия", "Irish": "Ирландия",
-    "Israeli": "Израиль", "Italian": "Италия", "Japanese": "Япония", "Mexican": "Мексика", "Monegasque": "Монако",
-    "New Zealander": "Новая Зеландия", "Polish": "Польша", "Portuguese": "Португалия", "Russian": "Россия",
-    "Saudi": "Саудовская Аравия", "South African": "ЮАР", "Spanish": "Испания", "Swedish": "Швеция",
-    "Swiss": "Швейцария", "Thai": "Таиланд", "Venezuelan": "Венесуэла",
-}
+NATIONS_RU = reference.NATIONS_RU
 
 
 def nation_ru(nationality):

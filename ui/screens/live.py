@@ -6,15 +6,13 @@ import flet as ft
 from design_system import *
 from services import live
 from ui.components import *
-from ui.fmt import fmt_clock
+from ui.fmt import SESSION_NAMES, fmt_clock
 from ui.screens.calendar import track_info
 from ui.screens.live_table import LiveTable
 from ui.screens.live_track import track_section
 from ui.widgets import pill, retry_block, screen
 
-SESSION_RU = {"Race": "Гонка", "Qualifying": "Квалификация", "Sprint": "Спринт",
-              "Sprint Qualifying": "Спринт-квалификация", "Sprint Shootout": "Спринт-квалификация",
-              "Practice 1": "Практика 1", "Practice 2": "Практика 2", "Practice 3": "Практика 3"}
+SESSION_RU = SESSION_NAMES
 TYRE_COLORS_SHORT = {"S": TYRE_COLORS["SOFT"], "M": TYRE_COLORS["MEDIUM"], "H": TYRE_COLORS["HARD"],
                      "I": TYRE_COLORS["INTERMEDIATE"], "W": TYRE_COLORS["WET"]}
 

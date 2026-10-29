@@ -246,27 +246,7 @@ def _team_gradient(team_name: str) -> tuple[str, str]:
 
 
 # === СТРАНЫ: флаги (ISO 3166-1 alpha-2 для flagcdn.com) ===
-NATIONALITY_ISO = {
-    "American": "us", "Argentine": "ar", "Australian": "au", "Austrian": "at", "Belgian": "be",
-    "Brazilian": "br", "British": "gb", "Canadian": "ca", "Chinese": "cn", "Danish": "dk",
-    "Dutch": "nl", "Finnish": "fi", "French": "fr", "German": "de", "Indian": "in",
-    "Irish": "ie", "Italian": "it", "Japanese": "jp", "Mexican": "mx", "Monegasque": "mc",
-    "New Zealander": "nz", "Polish": "pl", "Russian": "ru", "Spanish": "es", "Swedish": "se",
-    "Swiss": "ch", "Thai": "th", "Colombian": "co", "Venezuelan": "ve", "Indonesian": "id",
-    "Estonian": "ee", "Israeli": "il", "Portuguese": "pt", "Hungarian": "hu", "Czech": "cz",
-    "Emirati": "ae", "Saudi": "sa",
-}
-COUNTRY_ISO = {
-    "Australia": "au", "China": "cn", "Japan": "jp", "Bahrain": "bh", "Saudi Arabia": "sa",
-    "USA": "us", "United States": "us", "Italy": "it", "Monaco": "mc", "Spain": "es",
-    "Canada": "ca", "Austria": "at", "UK": "gb", "United Kingdom": "gb", "Great Britain": "gb",
-    "Belgium": "be", "Hungary": "hu", "Netherlands": "nl", "Azerbaijan": "az", "Singapore": "sg",
-    "Mexico": "mx", "Brazil": "br", "Qatar": "qa", "UAE": "ae", "United Arab Emirates": "ae",
-    "Portugal": "pt", "France": "fr", "Germany": "de", "Turkey": "tr", "Russia": "ru",
-    "Vietnam": "vn", "South Africa": "za", "Argentina": "ar", "Korea": "kr", "India": "in",
-    "Malaysia": "my", "Thailand": "th", "Morocco": "ma", "Sweden": "se", "Switzerland": "ch",
-    "Rwanda": "rw", "Indonesia": "id", "Swiss": "ch",
-}
+from services.reference import COUNTRY_ISO, NATIONALITY_ISO  # noqa: E402 — справочник в data/reference.json
 
 
 def nationality_iso(nationality):

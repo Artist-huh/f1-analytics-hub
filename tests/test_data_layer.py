@@ -1030,6 +1030,50 @@ class F1LiveTest(unittest.TestCase):
             self.assertRaises(live.LiveError, live.fetch)          # поток жив, но пуст — обычная ошибка OpenF1
 
 
+class ReferenceTest(unittest.TestCase):
+    """data/reference.json — единственный справочник: полный для настоящих данных из снимка data/seed.json."""
+
+    @classmethod
+    def setUpClass(cls):
+        from services import reference, seed
+        cls.ref = reference
+        with open(seed.default_path(), encoding="utf-8") as f:
+            cls.seed = json.load(f)
+
+    def test_every_nationality_has_flag_and_russian_name(self):
+        for name in set(self.ref.NATIONALITY_ISO) | set(self.ref.NATIONS_RU):
+            with self.subTest(nationality=name):
+                self.assertRegex(self.ref.NATIONALITY_ISO.get(name, ""), r"^[a-z]{2}$")
+                self.assertTrue(self.ref.NATIONS_RU.get(name))
+        for row in self.seed["standings"] + self.seed["constructors"]:
+            with self.subTest(seen=row["nationality"]):
+                self.assertIn(row["nationality"], self.ref.NATIONALITY_ISO)     # у каждого в зачёте есть флаг
+
+    def test_every_country_and_session_of_the_season_is_known(self):
+        for code in self.ref.COUNTRY_ISO.values():
+            self.assertRegex(code, r"^[a-z]{2}$")
+        for race in self.seed["schedule"]:
+            with self.subTest(race=race["race_name"]):
+                self.assertIn(race["country"], self.ref.COUNTRY_ISO)
+                for s in race["sessions"]:
+                    self.assertIn(s["key"], self.ref.SESSIONS)                   # сессия названа по-русски
+        for key in self.ref.REMIND_SESSIONS:
+            self.assertIn(key, self.ref.SESSIONS)
+        self.assertEqual(set(self.ref.TYRES_RU), {"S", "M", "H", "I", "W"})
+
+    def test_old_names_point_to_the_reference(self):
+        """Модули берут справочник отсюда, а не держат свои копии."""
+        import design_system
+        from services import notify, widget
+        from ui import fmt
+        self.assertIs(design_system.NATIONALITY_ISO, self.ref.NATIONALITY_ISO)
+        self.assertIs(design_system.COUNTRY_ISO, self.ref.COUNTRY_ISO)
+        self.assertIs(fmt.SESSION_NAMES, self.ref.SESSIONS)
+        self.assertIs(fmt.NATIONS_RU, self.ref.NATIONS_RU)
+        self.assertIs(widget.SESSION_NAMES, self.ref.SESSIONS)
+        self.assertEqual(set(notify.REMIND_KEYS), set(self.ref.REMIND_SESSIONS))
+
+
 class HomeWidgetTest(unittest.TestCase):
     SCHEDULE = [{"round": "17", "race_name": "Singapore Grand Prix", "start_ts": 1000.0},
                 {"round": "18", "race_name": "United States Grand Prix", "start_ts": 5000.0},

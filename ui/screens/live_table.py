@@ -12,6 +12,7 @@ import threading
 import flet as ft
 
 from design_system import *
+from services import reference
 from ui.components import *
 from ui.fmt import plural
 
@@ -187,7 +188,7 @@ class LiveTable:
 
 
 # ---------------------------------------------------------------- мини-карточка пилота
-TYRE_RU = {"S": "мягкие", "M": "средние", "H": "жёсткие", "I": "промежуточные", "W": "дождевые"}
+TYRE_RU = reference.TYRES_RU
 
 
 def driver_card(state, row, data):

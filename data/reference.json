@@ -1,0 +1,231 @@
+{
+ "_": "Справочники приложения. Полноту проверяет tests/test_data_layer.py (ReferenceTest).",
+ "sessions": {
+  "FirstPractice": "Практика 1",
+  "SecondPractice": "Практика 2",
+  "ThirdPractice": "Практика 3",
+  "SprintQualifying": "Спринт-квалификация",
+  "SprintShootout": "Спринт-квалификация",
+  "Sprint": "Спринт",
+  "Qualifying": "Квалификация",
+  "Race": "Гонка",
+  "Sprint Qualifying": "Спринт-квалификация",
+  "Sprint Shootout": "Спринт-квалификация",
+  "Practice 1": "Практика 1",
+  "Practice 2": "Практика 2",
+  "Practice 3": "Практика 3"
+ },
+ "remind_sessions": [
+  "Qualifying",
+  "SprintQualifying",
+  "SprintShootout",
+  "Sprint",
+  "Race"
+ ],
+ "nationalities": {
+  "American": {
+   "iso": "us",
+   "ru": "США"
+  },
+  "Argentine": {
+   "iso": "ar",
+   "ru": "Аргентина"
+  },
+  "Australian": {
+   "iso": "au",
+   "ru": "Австралия"
+  },
+  "Austrian": {
+   "iso": "at",
+   "ru": "Австрия"
+  },
+  "Belgian": {
+   "iso": "be",
+   "ru": "Бельгия"
+  },
+  "Brazilian": {
+   "iso": "br",
+   "ru": "Бразилия"
+  },
+  "British": {
+   "iso": "gb",
+   "ru": "Великобритания"
+  },
+  "Canadian": {
+   "iso": "ca",
+   "ru": "Канада"
+  },
+  "Chinese": {
+   "iso": "cn",
+   "ru": "Китай"
+  },
+  "Colombian": {
+   "iso": "co",
+   "ru": "Колумбия"
+  },
+  "Czech": {
+   "iso": "cz",
+   "ru": "Чехия"
+  },
+  "Danish": {
+   "iso": "dk",
+   "ru": "Дания"
+  },
+  "Dutch": {
+   "iso": "nl",
+   "ru": "Нидерланды"
+  },
+  "Emirati": {
+   "iso": "ae",
+   "ru": "ОАЭ"
+  },
+  "Estonian": {
+   "iso": "ee",
+   "ru": "Эстония"
+  },
+  "Finnish": {
+   "iso": "fi",
+   "ru": "Финляндия"
+  },
+  "French": {
+   "iso": "fr",
+   "ru": "Франция"
+  },
+  "German": {
+   "iso": "de",
+   "ru": "Германия"
+  },
+  "Hungarian": {
+   "iso": "hu",
+   "ru": "Венгрия"
+  },
+  "Indian": {
+   "iso": "in",
+   "ru": "Индия"
+  },
+  "Indonesian": {
+   "iso": "id",
+   "ru": "Индонезия"
+  },
+  "Irish": {
+   "iso": "ie",
+   "ru": "Ирландия"
+  },
+  "Israeli": {
+   "iso": "il",
+   "ru": "Израиль"
+  },
+  "Italian": {
+   "iso": "it",
+   "ru": "Италия"
+  },
+  "Japanese": {
+   "iso": "jp",
+   "ru": "Япония"
+  },
+  "Mexican": {
+   "iso": "mx",
+   "ru": "Мексика"
+  },
+  "Monegasque": {
+   "iso": "mc",
+   "ru": "Монако"
+  },
+  "New Zealander": {
+   "iso": "nz",
+   "ru": "Новая Зеландия"
+  },
+  "Polish": {
+   "iso": "pl",
+   "ru": "Польша"
+  },
+  "Portuguese": {
+   "iso": "pt",
+   "ru": "Португалия"
+  },
+  "Russian": {
+   "iso": "ru",
+   "ru": "Россия"
+  },
+  "Saudi": {
+   "iso": "sa",
+   "ru": "Саудовская Аравия"
+  },
+  "South African": {
+   "iso": "za",
+   "ru": "ЮАР"
+  },
+  "Spanish": {
+   "iso": "es",
+   "ru": "Испания"
+  },
+  "Swedish": {
+   "iso": "se",
+   "ru": "Швеция"
+  },
+  "Swiss": {
+   "iso": "ch",
+   "ru": "Швейцария"
+  },
+  "Thai": {
+   "iso": "th",
+   "ru": "Таиланд"
+  },
+  "Venezuelan": {
+   "iso": "ve",
+   "ru": "Венесуэла"
+  }
+ },
+ "countries": {
+  "Argentina": "ar",
+  "Australia": "au",
+  "Austria": "at",
+  "Azerbaijan": "az",
+  "Bahrain": "bh",
+  "Belgium": "be",
+  "Brazil": "br",
+  "Canada": "ca",
+  "China": "cn",
+  "France": "fr",
+  "Germany": "de",
+  "Great Britain": "gb",
+  "Hungary": "hu",
+  "India": "in",
+  "Indonesia": "id",
+  "Italy": "it",
+  "Japan": "jp",
+  "Korea": "kr",
+  "Malaysia": "my",
+  "Mexico": "mx",
+  "Monaco": "mc",
+  "Morocco": "ma",
+  "Netherlands": "nl",
+  "Portugal": "pt",
+  "Qatar": "qa",
+  "Russia": "ru",
+  "Rwanda": "rw",
+  "Saudi Arabia": "sa",
+  "Singapore": "sg",
+  "South Africa": "za",
+  "Spain": "es",
+  "Sweden": "se",
+  "Swiss": "ch",
+  "Switzerland": "ch",
+  "Thailand": "th",
+  "Turkey": "tr",
+  "UAE": "ae",
+  "UK": "gb",
+  "USA": "us",
+  "United Arab Emirates": "ae",
+  "United Kingdom": "gb",
+  "United States": "us",
+  "Vietnam": "vn"
+ },
+ "tyres": {
+  "S": "мягкие",
+  "M": "средние",
+  "H": "жёсткие",
+  "I": "промежуточные",
+  "W": "дождевые"
+ }
+}
