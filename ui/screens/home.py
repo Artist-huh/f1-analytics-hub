@@ -167,23 +167,7 @@ def _build_next_race_hero(race, state, is_mobile):
         padding=ft.Padding.symmetric(horizontal=SPACE_LG), ink=True,
         on_click=lambda e: state.open_tab(2),
     )
-    bottom = (ft.Column([ft.Row([timer, lights], alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                vertical_alignment=ft.CrossAxisAlignment.END, wrap=True, run_spacing=SPACE_SM),
-                         button], spacing=SPACE_MD, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
-              if is_mobile else
-              ft.Row([ft.Container(timer, expand=True), lights, button], spacing=SPACE_LG,
-                     vertical_alignment=ft.CrossAxisAlignment.END))
-
-    outline = _hero_outline(state, race)
-    track = None
-    if outline:
-        from services import track_map
-        w = min(content_width(state) - 2 * SPACE_LG, 520)
-        h = track_map.fitted_height(outline, w, pad=6, max_ratio=0.4)
-        track = ft.Container(outline_canvas(outline, w, h, ft.Colors.with_opacity(0.55, ON_COLOR), 3, LIGHT_ON),
-                             alignment=ft.Alignment.CENTER, tooltip=f"Трасса: {race['circuit']}",
-                             padding=ft.Padding.symmetric(vertical=SPACE_XS))
-    body = ft.Column([
+    head = [
         ft.Row([flag(flag_src, 18, iso), ft.Text(stage, size=FONT_BODY_SMALL, color=soft)],
                spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Column([
@@ -191,9 +175,32 @@ def _build_next_race_hero(race, state, is_mobile):
             ft.Text(race["circuit"], size=FONT_BODY_SMALL, color=soft, max_lines=1,
                     overflow=ft.TextOverflow.ELLIPSIS),
         ], spacing=2),
-        *([track] if track else []),
-        bottom,
-    ], spacing=SPACE_SM)
+    ]
+    outline = _hero_outline(state, race)
+    inner = content_width(state) - 2 * SPACE_LG
+
+    def track_view(width, max_ratio):
+        from services import track_map
+        h = track_map.fitted_height(outline, width, pad=6, max_ratio=max_ratio)
+        return ft.Container(outline_canvas(outline, width, h, ft.Colors.with_opacity(0.55, ON_COLOR), 3, LIGHT_ON),
+                            alignment=ft.Alignment.CENTER, tooltip=f"Трасса: {race['circuit']}",
+                            padding=ft.Padding.symmetric(vertical=SPACE_XS))
+
+    if is_mobile:
+        # телефон: трасса — своей строкой между названием и отсчётом
+        bottom = ft.Column([ft.Row([timer, lights], alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                   vertical_alignment=ft.CrossAxisAlignment.END, wrap=True, run_spacing=SPACE_SM),
+                            button], spacing=SPACE_MD, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+        track = [track_view(min(inner, 520), 0.4)] if outline else []
+        body = ft.Column([*head, *track, bottom], spacing=SPACE_SM)
+    else:
+        # компьютер: трасса справа от текста — иначе на всю ширину она выталкивает отсчёт и кнопку за край окна
+        left = ft.Column([*head, ft.Container(height=SPACE_MD), timer,
+                          ft.Row([lights, button], spacing=SPACE_LG,
+                                 vertical_alignment=ft.CrossAxisAlignment.CENTER)],
+                         spacing=SPACE_SM, expand=True)
+        body = ft.Row([left, track_view(round(inner * 0.45), 0.6)] if outline else [left],
+                      spacing=SPACE_LG, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
     return ft.Container(
         content=body,

@@ -360,6 +360,10 @@ class UiSmokeTest(unittest.TestCase):
         db.save_archive(track_map.outline_key(39), {"x": [0, 10, 20, 20, 10, 0, -5, -8, -5, 0],
                                                     "y": [0, 0, 5, 15, 20, 20, 15, 10, 5, 2], "rotation": 0})
         self.assertIn("Трасса: Autodromo Nazionale di Monza", tips(self.build("tab0")))
+        self.page.width = 1100                       # компьютер: трасса справа от текста, а не над отсчётом
+        rows = [n for n in walk(self.build("tab0")) if type(n).__name__ == "Row"
+                and any(getattr(c, "tooltip", None) == "Трасса: Autodromo Nazionale di Monza" for c in n.children())]
+        self.assertTrue(rows)
 
     def test_home_last_race_podium(self):
         fill_db()
