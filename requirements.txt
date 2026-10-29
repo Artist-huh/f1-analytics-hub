@@ -1,7 +1,8 @@
-flet[all]>=1.0.5,<2  # Flet 1.x API (field borders via border=OutlineInputBorder)
-requests>=2.34.2
-websockets>=15     # live timing: официальный поток F1 (SignalR Core)
+# Точные версии: обновления приходят от Dependabot и проходят через тесты. Полный снимок — constraints.txt
+flet[all]==1.0.5  # Flet 1.x API (field borders via border=OutlineInputBorder)
+requests==2.34.2
+websockets==17.3   # live timing: официальный поток F1 (SignalR Core)
 flet-audio==1.0.5       # проигрывание радио команд (версия = версии Flet)
-faster-whisper>=1.2.1   # радио: офлайн-расшифровка речи (только компьютер)
-sentencepiece>=0.2.1    # радио: токенизатор модели перевода Argos en->ru (CTranslate2 ставится с faster-whisper)
-desktop-notifier>=6.2   # системные уведомления на компьютере (на Android — pyjnius, см. pyproject.toml)
+faster-whisper==1.2.1   # радио: офлайн-расшифровка речи (только компьютер)
+sentencepiece==0.2.2    # радио: токенизатор модели перевода Argos en->ru (CTranslate2 ставится с faster-whisper)
+desktop-notifier==6.2.0 # системные уведомления на компьютере (на Android — pyjnius, см. pyproject.toml)

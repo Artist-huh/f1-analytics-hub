@@ -553,7 +553,7 @@ def clear_cache():
     """Стирает копию данных API. Избранное и настройки остаются."""
     with _connect() as con:
         for table in CACHE_TABLES:
-            con.execute(f"DELETE FROM {table}")
+            con.execute(f"DELETE FROM {table}")   # nosec B608 — имена таблиц из CACHE_TABLES, не от пользователя
 
 
 def db_size_kb():

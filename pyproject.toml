@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
-    "flet>=1.0.5,<2",
-    "requests>=2.34.2",
-    "websockets>=15",
+    "flet==1.0.5",
+    "requests==2.34.2",
+    "websockets==17.3",
 ]
 
 [tool.flet]

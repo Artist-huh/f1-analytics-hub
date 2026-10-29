@@ -1,0 +1,22 @@
+# Бесплатные автообновления: Dependabot раз в неделю открывает запрос на слияние с новой версией библиотеки,
+# на нём запускаются ruff, тесты и проверка безопасности (lint.yml). Сливать — только если всё зелёное.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"          # requirements.txt, constraints.txt, pyproject.toml
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      flet:                 # Flet и его расширения выходят одной версией — обновлять вместе
+        patterns: ["flet", "flet-*"]
+    commit-message:
+      prefix: "Зависимости"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "Сборка"

@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-Начало диапазона git log найдено по прошлому выпуску (коммит Release или изменение version в pyproject.toml), а не наугад
+Начало диапазона git log — метка прошлого выпуска (v2.5.0), найденная через git describe или git tag, а не наугад

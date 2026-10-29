@@ -29,5 +29,26 @@ jobs:
       env:
         F1_HUB_LOG: "off"
       run: |
-        pip install -r requirements.txt
+        pip install -r requirements.txt -c constraints.txt
         python -m unittest discover -s tests -t .
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.11'
+
+    # Известные уязвимости в закреплённых версиях библиотек (база PyPI / OSV) — бесплатно, без ключей
+    - name: pip-audit
+      run: |
+        pip install pip-audit==2.10.1
+        pip-audit -r constraints.txt --no-deps --disable-pip --progress-spinner off
+
+    # Опасные приёмы в нашем коде (SQL из строк, eval, subprocess с shell=True…): средний уровень и выше
+    - name: bandit
+      run: |
+        pip install bandit==1.9.4
+        bandit -q -r services ui main.py design_system.py -ll

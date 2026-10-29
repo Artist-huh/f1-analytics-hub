@@ -19,7 +19,7 @@ if "%VER%"=="" (
 )
 
 echo [1/4] Installing dependencies
-"%PY%" -m pip install -q -r requirements.txt pyinstaller || goto :fail
+"%PY%" -m pip install -q -r requirements.txt -c constraints.txt pyinstaller || goto :fail
 
 echo [2/4] Running tests
 set "F1_HUB_LOG=off"
