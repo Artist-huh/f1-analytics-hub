@@ -11,6 +11,13 @@ if exist "venv\Scripts\python.exe" (
     set "FLET=venv\Scripts\flet.exe"
 )
 
+rem Version: the only source is pyproject.toml (read by servicesersion.py)
+for /f "usebackq delims=" %%v in (`call "%PY%" -c "from services.version import VERSION; print(VERSION)"`) do set "VER=%%v"
+if "%VER%"=="" (
+    echo Version not found in pyproject.toml
+    goto :fail
+)
+
 echo [1/4] Installing dependencies
 "%PY%" -m pip install -q -r requirements.txt pyinstaller || goto :fail
 
@@ -24,9 +31,9 @@ echo [3/4] Refreshing the bundled data snapshot (needs internet; otherwise data\
 
 echo [4/4] Building
 "%FLET%" pack main.py -y --name F1AnalyticsHub --icon assets\icon.ico ^
-    --add-data "assets;assets" "data;data" ^
+    --add-data "assets;assets" "data;data" "pyproject.toml;." ^
     --product-name "F1 Analytics Hub" --file-description "F1 Analytics Hub" ^
-    --product-version "2.5.0" --file-version "2.5.0.0" ^
+    --product-version "%VER%" --file-version "%VER%.0" ^
     --company-name "F1 Hub" --copyright "MIT License" ^
     --pyinstaller-build-args=--exclude-module=PIL ^
     --pyinstaller-build-args=--exclude-module=psutil ^

@@ -22,9 +22,12 @@ build.bat
 
 ```bat
 venv\Scripts\flet.exe pack main.py -y --name F1AnalyticsHub --icon assets\icon.ico ^
-    --add-data "assets;assets" "data;data" ^
-    --product-name "F1 Analytics Hub" --product-version "2.5.0" --file-version "2.5.0.0"
+    --add-data "assets;assets" "data;data" "pyproject.toml;." ^
+    --product-name "F1 Analytics Hub" --product-version "X.Y.Z" --file-version "X.Y.Z.0"
 ```
+
+- номер версии записан только в `pyproject.toml`: `build.bat` и сборка в GitHub берут его через
+  `services/version.py`, приложение показывает его в «Настройках» (поэтому `pyproject.toml` кладётся в сборку);
 
 - `assets/` — шрифт заголовков (работает без сети) и иконка;
 - `data/seed.json` — снимок данных: при первом запуске без интернета приложение сразу показывает таблицы;

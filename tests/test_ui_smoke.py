@@ -1451,6 +1451,24 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("О приложении", t)
         self.assertIn("Фото и логотипы", t)
 
+    def test_version_has_one_source(self):
+        """Номер версии записан только в pyproject.toml: раньше он был в шести местах, и при выпуске
+        «Настройки» показывали старый номер."""
+        import re
+
+        from services import version
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "pyproject.toml"), encoding="utf-8") as f:
+            self.assertIn(f'version = "{version.VERSION}"', f.read())
+        self.assertRegex(version.VERSION, r"^\d+\.\d+\.\d+$")
+        self.state.load()
+        self.assertTrue(any(s.startswith(f"F1 Analytics Hub {version.VERSION} —")
+                            for s in texts(app.SUBS["settings"](self.state))))
+        for name in ("build.bat", "BUILD.md", os.path.join(".github", "workflows", "build.yml")):
+            with self.subTest(file=name), open(os.path.join(root, name), encoding="utf-8") as f:
+                self.assertIsNone(re.search(r'product-version "\d', f.read()))   # номер не вписан руками
+        self.assertEqual(version.read_version(os.path.join(root, "нет-такого.toml")), "")
+
     # --- обработчики нажатий не падают
     def test_handlers(self):
         fill_db()
