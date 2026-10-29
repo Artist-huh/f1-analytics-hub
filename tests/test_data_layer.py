@@ -108,6 +108,9 @@ def schedule_json():
     ]}}}
 
 
+PNG_BYTES = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) + b"test image"   # сигнатура PNG
+
+
 class FakeResponse:
     def __init__(self, payload, status=200, content=b""):
         self.payload = payload
@@ -665,6 +668,25 @@ class MediaTest(unittest.TestCase):
         self.addCleanup(os.environ.pop, "F1_HUB_DB", None)
         self.addCleanup(media.clear_memory)
 
+    def test_captive_portal_page_is_not_cached_as_image(self):
+        """Wi-Fi с порталом авторизации отвечает HTML-страницей с кодом 200 на любой адрес: раньше она
+        сохранялась вместо фото и картинка оставалась сломанной навсегда (файл есть — заново не скачивали)."""
+        url = "https://media.formula1.com/x/leclerc.webp"
+        portal = mock.Mock(status_code=200, content=b"<html><form>Login to Free WiFi</form></html>")
+        png = (Path(__file__).resolve().parent.parent / "assets" / "icon.png").read_bytes()
+        with mock.patch.object(media, "cache_dir", return_value=Path(self.tmp.name) / "img"), \
+                mock.patch.object(media, "bundled_dir", return_value=Path(self.tmp.name) / "none"):
+            with mock.patch.object(media._session, "get", return_value=portal):
+                self.assertFalse(media._download((url, None)))
+            self.assertFalse(media._cache_file(url).exists())
+            self.assertEqual(media.source(url), url)                 # картинки нет — интерфейс берёт адрес
+            media._cache_file(url).write_bytes(portal.content)       # кэш, испорченный старой версией
+            self.assertEqual(media.source(url), url)
+            self.assertFalse(media._cache_file(url).exists())        # выброшен — скачается заново
+            with mock.patch.object(media._session, "get", return_value=mock.Mock(status_code=200, content=png)):
+                self.assertTrue(media._download((url, None)))
+            self.assertEqual(media.source(url), png)
+
     def test_urls(self):
         url = media.portrait_url("2026", "Red Bull Racing", "maxver01")
         self.assertIn("/common/f1/2026/redbullracing/maxver01/2026redbullracingmaxver01right.webp", url)
@@ -700,13 +722,13 @@ class MediaTest(unittest.TestCase):
         def fake_get(u, timeout=None):
             if u == url:
                 return FakeResponse(None, status=404)                      # портрета за сезон нет
-            return FakeResponse(None, content=b"PNGDATA")
+            return FakeResponse(None, content=PNG_BYTES)
 
         with mock.patch.object(media._session, "get", fake_get):
             items = media.all_urls([driver_row], [], [], refs)
             self.assertIn((url, "https://m/fallback.png"), items)
             media.prefetch(items).join(10)
-        self.assertEqual(media.driver_photo(driver_row, refs), b"PNGDATA")   # запасное фото под основным адресом
+        self.assertEqual(media.driver_photo(driver_row, refs), PNG_BYTES)   # запасное фото под основным адресом
         self.assertIsNone(media.driver_photo({"code": "XXX", "team": "", "season": "2026"}, refs))
 
     def test_bundled_media_used_when_cache_is_empty(self):
@@ -714,8 +736,8 @@ class MediaTest(unittest.TestCase):
         url = media.flag_url("mc")
         bundled = Path(os.environ["F1_HUB_SEED"]).parent / "media"
         bundled.mkdir(parents=True, exist_ok=True)
-        (bundled / media._cache_file(url).name).write_bytes(b"FLAG")
-        self.assertEqual(media.flag("mc"), b"FLAG")
+        (bundled / media._cache_file(url).name).write_bytes(PNG_BYTES)
+        self.assertEqual(media.flag("mc"), PNG_BYTES)
 
     def test_offline_prefetch_is_harmless(self):
         def fail(u, timeout=None):

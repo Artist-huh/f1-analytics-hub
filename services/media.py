@@ -186,6 +186,17 @@ def bundled_dir():
     return seed.default_path().parent / "media"
 
 
+MAX_IMAGE = 8 * 1024 * 1024   # больше картинка интерфейса не бывает — дальше это не картинка
+
+
+def is_image(data):
+    """PNG, JPEG, WEBP или GIF по сигнатуре. Портал авторизации Wi-Fi (кафе, отель) отвечает на любой адрес
+    HTML-страницей с кодом 200 — без проверки она сохранялась бы вместо фото пилота навсегда."""
+    return bool(data) and len(data) <= MAX_IMAGE and (
+        data[:8] == b"\x89PNG\r\n\x1a\n" or data[:3] == b"\xff\xd8\xff"
+        or (data[:4] == b"RIFF" and data[8:12] == b"WEBP") or data[:6] in (b"GIF87a", b"GIF89a"))
+
+
 def source(url):
     """Байты из кэша (или из встроенных в сборку), если картинка есть, иначе сам URL."""
     if not url:
@@ -198,6 +209,9 @@ def source(url):
     path = _cache_file(url)
     try:
         data = path.read_bytes()
+        if not is_image(data):                     # кэш испорчен (ответ портала Wi-Fi, обрыв) — убрать и скачать заново
+            path.unlink(missing_ok=True)
+            raise OSError("в кэше не картинка")
     except OSError:
         try:
             data = (bundled_dir() / path.name).read_bytes()
@@ -217,6 +231,7 @@ def _download(item):
     path = _cache_file(url)
     if path.exists():
         return True
+    path.parent.mkdir(parents=True, exist_ok=True)
     for candidate in (url, fallback):
         if not candidate:
             continue
@@ -224,7 +239,7 @@ def _download(item):
             resp = _session.get(candidate, timeout=TIMEOUT)
         except requests.RequestException:
             return False
-        if resp.status_code == 200 and resp.content:
+        if resp.status_code == 200 and is_image(resp.content):
             try:
                 tmp = path.with_suffix(path.suffix + ".part")
                 tmp.write_bytes(resp.content)
