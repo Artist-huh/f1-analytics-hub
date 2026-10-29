@@ -17,7 +17,7 @@ def build(state):
     sections = []
     if not state.favorites:
         sections.append(empty_block(ft.Icons.STAR_ROUNDED, "Нет избранных пилотов",
-                                    "Добавьте гонщиков, чтобы быстро отслеживать их результаты",
+                                    "Добавь пилотов — их результаты будут собраны здесь.",
                                     ("Выбрать пилотов", lambda e: state.open_tab(3))))
     else:
         if favorite_drivers:
@@ -71,7 +71,9 @@ def _build_favorites_list(state, drivers, missing):
     for driver_id in missing:
         cards.append(ft.Container(
             content=ft.Row([
-                ft.Text(f"{driver_id} — нет в текущем зачёте", size=FONT_BODY_SMALL, color=TEXT_MUTED, expand=True),
+                # пилота нет в таблице сезона: показываем имя из id (max_verstappen -> Max Verstappen), не сам id
+                ft.Text(f"{driver_id.replace('_', ' ').title()}: нет в текущем зачёте", size=FONT_BODY_SMALL,
+                        color=TEXT_MUTED, expand=True),
                 ft.IconButton(icon=ft.Icons.DELETE_ROUNDED, icon_color=TEXT_DIM, tooltip="Убрать",
                               on_click=lambda e, i=driver_id: state.toggle_favorite(i)),
             ]),

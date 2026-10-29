@@ -1753,7 +1753,10 @@ class UiSmokeTest(unittest.TestCase):
             tree = app.build_screen(self.state)
         finally:
             app.TABS[0] = original
-        self.assertIn("Не удалось показать экран", texts(tree))
+        t = texts(tree)
+        self.assertIn("Не удалось показать экран", t)
+        self.assertNotIn("boom", " ".join(t))                  # технический текст — в журнал, а не на экран
+        self.assertTrue(clickable(tree, "На главную") and clickable(tree, "Повторить"))
 
 
 class FmtTest(unittest.TestCase):

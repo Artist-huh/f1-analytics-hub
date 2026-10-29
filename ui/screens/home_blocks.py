@@ -13,6 +13,7 @@ from services import archive, f1live, live
 from services import f1_api as api
 from services import predictions as pr
 from ui.components import *
+from ui.fmt import plural
 
 # ключ -> (название, иконка, цвет раздела)
 BLOCKS = {
@@ -71,7 +72,9 @@ def predict_block(state):
         line = "Сезон завершён"
     return _block_card("predict", ft.Column([
         ft.Text(line, size=FONT_BODY_SMALL, color=TEXT_PRIMARY),
-        ft.Text(f"Сезон: {stats['points']} очк. за {stats['rounds']} этап(ов)", size=FONT_CAPTION, color=TEXT_MUTED),
+        ft.Text(f"Сезон: {stats['points']} {plural(stats['points'], 'очко', 'очка', 'очков')} за "
+                f"{stats['rounds']} {plural(stats['rounds'], 'этап', 'этапа', 'этапов')}",
+                size=FONT_CAPTION, color=TEXT_MUTED),
     ], spacing=2), lambda e: state.open_sub("predict"))
 
 

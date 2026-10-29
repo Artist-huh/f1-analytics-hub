@@ -190,8 +190,12 @@ def _winners(state, data):
 def _champions_view(state):
     rows = archive.champions()
     if not rows:
+        def to_seasons(e):
+            state.ui["hist_view"] = "season"
+            state.render()
         return [empty_block(ft.Icons.HISTORY_ROUNDED, "Список чемпионов недоступен",
-                            "Файл data/champions.json не найден в сборке.", art="flag")]
+                            "Он не вошёл в эту сборку приложения. Итоги любого года с 1950-го — во вкладке «Сезон».",
+                            ("К сезонам", to_seasons), art="flag")]
     rec = archive.records(rows)
     out = []
     if state.standings and str(int(rows[0]["season"]) + 1) == str(state.season):

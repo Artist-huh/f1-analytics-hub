@@ -90,13 +90,20 @@ def build_screen(state):
         if getattr(state, "mini", False):
             return mini.build(state)
         return (SUBS[state.sub] if state.sub else TABS[state.tab])(state)
-    except Exception as exc:
+    except Exception:
         logger.exception("ошибка построения экрана (tab=%s, sub=%s)", state.tab, state.sub)
+        # текст ошибки — в журнале (logger.exception выше), пользователю — что делать дальше
         return ft.Column(
             [
                 ft.Icon(ft.Icons.ERROR_ROUNDED, size=64, color=DANGER),
                 ft.Text("Не удалось показать экран", size=FONT_H3, color=TEXT_PRIMARY),
-                ft.Text(repr(exc), size=FONT_BODY_SMALL, color=TEXT_MUTED),
+                ft.Text("Попробуй открыть его ещё раз или вернись на главную. Подробности записаны в журнал "
+                        "приложения — его можно приложить к сообщению об ошибке.",
+                        size=FONT_BODY_SMALL, color=TEXT_MUTED, text_align=ft.TextAlign.CENTER),
+                ft.Row([ft.FilledTonalButton("Повторить", icon=ft.Icons.REFRESH_ROUNDED,
+                                             on_click=lambda e: state.render()),
+                        ft.TextButton("На главную", on_click=lambda e: state.open_tab(0))],
+                       alignment=ft.MainAxisAlignment.CENTER, spacing=SPACE_SM),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=SPACE_MD,

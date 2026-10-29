@@ -82,7 +82,8 @@ def _champion(state, row, view):
         ft.Column([ft.Text("Чемпион мира" if view == "drivers" else "Обладатель Кубка конструкторов",
                            size=FONT_CAPTION, color=GOLD, font_family=FONT_ITALIC),
                    ft.Text(name, size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_HEADING),
-                   ft.Text(f"Титул оформлен досрочно · {row['points']} очков", size=FONT_BODY_SMALL,
+                   ft.Text(f"Титул оформлен досрочно, {row['points']} "
+                           f"{plural(float(row['points']), 'очко', 'очка', 'очков')}", size=FONT_BODY_SMALL,
                            color=TEXT_MUTED)], spacing=2, expand=True),
         ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD, size=40),
     ], spacing=SPACE_MD, vertical_alignment=ft.CrossAxisAlignment.CENTER), accent=GOLD, size="l")

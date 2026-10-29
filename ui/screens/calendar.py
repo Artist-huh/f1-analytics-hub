@@ -6,7 +6,7 @@ import flet as ft
 from design_system import *
 from services import f1_api as api
 from ui.components import *
-from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_date, fmt_date_full, fmt_day, short_name
+from ui.fmt import SESSION_NAMES, fmt_clock, fmt_countdown, fmt_date, fmt_date_full, fmt_day, plural, short_name
 from ui.widgets import empty_state, pill, screen
 
 # Характеристики трасс: (часть названия автодрома или города, длина круга, кругов в гонке)
@@ -63,7 +63,8 @@ def build_calendar(state):
         if view == "upcoming" and i == 0:
             body.append(_build_next_race_card(state, race, states[race["round"]]))
             if len(shown) > 1:
-                body.append(SectionHeader("Дальше в сезоне", subtitle=f"{len(shown) - 1} этапов"))
+                n = len(shown) - 1
+                body.append(SectionHeader("Дальше в сезоне", subtitle=f"{n} {plural(n, 'этап', 'этапа', 'этапов')}"))
         else:
             body.append(_build_race_card(state, race, podiums.get(race["round"]), past=view == "past"))
 
