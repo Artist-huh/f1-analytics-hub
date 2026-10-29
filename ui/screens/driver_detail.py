@@ -178,13 +178,13 @@ def _build_points_chart(state, driver):
 
 
 def _build_points_by_race(results):
-    """Столбики очков за каждую гонку (подиумы — цветом медали)."""
+    """Столбики очков за каждую гонку: подиумы — цветом медали, остальные очки — зелёным, как на карте сезона."""
     top = max((float(r["points"]) for r in results), default=0) or 1
     cols = []
     for r in results:
         pts = float(r["points"])
         pos = to_int(r["position"])
-        color = POSITION_COLORS.get(pos, F1_RED if pts else SURFACE_ELEVATED)
+        color = readable_text(POSITION_COLORS.get(pos, SUCCESS), 3.0) if pts else SURFACE_ELEVATED
         cols.append(ft.Column([
             ft.Text(f"{pts:g}" if pts else "", size=FONT_TINY, color=TEXT_MUTED),
             ft.Container(width=18, height=max(3, int(100 * pts / top)), bgcolor=color, border_radius=4,

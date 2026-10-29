@@ -89,7 +89,8 @@ def _season_view(state):
 def _champion_hero(state, data, year):
     lead = data["standings"][0]
     finished = str(year) != str(state.season)
-    top, bottom = get_team_gradient(lead["team"]) if team_key(lead["team"]) else (F1_RED, ACCENT_DEEP)
+    # исторические команды (Brabham, Lotus…) — на карбоне, а не красным: красный в приложении значит «в эфире»
+    top, bottom = get_team_gradient(lead["team"]) if team_key(lead["team"]) else tuple(HERO_CARBON)
     flag_src, iso = state.flag(nationality=lead.get("nationality"))
     team_champ = data["constructors"][0]["name"] if data["constructors"] else None
     lines = [ft.Text("Чемпион мира" if finished else "Лидер чемпионата", size=FONT_CAPTION, color=ON_COLOR,

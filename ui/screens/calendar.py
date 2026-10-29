@@ -78,7 +78,8 @@ def _build_next_race_card(state, race, race_state):
     info = track_info(race)
     flag_src, iso = state.flag(country=race["country"])
 
-    chips = [_chip("Идёт сейчас" if live else "Ближайшая", F1_RED, ON_ACCENT)]
+    # красный — только когда этап идёт; ближайший выделен рамкой и порядком, а не красным
+    chips = [_chip("Идёт сейчас", LIVE_RED, ON_COLOR) if live else _chip("Ближайшая", SURFACE_ELEVATED, TEXT_PRIMARY)]
     if sprint:
         chips.append(_chip("Спринт", SURFACE_ELEVATED, WARNING))
 
@@ -103,7 +104,7 @@ def _build_next_race_card(state, race, race_state):
                 *([] if large_text() else specs),
             ], vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACE_SM),
             gradient=ft.LinearGradient(begin=ft.Alignment.CENTER_LEFT, end=ft.Alignment.CENTER_RIGHT,
-                                       colors=[ACCENT_SOFT, SURFACE_RAISED]),
+                                       colors=[ACCENT_SOFT if live else SURFACE_ELEVATED, SURFACE_RAISED]),
             border_radius=RADIUS_MD, padding=SPACE_SM,
         ),
         *([ft.Row(specs, spacing=SPACE_LG)] if large_text() and specs else []),   # крупный текст: под отсчётом
@@ -116,8 +117,8 @@ def _build_next_race_card(state, race, race_state):
                                    colors=[SURFACE_RAISED, SURFACE]),
         border_radius=RADIUS_LG,
         padding=SPACE_MD,
-        border=ft.Border.all(1, F1_RED),
-        shadow=glow(strength=0.25),
+        border=ft.Border.all(1, LIVE_RED if live else LINE_STRONG),
+        shadow=glow(LIVE_RED, strength=0.25) if live else shadow(1),
     )
 
 

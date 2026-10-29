@@ -141,6 +141,21 @@ class ContrastTest(unittest.TestCase):
                       if not n.endswith("_ROUNDED") and n not in allowed]
         self.assertEqual(found, [])
 
+    def test_no_bright_red_under_text(self):
+        """Яркий градиент GRADIENT_RED (белый на ACCENT_GLOW — 3.75:1) и DANGER как фон не используются в интерфейсе:
+        под текстом — GRADIENT_ACCENT / ACCENT_FILL, «в эфире» — LIVE_RED."""
+        import os
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        found = []
+        for folder, _, files in os.walk(os.path.join(root, "ui")):
+            for f in files:
+                if f.endswith(".py"):
+                    with open(os.path.join(folder, f), encoding="utf-8") as fh:
+                        text = fh.read()
+                    found += [f"{f}: {m}" for m in re.findall(r"GRADIENT_RED|ACCENT_GLOW|bgcolor=DANGER", text)]
+        self.assertEqual(found, [])
+
     def test_contrast_formula(self):
         self.assertAlmostEqual(ds.contrast("#000000", "#FFFFFF"), 21.0)
         self.assertAlmostEqual(ds.contrast("#777777", "#777777"), 1.0)

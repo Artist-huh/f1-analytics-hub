@@ -317,7 +317,7 @@ def _build_season_stats(state, compact):
 
     cards = [
         StatCard("Гонок пройдено", f"{done}/{len(schedule)}" if schedule else "—", ft.Icons.FLAG_ROUNDED,
-                 F1_RED, compact=compact),
+                 SECTION_COLORS["race"], compact=compact),
         StatCard("Лидер пилотов", leader["name"].split()[-1], ft.Icons.PERSON_ROUNDED,
                  get_team_color(leader["team"]), subtitle=_points(leader["points"]), compact=compact),
     ]

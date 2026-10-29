@@ -55,8 +55,10 @@ def _summary(race):
             ft.Row([cell(race["available"], "очков разыгрывается"),
                     cell(n, plural(n, "претендент", "претендента", "претендентов"))]),
         ], spacing=SPACE_SM),
-        gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT, colors=GRADIENT_RED),
-        border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(strength=0.3),
+        # сводка — на карбоне, как герой главной: красный в приложении значит «в эфире»
+        gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT, colors=HERO_CARBON),
+        border=ft.Border.all(1, ft.Colors.with_opacity(0.08, ON_COLOR)),
+        border_radius=RADIUS_LG, padding=SPACE_MD,
     )
 
 
