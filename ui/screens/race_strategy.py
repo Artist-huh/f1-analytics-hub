@@ -55,7 +55,8 @@ def tyres_section(state, race):
                                spacing=SPACE_XS)),
         _axis(data["laps"]),
         ft.Column([_row(state, r, data["laps"]) for r in rows], spacing=6),
-        ft.Text("Источник — OpenF1. Порядок — по местам финиша; цифры на полосах — номер круга пит-стопа.",
+        ft.Text("Пилоты идут по местам финиша. Буква на полосе — состав шин, длина — сколько кругов на нём, "
+                "число справа — пит-стопы, их круги — под полосой. Данные OpenF1.",
                 size=FONT_CAPTION, color=TEXT_DIM),
     ]
 

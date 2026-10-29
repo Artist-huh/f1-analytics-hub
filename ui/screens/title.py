@@ -131,7 +131,7 @@ def _contenders(state, race, view, total):
         ], spacing=SPACE_XS), accent=color,
             on_click=(lambda e, i=row["driver_id"]: state.open_driver(i)) if view == "drivers" else None))
     out = [SectionHeader("Ещё могут стать чемпионом" if view == "drivers" else "Ещё могут выиграть Кубок",
-                         subtitle="Тёмная часть полосы — набрано, светлая — максимум при победах "
+                         subtitle="Сплошная часть полосы — уже набрано, бледная — максимум при победах "
                                   "во всех оставшихся гонках")]
     out += rows
     gone = total - len(race["contenders"])
