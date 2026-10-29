@@ -38,6 +38,9 @@ def wrapped(page):
     state = holder["state"]
     page.window.width, page.window.height = width, height
     page.update()
+    if os.environ.get("THEME"):            # THEME=light | oled | team:Mercedes — только на этот запуск, без сохранения
+        name, _, team = os.environ["THEME"].partition(":")
+        state.on_theme_change(name, team or None)     # как в приложении: палитра, экраны и нижняя навигация
     if os.environ.get("LIT"):
         import ui.screens.home as home
         home.lights_lit = lambda seconds, live: int(os.environ["LIT"])
