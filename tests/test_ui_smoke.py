@@ -775,6 +775,8 @@ class UiSmokeTest(unittest.TestCase):
         t = " ".join(texts(self.build("predict")))
         self.assertIn("14 из 25", t)                                            # 5 + 5 + 2 + 2
         self.assertIn("Italian Grand Prix", t)                                  # ближайший открытый этап
+        save = [n for n in walk(self.build("predict")) if "Сохранить" in texts(n) and getattr(n, "disabled", None)]
+        self.assertTrue(save)                                                    # прогноз уже сохранён — выключена
         for code in ("LEC", "ANT", "LAW", "ANT"):                                # поул, P1, P2, P3
             clickable(self.build("predict"), code)[-1].on_click(Ctl())
         draft = self.state.ui["predict_draft"]
@@ -1122,7 +1124,11 @@ class UiSmokeTest(unittest.TestCase):
         down = [n for n in walk(editor) if getattr(n, "tooltip", "") == "Погода на трассе: ниже"]
         down[0].on_click(Ctl())
         self.assertEqual([k for k, _ in hb.layout()][:2], ["drivers", "weather"])
-        lst = next(n for n in walk(self.build("home_edit")) if type(n).__name__ == "ReorderableListView")
+        editor = self.build("home_edit")
+        lst = next(n for n in walk(editor) if type(n).__name__ == "ReorderableListView")
+        handles = [n for n in walk(editor) if type(n).__name__ == "ReorderableDragHandle"]
+        self.assertFalse(lst.show_default_drag_handles)               # одна ручка на строку, и она слева
+        self.assertEqual(len(handles), len(hb.layout()))
         lst.on_reorder(Ctl(old_index=0, new_index=2))
         self.assertEqual([k for k, _ in hb.layout()][:3], ["weather", "next_race", "drivers"])
         sw = [n for n in walk(self.build("home_edit")) if getattr(n, "tooltip", "") == "Лидеры: пилоты: показывать"]
@@ -1227,6 +1233,7 @@ class UiSmokeTest(unittest.TestCase):
         switch = [n for n in walk(self.build("settings")) if getattr(n, "tooltip", None) == "Меньше движения"][0]
         switch.on_change(Ctl(control=Ctl(value=True)))
         self.assertTrue(design_system.REDUCE_MOTION)
+        self.assertEqual(app.nav_bar(None).animation_duration.kw.get("milliseconds"), 0)   # и нижняя навигация
         self.assertEqual(db.get_setting("reduce_motion"), "1")
         self.assertEqual(calls, ["dark"])
         self.state.ui["driver_id"] = "leclerc"

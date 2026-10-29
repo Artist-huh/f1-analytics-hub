@@ -149,6 +149,7 @@ def apply_page_theme(page, nav=None):
     with contextlib.suppress(Exception):
         page.window.bgcolor = ds.BG
     if nav is not None:
+        nav.animation_duration = ft.Duration(milliseconds=0 if ds.REDUCE_MOTION else SWITCH_MS)
         nav.bgcolor = ds.BG_DEEPEST
         nav.indicator_color = ds.ACCENT_FILL      # белая иконка выбранной вкладки — ≥ 4.5:1 и в теме команды
         nav.border = ft.Border.only(top=ft.BorderSide(1, ds.LINE))
@@ -166,7 +167,7 @@ def nav_bar(on_change):
         height=72,
         elevation=0,
         border=ft.Border.only(top=ft.BorderSide(1, ds.LINE)),
-        animation_duration=ft.Duration(milliseconds=SWITCH_MS),
+        animation_duration=ft.Duration(milliseconds=0 if ds.REDUCE_MOTION else SWITCH_MS),   # «меньше движения»
         destinations=[
             dest(ft.Icons.HOME_OUTLINED, ft.Icons.HOME_ROUNDED, "Главная"),
             dest(ft.Icons.EMOJI_EVENTS_OUTLINED, ft.Icons.EMOJI_EVENTS_ROUNDED, "Чемпионат"),

@@ -139,7 +139,7 @@ def _picker(state, season, race, saved):
         ft.Text(f"Кто возьмёт «{dict(SLOTS)[slot].lower()}»?", size=FONT_BODY_SMALL, color=TEXT_SECONDARY),
         ft.Row(chips, spacing=SPACE_XS, run_spacing=SPACE_XS, wrap=True),
         ft.Row([ft.Text(status, size=FONT_CAPTION, color=TEXT_MUTED, expand=True),
-                button("Сохранить", submit if can_save else None, primary=can_save, icon=ft.Icons.CHECK_ROUNDED)],
+                button("Сохранить", submit, icon=ft.Icons.CHECK_ROUNDED, disabled=not can_save)],
                vertical_alignment=ft.CrossAxisAlignment.CENTER),
     ], spacing=SPACE_SM))
 

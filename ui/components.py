@@ -70,8 +70,8 @@ class FadeIn(ft.Container):
             content=content,
             opacity=0 if enabled else 1,
             offset=ft.Offset(0, 0.04) if enabled else ft.Offset(0, 0),
-            animate_opacity=ft.Animation(duration, ft.AnimationCurve.EASE_OUT) if enabled else None,
-            animate_offset=ft.Animation(duration, ft.AnimationCurve.EASE_OUT_CUBIC) if enabled else None,
+            animate_opacity=anim(duration) if enabled else None,
+            animate_offset=anim(duration, ft.AnimationCurve.EASE_OUT_CUBIC) if enabled else None,
             **kwargs,
         )
         self._fade = enabled

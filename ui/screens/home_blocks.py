@@ -172,14 +172,17 @@ def build_editor(state):
     for i, (key, on) in enumerate(items):
         title, icon, section = BLOCKS[key]
         rows.append(ft.Container(ft.Row([
-            ft.Icon(ft.Icons.DRAG_INDICATOR_ROUNDED, color=TEXT_DIM, size=20),
+            # ручка — настоящая (одна на строку): стандартные выключены, иначе на компьютере их две
+            ft.ReorderableDragHandle(ft.Container(ft.Icon(ft.Icons.DRAG_INDICATOR_ROUNDED, color=TEXT_DIM, size=20),
+                                                  width=32, height=TOUCH, alignment=ft.Alignment.CENTER),
+                                     mouse_cursor=ft.MouseCursor.GRAB, tooltip=f"{title}: перетащить"),
             icon_badge(icon, SECTION_COLORS[section], size=32),
             ft.Text(title, size=FONT_BODY, color=TEXT_PRIMARY if on else TEXT_MUTED, expand=True),
             ft.IconButton(ft.Icons.ARROW_UPWARD_ROUNDED, icon_size=18, tooltip=f"{title}: выше",
                           on_click=lambda e, i=i: move(i, -1), disabled=i == 0),
             ft.IconButton(ft.Icons.ARROW_DOWNWARD_ROUNDED, icon_size=18, tooltip=f"{title}: ниже",
                           on_click=lambda e, i=i: move(i, 1), disabled=i == len(items) - 1),
-            ft.Switch(value=on, active_color=F1_RED, tooltip=f"{title}: показывать",
+            ft.Switch(value=on, active_color=ACCENT_FILL, tooltip=f"{title}: показывать",
                       on_change=lambda e, k=key: toggle(k, bool(e.control.value))),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             key=key, bgcolor=SURFACE, border_radius=CARD_SIZES["s"][1], border=ft.Border.all(1, LINE_SUBTLE),
@@ -187,7 +190,7 @@ def build_editor(state):
     body = [
         ft.Text("Перетащи блок за ручку или стрелками; переключатель — показывать ли его. Live Timing и быстрый "
                 "доступ всегда наверху.", size=FONT_BODY_SMALL, color=TEXT_SECONDARY),
-        ft.ReorderableListView(rows, on_reorder=reorder, spacing=SPACE_XS, show_default_drag_handles=True),
+        ft.ReorderableListView(rows, on_reorder=reorder, spacing=SPACE_XS, show_default_drag_handles=False),
         ft.TextButton("Вернуть как было", icon=ft.Icons.RESTART_ALT_ROUNDED,
                       on_click=lambda e: store([(k, True) for k in BLOCKS])),
     ]
