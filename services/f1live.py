@@ -132,6 +132,29 @@ def fmt_gap(value):
     return text.replace("LAPS", "кр.").replace("LAP", "кр.")
 
 
+def _row(number, t, d, app_line, racing):
+    """Строка таблицы из TimingData / DriverList / TimingAppData одного пилота."""
+    stints = _items(app_line.get("Stints"))
+    last = stints[-1] if stints else {}
+    interval = t.get("IntervalToPositionAhead")
+    return {
+        "position": int(t["Position"]), "number": int(number) if str(number).isdigit() else number,
+        "code": d.get("Tla") or str(number), "name": (d.get("FullName") or "").title(),
+        "team": d.get("TeamName", ""), "colour": f"#{d['TeamColour']}" if d.get("TeamColour") else None,
+        "gap": fmt_gap(t.get("GapToLeader") if racing else t.get("TimeDiffToFastest")),
+        "interval": fmt_gap(interval.get("Value") if isinstance(interval, dict) else
+                            t.get("TimeDiffToPositionAhead")),
+        "tyre": TYRES.get((last.get("Compound") or "").upper(), "?") if last else "",
+        "tyre_age": last.get("TotalLaps") if last else None,
+        "pits": int(t.get("NumberOfPitStops") or max(0, len(stints) - 1)),
+        "in_pit": bool(t.get("InPit")), "retired": bool(t.get("Retired") or t.get("Stopped")),
+        "best": ((t.get("BestLapTime") or {}).get("Value") or ""),
+        "last": ((t.get("LastLapTime") or {}).get("Value") or ""),
+        "laps": t.get("NumberOfLaps") or 0,
+        "sectors": [sector_state(s) for s in _items(t.get("Sectors"))][:3],
+    }
+
+
 def snapshot(state, now=None):
     """Сырые данные F1 -> снимок в формате экрана Live (как services.live.fetch) + радио."""
     now = time.time() if now is None else now
@@ -151,32 +174,18 @@ def snapshot(state, now=None):
     for number, t in timing.items():
         if not isinstance(t, dict) or not str(t.get("Position", "")).isdigit():
             continue
-        d = drivers.get(number) or {}
-        stints = _items((app.get(number) or {}).get("Stints"))
-        last = stints[-1] if stints else {}
-        interval = t.get("IntervalToPositionAhead")
-        rows.append({
-            "position": int(t["Position"]), "number": int(number) if str(number).isdigit() else number,
-            "code": d.get("Tla") or str(number), "name": (d.get("FullName") or "").title(),
-            "team": d.get("TeamName", ""), "colour": f"#{d['TeamColour']}" if d.get("TeamColour") else None,
-            "gap": fmt_gap(t.get("GapToLeader") if racing else t.get("TimeDiffToFastest")),
-            "interval": fmt_gap(interval.get("Value") if isinstance(interval, dict) else
-                                t.get("TimeDiffToPositionAhead")),
-            "tyre": TYRES.get((last.get("Compound") or "").upper(), "?") if last else "",
-            "tyre_age": last.get("TotalLaps") if last else None,
-            "pits": int(t.get("NumberOfPitStops") or max(0, len(stints) - 1)),
-            "in_pit": bool(t.get("InPit")), "retired": bool(t.get("Retired") or t.get("Stopped")),
-            "best": ((t.get("BestLapTime") or {}).get("Value") or ""),
-            "last": ((t.get("LastLapTime") or {}).get("Value") or ""),
-            "laps": t.get("NumberOfLaps") or 0,
-            "sectors": [sector_state(s) for s in _items(t.get("Sectors"))][:3],
-        })
+        try:
+            rows.append(_row(number, t, drivers.get(number) or {}, app.get(number) or {}, racing))
+        except (KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
+            # одна испорченная строка не должна оставить без таблицы всех (OpenF1 в эфире закрыт)
+            logger.warning("поток F1: строка пилота %s пропущена: %r", number, exc)
     rows.sort(key=lambda r: r["position"])
     lap = state.get("LapCount") or {}
     messages = _items((state.get("RaceControlMessages") or {}).get("Messages"))
     path = info.get("Path") or ""
     radio = [{"driver": str(c.get("RacingNumber")), "url": STATIC + path + c["Path"], "ts": _ts(c.get("Utc"))}
-             for c in _items((state.get("TeamRadio") or {}).get("Captures")) if c.get("Path") and path]
+             for c in _items((state.get("TeamRadio") or {}).get("Captures"))
+             if isinstance(c, dict) and isinstance(c.get("Path"), str) and path]
     track = state.get("TrackStatus") or {}
     clock = state.get("ExtrapolatedClock") or {}
     return {
@@ -192,7 +201,7 @@ def snapshot(state, now=None):
         "remaining": clock.get("Remaining") if not racing else None,
         "track": TRACK_STATUS.get(str(track.get("Status"))),
         "messages": [{"time": _ts(m.get("Utc")), "text": m.get("Message", ""), "flag": m.get("Flag"),
-                      "lap": m.get("Lap")} for m in messages[-6:]][::-1],
+                      "lap": m.get("Lap")} for m in messages[-6:] if isinstance(m, dict)][::-1],
         "radio": sorted(radio, key=lambda r: r["ts"] or 0),
         "positions": track_map.decode_positions(state.get("Position.z")),      # только во время сессии
         "weather": weather(state.get("WeatherData")),
@@ -204,5 +213,12 @@ def snapshot(state, now=None):
     }
 
 
+FORMAT_ERRORS = (KeyError, TypeError, ValueError, AttributeError, IndexError)
+
+
 def fetch(now=None):
-    return snapshot(fetch_state(), now)
+    state = fetch_state()
+    try:
+        return snapshot(state, now)
+    except FORMAT_ERRORS as exc:   # поток изменил формат — это «поток недоступен»: дальше пробуем OpenF1
+        raise F1LiveError(f"неожиданный формат потока ({type(exc).__name__}: {exc})") from exc

@@ -139,6 +139,14 @@ def fetch(now=None):
 
 def fetch_openf1(now=None):
     """Снимок последней сессии из OpenF1. -> {session, live, rows, lap, messages, updated}"""
+    from .f1live import FORMAT_ERRORS
+    try:
+        return _fetch_openf1(now)
+    except FORMAT_ERRORS as exc:
+        raise LiveError(f"OpenF1: неожиданный формат ({type(exc).__name__}: {exc})") from exc
+
+
+def _fetch_openf1(now=None):
     now = time.time() if now is None else now
     sessions = _get("sessions")
     if not sessions:
@@ -211,8 +219,10 @@ def refresh(on_done=None):
         try:
             _state["data"] = fetch()
             _state["error"] = None
-        except LiveError as exc:
-            _state["error"] = str(exc)
+        except Exception as exc:       # фоновый поток не должен падать молча ни при какой ошибке
+            if not isinstance(exc, LiveError):
+                logger.exception("live-тайминг: непредвиденная ошибка")
+            _state["error"] = str(exc) if isinstance(exc, LiveError) else "Данные live-тайминга не разобраны"
             _state["error_at"] = time.time()
             _state["locked"] = isinstance(exc, LockedError)
             logger.warning("live-тайминг не обновлён: %s", exc)

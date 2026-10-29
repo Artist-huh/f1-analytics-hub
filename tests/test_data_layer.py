@@ -918,6 +918,30 @@ class F1LiveTest(unittest.TestCase):
                                     "Path": "TeamRadio/CHALEC01_16_20261025_154102.mp3"}]},
     }
 
+    def test_broken_stream_data_degrades_gracefully(self):
+        """Найдено фаззингом потока F1 (18 мест падения): одна испорченная строка пилота пропускается,
+        испорченная сессия — это «поток недоступен» (дальше OpenF1), а фоновое обновление не падает молча."""
+        import copy
+
+        from services import f1live, live
+        state = copy.deepcopy(self.STATE)
+        state["TimingAppData"]["Lines"]["1"] = {"Stints": 5}             # «5» вместо списка кругов
+        state["RaceControlMessages"]["Messages"].append("мусор")
+        state["TeamRadio"]["Captures"].append({"Path": {"x": 1}})
+        d = f1live.snapshot(state, datetime_ts("2026-10-25T20:45:00"))
+        self.assertEqual([r["code"] for r in d["rows"]], ["LEC"])       # NOR пропущен, LEC на месте
+        self.assertEqual(len(d["radio"]), 1)
+        broken = dict(self.STATE, SessionInfo={"Meeting": "Austin", "Path": "2026/"})
+        with mock.patch.object(f1live, "fetch_state", return_value=broken), self.assertRaises(f1live.F1LiveError):
+            f1live.fetch()
+        live._state.update(data=None, error=None, loading=False)
+        with mock.patch.object(live, "fetch", side_effect=KeyError("Lines")):
+            done = threading.Event()
+            live.refresh(on_done=done.set)
+            self.assertTrue(done.wait(5))
+        self.assertEqual(live._state["error"], "Данные live-тайминга не разобраны")
+        self.assertFalse(live._state["loading"])
+
     def test_snapshot_from_f1_stream(self):
         from services import f1live
         now = datetime_ts("2026-10-25T20:45:00")
