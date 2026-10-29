@@ -162,10 +162,35 @@ def _migrate_legacy_dir(path):
             return
 
 
+def _quarantine(path, exc):
+    """Повреждённую базу (сбой питания, обрыв записи) откладываем рядом, а не удаляем: иначе приложение
+    падало бы при каждом запуске. Новая база заполнится встроенным снимком и из сети."""
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    for suffix in ("", "-wal", "-shm"):
+        src = Path(str(path) + suffix)
+        if src.exists():
+            try:
+                src.replace(Path(f"{path}.broken-{stamp}{suffix}"))
+            except OSError:
+                src.unlink(missing_ok=True)
+    from . import log  # здесь: log сам импортирует db
+    log.get("db").error("база повреждена (%s) — отложена как %s.broken-%s, создаём новую", exc, path.name, stamp)
+
+
 def _create_schema(path):
+    try:
+        _create_schema_once(path)
+    except sqlite3.DatabaseError as exc:          # «file is not a database», «disk image is malformed»
+        _quarantine(path, exc)
+        _create_schema_once(path)
+
+
+def _create_schema_once(path):
     con = sqlite3.connect(path, timeout=10)
     try:
         con.execute("PRAGMA journal_mode=WAL")
+        if con.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+            raise sqlite3.DatabaseError("quick_check не прошёл")
         version = con.execute("PRAGMA user_version").fetchone()[0]
         if version != SCHEMA_VERSION:
             # Кэш API пересоздаётся по новой схеме (данные скачаются заново),

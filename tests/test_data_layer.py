@@ -197,6 +197,20 @@ class DataLayerTest(unittest.TestCase):
                          [("senna", "1"), ("dalmas", "—")])        # неклассифицированные — в конце, «—»
         self.assertEqual([c["position"] for c in db.load_constructors()], ["1", "—"])
 
+    def test_corrupted_database_is_set_aside(self):
+        """Повреждённый файл базы (сбой питания, обрыв записи) раньше ронял приложение на каждом запуске:
+        теперь он откладывается как .broken-…, а работа продолжается на новой базе."""
+        path = Path(os.environ["F1_HUB_DB"])
+        for content in (os.urandom(40000), b"SQLite format 3\x00" + b"\x00" * 4000):
+            db._initialized.clear()
+            for old in path.parent.glob(path.name + "*"):
+                old.unlink()
+            path.write_bytes(content)
+            with self.subTest(head=content[:6]):
+                db.set_setting("theme", "light")                   # пишет и читает, а не падает
+                self.assertEqual(db.get_setting("theme"), "light")
+                self.assertTrue(list(path.parent.glob(path.name + ".broken-*")))
+
     def test_paging_and_malformed_responses(self):
         """Сбойный ответ не вешает и не роняет загрузку: total=10**18 — не часы запросов (лимит страниц),
         пустая страница — конец; строка вместо словаря, список вместо объекта — ApiError, а не AttributeError."""
