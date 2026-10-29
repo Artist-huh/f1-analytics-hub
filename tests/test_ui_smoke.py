@@ -1538,6 +1538,20 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Italian Grand Prix", shown)
         self.assertEqual(set(page.fonts), set(design_system.FONTS))
 
+    def test_handler_error_does_not_crash_session(self):
+        """Ошибка в обработчике (диск полон, база занята) раньше вызывала Session.error -> красный экран
+        «сессия упала». После запуска она только пишется в журнал, а пользователь видит плашку."""
+        fill_db()
+        page = FakePage()
+        crashed = []
+        page.session = Ctl(error=crashed.append)
+        with mock.patch.object(api, "start_background_refresh", return_value=mock.Mock()):
+            app.main(page)
+        with self.assertLogs("f1hub.main", "ERROR"):
+            page.session.error("sqlite3.OperationalError: disk I/O error\nTraceback …")
+        self.assertEqual(crashed, [])                                       # сессия не уронена
+        self.assertIn("Не получилось выполнить действие", " ".join(texts(page.dialogs[-1])))
+
     def _main_with_loop(self):
         fill_db()
         page = FakePage()

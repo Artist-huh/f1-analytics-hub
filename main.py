@@ -456,6 +456,25 @@ def main(page: ft.Page):
     if saved_motion is None and getattr(page, "run_task", None):
         page.run_task(follow_system_motion)
 
+    guard_handler_errors(page, state)
+
+
+def guard_handler_errors(page, state):
+    """Ошибка в обработчике нажатия (диск полон, база занята, сбой в коде) по умолчанию рушит сессию Flet:
+    session.error() показывает красный экран, и приложение мертво до перезапуска. После успешного запуска
+    такие ошибки только пишутся в журнал, пользователь видит плашку, а экран перерисовывается."""
+    session = getattr(page, "session", None)
+    if session is None:
+        return
+
+    def on_handler_error(message):
+        logger.error("ошибка в обработчике: %s", message)
+        with contextlib.suppress(Exception):
+            show_snack(page, "Не получилось выполнить действие. Попробуй ещё раз — подробности в журнале.")
+            state.render()
+
+    session.error = on_handler_error            # атрибут экземпляра закрывает метод Session.error
+
 
 if __name__ == "__main__":
     ft.run(main, assets_dir=ASSETS_DIR)
