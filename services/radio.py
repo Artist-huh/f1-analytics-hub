@@ -124,6 +124,9 @@ def download_models(on_done=None, model=DEFAULT_WHISPER):
     threading.Thread(target=job, name="f1-radio-models", daemon=True).start()
 
 
+MAX_ARGOS = 400 * 1024 * 1024   # пакет en->ru — около 100 МБ
+
+
 def _download_argos():
     """Пакет Argos — zip с папкой model/ (CTranslate2) и sentencepiece.model. Распаковываем только их."""
     tmp = models_dir() / "argos.part"
@@ -135,6 +138,8 @@ def _download_argos():
             for chunk in resp.iter_content(1 << 16):
                 f.write(chunk)
                 done += len(chunk)
+                if done > MAX_ARGOS:                 # сбойный ответ не должен забить диск
+                    raise RuntimeError("пакет перевода больше ожидаемого — загрузка прервана")
                 if total:
                     _download["progress"] = 0.5 + 0.5 * done / total
     extract_argos(tmp)
@@ -150,6 +155,9 @@ def extract_argos(package):
             if not parts or info.is_dir() or not (parts[0] == "model" or parts[0] == "sentencepiece.model"):
                 continue
             out = target.joinpath(*parts)
+            # «zip slip»: model/../../файл вывел бы запись за пределы папки модели — такие пути пропускаем
+            if not out.resolve().is_relative_to(target.resolve()):
+                continue
             out.parent.mkdir(parents=True, exist_ok=True)
             with z.open(info) as src, open(out, "wb") as dst:
                 shutil.copyfileobj(src, dst)

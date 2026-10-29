@@ -6,6 +6,7 @@
 это делается запуском приложения.
 """
 import asyncio
+import glob
 import json
 import os
 import sys
@@ -827,13 +828,15 @@ class UiSmokeTest(unittest.TestCase):
         import zipfile
         pkg = os.path.join(self.tmp.name, "en_ru.argosmodel")
         with zipfile.ZipFile(pkg, "w") as z:
-            for name in ("model/model.bin", "model/config.json", "sentencepiece.model", "stanza/en/x.pt", "README.md"):
+            for name in ("model/model.bin", "model/config.json", "sentencepiece.model", "stanza/en/x.pt", "README.md",
+                         "model/../../../escaped.txt"):               # «zip slip» — за пределы папки модели
                 z.writestr(f"translate-en_ru-1_9/{name}", b"x")
         with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}):
             radio.extract_argos(pkg)
             got = sorted(str(p.relative_to(radio.argos_dir())).replace("\\", "/")
                          for p in radio.argos_dir().rglob("*") if p.is_file())
         self.assertEqual(got, ["model/config.json", "model/model.bin", "sentencepiece.model"])   # без stanza
+        self.assertFalse(glob.glob(os.path.join(self.tmp.name, "**", "escaped.txt"), recursive=True))   # не наружу
         # модель токенизатора — байтами: по пути с кириллицей (C:\Users\Андрей) SentencePiece её не открывает
         fake_sp = mock.Mock()
         with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}), \
