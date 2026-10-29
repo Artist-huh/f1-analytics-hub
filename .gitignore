@@ -67,7 +67,7 @@ desktop.ini
 htmlcov/
 
 # Release
-release/
+/release/
 *.zip
 *.exe
 *.dmg
