@@ -36,7 +36,7 @@ tools: Read, Grep, Glob, Bash
 **Платформы**
 - Отличие телефона от компьютера — `notify.is_mobile()` (Android и iPhone), а не `is_android()`;
   `is_android()` — только для того, чего на iPhone нет (виджет, системные уведомления через pyjnius).
-- Новые параметры элементов Flet должны существовать в Flet 1.0.5: заглушка flet в `tests/test_ui_smoke.py`
+- Новые параметры элементов Flet должны существовать в Flet 1.0.5: заглушка flet в `tests/ui_support.py`
   принимает любые аргументы, ошибку покажет только `tests/test_real_flet.py`. Сомнительный параметр
   проверь: `venv/Scripts/python.exe -c "import flet as ft; ft.Container(<параметр>=...)"`.
 

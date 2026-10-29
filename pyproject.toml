@@ -61,5 +61,9 @@ ignore = [
     "UP007", "UP045", # Optional[...] в старом коде — не трогаем ради истории
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# общая часть тестов интерфейса: импорты нужны не ей, а файлам test_ui_*.py (from tests.ui_support import *)
+"tests/ui_support.py" = ["F401"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["services", "ui", "design_system", "main", "tests", "tools"]
