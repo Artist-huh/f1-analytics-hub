@@ -146,7 +146,7 @@ def status_chip(state, compact=False):
         content=ft.Row(items, spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, tight=True),
         bgcolor=RAISED, border_radius=RADIUS_FULL,
         padding=ft.Padding.symmetric(horizontal=12), on_click=lambda e: state.refresh_now(), ink=True,
-        tooltip=f"{label} · обновить данные (F5)",
+        tooltip=f"{label}: обновить данные (F5)",
     ), 36)
 
 

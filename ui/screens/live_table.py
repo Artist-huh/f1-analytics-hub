@@ -202,7 +202,7 @@ def driver_card(state, row, data):
         ft.Row([ft.Container(width=4, height=40, bgcolor=color, border_radius=2),
                 DriverAvatar(row["code"], d["team"] if d else row.get("team", ""), size=44,
                              src=state.photo(d) if d else None),
-                ft.Column([ft.Text(f"P{row['position']} · {row['code']}", size=FONT_H3, color=TEXT_PRIMARY,
+                ft.Column([ft.Text(f"P{row['position']} {row['code']}", size=FONT_H3, color=TEXT_PRIMARY,
                                    font_family=FONT_DISPLAY_ITALIC),
                            ft.Text(d["name"] if d else row.get("name", ""), size=FONT_BODY_SMALL, color=TEXT_MUTED)],
                           spacing=0, expand=True),

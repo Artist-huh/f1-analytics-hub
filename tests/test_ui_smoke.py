@@ -372,7 +372,7 @@ class UiSmokeTest(unittest.TestCase):
         tree = self.build("tab0")
         t = texts(tree)
         self.assertIn("Последняя гонка", t)
-        self.assertIn("Этап 3 · Japanese Grand Prix", t)
+        self.assertIn("Этап 3, Japanese Grand Prix", t)
         avatars = [n for n in walk(tree)
                    if type(n).__name__ == "DriverAvatar" and callable(getattr(n, "on_click", None))]
         self.assertEqual(len(avatars), 3)
@@ -423,7 +423,7 @@ class UiSmokeTest(unittest.TestCase):
         t = texts(self.build("tab2"))
         self.assertIn("Ближайшая", t)
         self.assertIn("Квалификация", t)
-        self.assertIn("Сезон 2026 · пройдено 3 из 5", t)
+        self.assertIn("Сезон 2026, пройдено 3 из 5", t)
         self.assertIn("Singapore Grand Prix", t)
         self.assertIn("5,793 км", t)                      # Монца опознана по названию автодрома
         self.state.ui["cal"] = "past"
@@ -496,7 +496,7 @@ class UiSmokeTest(unittest.TestCase):
         self.state.open_driver("leclerc")
         t = texts(self.build("driver_detail"))
         for expected in ("LECLERC", "Charles", "P4", "Поулы", "Быстрые круги", "Результаты гонок", "Japanese GP",
-                         "Набор очков", "Этап 2 · квал. P1 · старт 4 · 8 мар"):
+                         "Набор очков", "Этап 2, квал. P1, старт 4, 8 мар"):
             self.assertIn(expected, t)
 
     def test_every_driver_has_full_detail_page(self):
@@ -714,7 +714,7 @@ class UiSmokeTest(unittest.TestCase):
         tree = self.build("live")
         self.assertIn("Сейфти-кар", texts(tree))
         self.assertIn("Источник — официальный live timing F1: данные идут и во время сессии.", texts(tree))
-        clickable(tree, "Радио · 2")[0].on_click(Ctl())
+        clickable(tree, "Радио (2)")[0].on_click(Ctl())
         with mock.patch.object(radio, "supported", return_value=True), \
                 mock.patch.object(radio, "models_ready", return_value=True), \
                 mock.patch.object(radio, "request") as req:
@@ -852,7 +852,7 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.state.ui["radio_playing"], "https://r/2.mp3")
         with mock.patch.object(radio, "supported", return_value=True), \
                 mock.patch.object(radio, "download_models") as dl:
-            clickable(self.build("race_strategy"), "Лёгкая · ~350 МБ")[0].on_click(Ctl())
+            clickable(self.build("race_strategy"), "Лёгкая (~350 МБ)")[0].on_click(Ctl())
         self.assertEqual(dl.call_args[0][1], "base.en")
         with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}):
             self.assertIsNone(radio.whisper_model())
@@ -940,7 +940,7 @@ class UiSmokeTest(unittest.TestCase):
         db.save_archive(race_strategy.strategy_key(race), data)
         self.state.open_race_strategy(race)
         t = texts(self.build("race_strategy"))
-        for expected in ("53 круга · чаще всего — 0 пит-стопов", "средние", "жёсткие", "пит: 20", "без пит-стопов"):
+        for expected in ("53 круга, чаще всего — 0 пит-стопов", "средние", "жёсткие", "пит: 20", "без пит-стопов"):
             self.assertIn(expected, t)
         self.assertEqual(race_strategy.finishing_order(self.state, race), ["ANT", "LEC", "LAW"])
         self.state.ui["strat_race"] = self.state.schedule[1]                  # нет данных -> повтор загрузки
@@ -1043,10 +1043,10 @@ class UiSmokeTest(unittest.TestCase):
         self.assertEqual(self.page.dialogs, [])
         gesture.on_horizontal_drag_end(Ctl(primary_velocity=-700))
         card = texts(self.page.dialogs[-1])
-        for expected in ("P2 · ANT", "+1.200", "1:37.5", "средние, 4 кр.", "30"):
+        for expected in ("P2 ANT", "+1.200", "1:37.5", "средние, 4 кр.", "30"):
             self.assertIn(expected, card)
         rows["LEC"]["box"].on_long_press(Ctl())                                    # компьютер: долгое нажатие
-        self.assertIn("P1 · LEC", texts(self.page.dialogs[-1]))
+        self.assertIn("P1 LEC", texts(self.page.dialogs[-1]))
 
     def test_haptics_on_live_events(self):
         from services import live, notify

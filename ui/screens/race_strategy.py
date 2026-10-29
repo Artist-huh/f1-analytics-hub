@@ -48,7 +48,7 @@ def tyres_section(state, race):
                                 spacing=4, tight=True) for t in used], wrap=True, spacing=SPACE_SM)
     stops = [len(r["pits"]) for r in rows]
     common = max(set(stops), key=stops.count) if stops else 0
-    summary = (f"{data['laps']} {plural(data['laps'], 'круг', 'круга', 'кругов')} · чаще всего — "
+    summary = (f"{data['laps']} {plural(data['laps'], 'круг', 'круга', 'кругов')}, чаще всего — "
                f"{common} {plural(common, 'пит-стоп', 'пит-стопа', 'пит-стопов')}")
     return [
         AnimatedCard(ft.Column([ft.Text(summary, size=FONT_BODY_SMALL, color=TEXT_SECONDARY), legend_row],

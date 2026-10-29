@@ -46,7 +46,7 @@ def build_calendar(state):
     done = sum(1 for s in states.values() if s == "past")
 
     body = [ft.Row([pill("Предстоящие", view == "upcoming", lambda e: choose("upcoming")),
-                    pill(f"Прошедшие · {done}" if done else "Прошедшие", view == "past",
+                    pill(f"Прошедшие ({done})" if done else "Прошедшие", view == "past",
                          lambda e: choose("past"))], spacing=SPACE_XS)]
 
     shown = [r for r in races if (states[r["round"]] == "past") == (view == "past")]
@@ -68,7 +68,7 @@ def build_calendar(state):
         else:
             body.append(_build_race_card(state, race, podiums.get(race["round"]), past=view == "past"))
 
-    sub = f"Сезон {state.season or races[0]['season']} · пройдено {done} из {len(races)}"
+    sub = f"Сезон {state.season or races[0]['season']}, пройдено {done} из {len(races)}"
     return screen(state, "Календарь", body, subtitle=sub)
 
 
@@ -96,7 +96,7 @@ def _build_next_race_card(state, race, race_state):
     items = [
         ft.Row(chips + [ft.Container(expand=True), flag(flag_src, 20, iso)], spacing=SPACE_XS),
         ft.Text(race["race_name"], size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_HEADING),
-        ft.Text(f"Этап {race['round']} · {race['circuit']}", size=FONT_BODY_SMALL, color=TEXT_SECONDARY),
+        ft.Text(f"Этап {race['round']}, {race['circuit']}", size=FONT_BODY_SMALL, color=TEXT_SECONDARY),
         ft.Text(f"{race['locality']}, {race['country']}", size=FONT_BODY_SMALL, color=TEXT_MUTED),
         ft.Container(
             content=ft.Row([
@@ -139,7 +139,7 @@ def _mini_podium(state, podium):
 def _build_race_card(state, race, podium, past=False):
     """Компактная карточка этапа: номер, флаг, название; у прошедших — подиум"""
     sprint = any(s["key"] == "Sprint" for s in race["sessions"])
-    where = f"{race['locality']}, {race['country']}" + (" · спринт" if sprint else "")
+    where = f"{race['locality']}, {race['country']}" + (", спринт" if sprint else "")
     flag_src, iso = state.flag(country=race["country"])
     if podium:
         winner = state.driver(podium[0]["driver_id"])
@@ -202,12 +202,14 @@ def _show_race_details(state, race, podium):
     flag_src, iso = state.flag(country=race["country"])
     lines = [
         ft.Row([flag(flag_src, 16, iso),
-                ft.Text(f"{race['circuit']} · {race['locality']}, {race['country']}", size=FONT_BODY_SMALL,
+                ft.Text(f"{race['circuit']}, {race['locality']}, {race['country']}", size=FONT_BODY_SMALL,
                         color=TEXT_SECONDARY, expand=True)], spacing=SPACE_XS),
         ft.Text(fmt_date_full(race["start_ts"]), size=FONT_BODY_SMALL, color=TEXT_MUTED),
     ]
     if info:
-        lines.append(ft.Text(f"Круг {info[0]} · {info[1]} кругов", size=FONT_BODY_SMALL, color=TEXT_MUTED))
+        laps = int(info[1])
+        lines.append(ft.Text(f"Круг {info[0]}, {laps} {plural(laps, 'круг', 'круга', 'кругов')}",
+                             size=FONT_BODY_SMALL, color=TEXT_MUTED))
     if podium:
         lines += [ft.Container(height=SPACE_XS),
                   ft.Text("Подиум", size=FONT_CAPTION, color=TEXT_MUTED, font_family=FONT_ITALIC)]

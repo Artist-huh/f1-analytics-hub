@@ -69,7 +69,7 @@ def build_section(state):
                 ft.Text(pos if pos != "W" else "", size=FONT_TINY, color=fg, weight=ft.FontWeight.BOLD),
                 width=CELL, height=CELL, bgcolor=bg, border_radius=4, alignment=ft.Alignment.CENTER,
                 border=None if bg else ft.Border.all(1, LINE_SUBTLE),
-                tooltip=f"{d['name']} · {race.get('race_name', 'этап ' + rnd)}: "
+                tooltip=f"{d['name']}, {race.get('race_name', 'этап ' + rnd)}: "
                         + (f"P{pos}" if to_int(pos) else "сход" if pos and pos != "W" else "не участвовал")))
         lines.append(ft.Row(cells, spacing=2))
     grid = ft.Row([ft.Column(lines, spacing=2)], scroll=ft.ScrollMode.AUTO)   # на телефоне — прокрутка вбок

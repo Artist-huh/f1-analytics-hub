@@ -21,7 +21,7 @@ def render(state):
     tabs = ft.Row([
         pill("Пилоты", view == "drivers", lambda e: switch_view("drivers")),
         pill("Команды", view == "teams", lambda e: switch_view("teams")),
-        pill(f"Избранные · {favs}" if favs else "Избранные", view == "favs", lambda e: switch_view("favs")),
+        pill(f"Избранные ({favs})" if favs else "Избранные", view == "favs", lambda e: switch_view("favs")),
         pill("Карта сезона", view == "heat", lambda e: switch_view("heat")),
     ], spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO)
 

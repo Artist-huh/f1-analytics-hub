@@ -98,7 +98,7 @@ def _translate_card(state):
         if dl["state"] == "error":
             body.append(ft.Text(f"Не получилось: {dl['error']}", size=FONT_CAPTION, color=DANGER))
         body.append(ft.Row([
-            button(f"{label} · ~{size} МБ", lambda e, m=model: (radio.download_models(state.render, m), state.render()),
+            button(f"{label} (~{size} МБ)", lambda e, m=model: (radio.download_models(state.render, m), state.render()),
                    primary=model == radio.DEFAULT_WHISPER, icon=ft.Icons.DOWNLOAD_ROUNDED)
             for model, (label, size) in radio.WHISPER_MODELS.items()], wrap=True, spacing=SPACE_XS,
             run_spacing=SPACE_XS))

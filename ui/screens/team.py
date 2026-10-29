@@ -64,7 +64,7 @@ def _hero(state, team, drivers):
                     ft.Column([ft.Text(team["name"].upper(), size=FONT_H3, color=ON_COLOR,
                                        font_family=FONT_DISPLAY_ITALIC),
                                ft.Row([flag(flag_src, 12, iso),
-                                       ft.Text(" · ".join(short_name(d["name"]) for d in drivers),
+                                       ft.Text(", ".join(short_name(d["name"]) for d in drivers),
                                                size=FONT_BODY_SMALL, color=ON_COLOR)], spacing=6)],
                               spacing=2, expand=True)], spacing=SPACE_SM),
             ft.Container(image(state.team_car(team["name"]), height=90, fit=ft.BoxFit.CONTAIN,

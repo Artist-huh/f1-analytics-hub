@@ -57,7 +57,7 @@ def build(state):
                  on_select=on_select),
         card(ft.Column([
             txt(chosen, 26, bold=True, head=True),
-            txt(f"{t['laps']} кругов · износ {t['wear']} · обгоны: {t['overtake']}", 12, MUTED),
+            txt(f"{t['laps']} кругов, износ {t['wear']}, обгоны: {t['overtake']}", 12, MUTED),
             ft.Container(height=6),
             ft.Row(chips, spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             txt(f"{stops} {'пит-стоп' if stops == 1 else 'пит-стопа'}", 16, bold=True),

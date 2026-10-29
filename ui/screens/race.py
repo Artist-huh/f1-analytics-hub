@@ -163,7 +163,7 @@ def pace_section(state, race):
             ft.Container(width=4, height=28, bgcolor=color, border_radius=2),
             ft.Text(d["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC, width=40),
             ft.Column([ft.Text(f"средний {fmt_lap(p['median'])}", size=FONT_BODY_SMALL, color=TEXT_PRIMARY),
-                       ft.Text(f"лучший {fmt_lap(p['best'])} · {p['laps']} чистых кругов", size=FONT_CAPTION,
+                       ft.Text(f"лучший {fmt_lap(p['best'])}, {p['laps']} чистых кругов", size=FONT_CAPTION,
                                color=TEXT_MUTED)], spacing=0, expand=True),
             ft.Text("быстрее всех" if gap == 0 else (f"+{gap:.3f}" if gap is not None else "—"),
                     size=FONT_BODY_SMALL, font_family=FONT_MONO,

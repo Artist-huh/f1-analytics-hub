@@ -68,7 +68,7 @@ def _summary(s):
         ft.Row([cell(s["points"], plural(s["points"], "очко", "очка", "очков")),
                 cell(s["rounds"], plural(s["rounds"], "этап", "этапа", "этапов")),
                 cell(s["exact"], "точных")], spacing=SPACE_SM),
-        ft.Text(" · ".join(x for x in (best, share) if x), size=FONT_CAPTION, color=TEXT_SECONDARY,
+        ft.Text(", ".join(x for x in (best, share) if x), size=FONT_CAPTION, color=TEXT_SECONDARY,
                 text_align=ft.TextAlign.CENTER),
     ], spacing=SPACE_XS, horizontal_alignment=ft.CrossAxisAlignment.CENTER))
 

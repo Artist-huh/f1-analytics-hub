@@ -54,7 +54,7 @@ def build(state):
     if data.get("circuit_key"):
         tabs.append(pill("Трасса", view == "track", lambda e: show("track")))
     if radio_items:
-        tabs.append(pill(f"Радио · {len(radio_items)}", view == "radio", lambda e: show("radio")))
+        tabs.append(pill(f"Радио ({len(radio_items)})", view == "radio", lambda e: show("radio")))
     if data["racing"] and view == "table":
         tabs += [pill("До лидера", mode == "leader", lambda e: switch("leader")),
                  pill("Интервал", mode == "interval", lambda e: switch("interval"))]
@@ -75,7 +75,7 @@ def build(state):
               "Источник — OpenF1. Во время сессии бесплатный доступ закрыт; после сессии показан её итог.")
     body.append(ft.Text(source, size=FONT_CAPTION, color=TEXT_DIM))
     s = data["session"]
-    return screen(state, "Live-тайминг", body, subtitle=f"{s['country']} · {s['location']}", back=True)
+    return screen(state, "Live-тайминг", body, subtitle=f"{s['country']}, {s['location']}", back=True)
 
 
 def _status_line(state, data):
@@ -251,7 +251,7 @@ def _messages(messages):
         items.append(ft.Row([
             ft.Container(width=6, height=28, bgcolor=color, border_radius=3),
             ft.Column([ft.Text(m["text"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY),
-                       ft.Text(" · ".join(x for x in (fmt_clock(m["time"]) if m["time"] else "",
+                       ft.Text(", ".join(x for x in (fmt_clock(m["time"]) if m["time"] else "",
                                                       f"круг {m['lap']}" if m["lap"] else "") if x),
                                size=FONT_CAPTION, color=TEXT_MUTED)], spacing=0, expand=True),
         ], spacing=SPACE_SM))

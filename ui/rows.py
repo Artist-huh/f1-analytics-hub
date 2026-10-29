@@ -65,7 +65,7 @@ def team_row(state, c, leader_points, show_car=False):
     """Строка команды: позиция, логотип, название, пилоты, очки, полоса отставания; болид на широком экране."""
     color = get_team_color(c["name"])
     drivers = state.team_drivers(c["name"])
-    names = " · ".join(d["name"].split()[-1] for d in drivers[:3])
+    names = ", ".join(d["name"].split()[-1] for d in drivers[:3])
     wins = int(c["wins"])
     top = ft.Row([
         PositionBadge(c["position"]),

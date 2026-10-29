@@ -97,7 +97,7 @@ def _champion_hero(state, data, year):
                      font_family=FONT_ITALIC),
              ft.Text(lead["name"], size=FONT_H3, color=ON_COLOR, font_family=FONT_HEADING),
              ft.Row([flag(flag_src, 14, iso), ft.Text(lead["team"], size=FONT_BODY_SMALL, color=ON_COLOR)], spacing=6),
-             ft.Text(f"{lead['points']} очков · {lead['wins']} "
+             ft.Text(f"{lead['points']} очков, {lead['wins']} "
                      f"{plural(int(lead['wins']), 'победа', 'победы', 'побед')}",
                      size=FONT_BODY_SMALL, color=ON_COLOR)]
     if team_champ:
@@ -133,7 +133,7 @@ def _standings(state, data):
             bgcolor=SURFACE, border_radius=RADIUS_SM, border=ft.Border.all(1, LINE_SUBTLE),
             padding=ft.Padding.symmetric(horizontal=SPACE_SM, vertical=6)))
     out = [SectionHeader("Личный зачёт", subtitle=f"{len(rows)} {plural(len(rows), 'пилот', 'пилота', 'пилотов')}"
-                         f" · {data['rounds']} {plural(int(data['rounds'] or 0), 'этап', 'этапа', 'этапов')}")]
+                         f", {data['rounds']} {plural(int(data['rounds'] or 0), 'этап', 'этапа', 'этапов')}")]
     out.append(ft.Column(items, spacing=SPACE_XXS))
     if len(rows) > 10:
         def toggle(e):
@@ -174,7 +174,7 @@ def _winners(state, data):
             flag(flag_src, 14, iso),
             ft.Column([ft.Text(w["race_name"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, max_lines=1,
                                overflow=ft.TextOverflow.ELLIPSIS),
-                       ft.Text(f"{w['name']} · {w['team']}", size=FONT_CAPTION, color=TEXT_MUTED, max_lines=1,
+                       ft.Text(f"{w['name']}, {w['team']}", size=FONT_CAPTION, color=TEXT_MUTED, max_lines=1,
                                overflow=ft.TextOverflow.ELLIPSIS)], spacing=0, expand=True),
         ], spacing=SPACE_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
     wins = {}
@@ -246,7 +246,7 @@ def _champions_view(state):
             ft.Column([ft.Row([flag(flag_src, 11, iso),
                                ft.Text(r["name"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600,
                                        max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True)], spacing=6),
-                       ft.Text(r["team"] + (f" · Кубок: {r['constructor']}" if r.get("constructor") else ""),
+                       ft.Text(r["team"] + (f", Кубок: {r['constructor']}" if r.get("constructor") else ""),
                                size=FONT_CAPTION, color=TEXT_MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)],
                       spacing=0, expand=True),
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),

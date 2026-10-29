@@ -65,7 +65,7 @@ def predict_block(state):
     pick = picks.get(race["round"], {}) if race else {}
     if race and all(pick.get(k) for k in pr.PICKS):
         codes = [(state.driver(pick[k]) or {}).get("code", "?") for k in ("p1", "p2", "p3")]
-        line = f"{race['race_name']}: подиум {' · '.join(codes)}"
+        line = f"{race['race_name']}: подиум {', '.join(codes)}"
     elif race:
         line = f"{race['race_name']}: прогноз ещё не сделан — угадай поул и подиум"
     else:
@@ -127,7 +127,7 @@ def weather_block(state):
             return skeleton("Погода на трассе…", "rows", 1)
         return None
     return _block_card("weather", ft.Column([
-        ft.Text(f"{data.get('place') or 'Трасса'} · {data.get('session') or ''}".strip(" ·"), size=FONT_CAPTION,
+        ft.Text(f"{data.get('place') or 'Трасса'}, {data.get('session') or ''}".strip(" ,"), size=FONT_CAPTION,
                 color=TEXT_MUTED),
         weather_strip(data["weather"]),
     ], spacing=SPACE_XS), lambda e: state.open_sub("live"))

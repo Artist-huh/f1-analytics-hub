@@ -236,14 +236,14 @@ def _build_live_card(state):
                              bgcolor=LIVE_RED, border_radius=RADIUS_FULL,      # белый — 4.97:1 в любой теме
                              padding=ft.Padding.symmetric(horizontal=10, vertical=4))
         title = f"Сейчас: {SESSION_NAMES.get(key, key)}"
-        hint = f"{race['race_name']} · позиции, отрывы, шины, радио"
+        hint = f"{race['race_name']}: позиции, отрывы, шины, радио"
         state.watch_live()                                  # во время сессии — живая тройка прямо на главной
         data = live.snapshot()[0]
         if data and data["live"] and data["rows"]:
-            top = " · ".join(f"{r['position']}. {r['code']}" for r in data["rows"][:3])
+            top = ", ".join(f"{r['position']}. {r['code']}" for r in data["rows"][:3])
             when = (f"круг {data['lap']}" if data["racing"] and data.get("lap") else
                     f"осталось {data['remaining']}" if data.get("remaining") else "")
-            hint = " · ".join(x for x in (top, when, data.get("track") or "") if x)
+            hint = ", ".join(x for x in (top, when, data.get("track") or "") if x)
     else:
         # вне сессии — нейтральный значок: красный только когда идёт эфир
         badge = icon_badge(ft.Icons.SENSORS_ROUNDED, SECTION_COLORS["live"])
@@ -291,7 +291,7 @@ def _build_last_podium(state, race, podium, compact):
     name = race.get("race_name", "") if race else ""
     flag_src, iso = state.flag(country=race.get("country")) if race else (None, "")
     return ft.Column([
-        SectionHeader("Последняя гонка", subtitle=f"Этап {race['round']} · {name}" if race else None,
+        SectionHeader("Последняя гонка", subtitle=f"Этап {race['round']}, {name}" if race else None,
                       action_text="Разбор" if race and race.get("date") else "Календарь",
                       on_action=(lambda e: state.open_race_strategy(race)) if race and race.get("date")
                       else (lambda e: _open_calendar_past(state))),
@@ -342,7 +342,7 @@ def _build_title_fight(state):
         title = f"В борьбе {n} {plural(n, 'пилот', 'пилота', 'пилотов')}"
         hint = f"Разыгрывается ещё {race['available']} очков"
         if race["next_clinch"] is not None:
-            hint += f" · {short_name(state.standings[0]['name'])} может стать чемпионом в ближайшей гонке"
+            hint += f". {short_name(state.standings[0]['name'])} может стать чемпионом в ближайшей гонке"
     faces = [DriverAvatar(r["code"], r["team"], size=32, src=state.photo(r)) for r, *_ in contenders[:5]]
     return AnimatedCard(ft.Row([
         ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD, size=28),

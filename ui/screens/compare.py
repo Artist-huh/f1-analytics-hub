@@ -64,7 +64,7 @@ def build(state):
     ]
     n = len(drivers)
     return screen(state, "Сравнение", sections,
-                  subtitle=f"{n} {plural(n, 'пилот', 'пилота', 'пилотов')} · сезон {state.season}", back=True)
+                  subtitle=f"{n} {plural(n, 'пилот', 'пилота', 'пилотов')}, сезон {state.season}", back=True)
 
 
 # ---------------------------------------------------------------- выбор пилотов

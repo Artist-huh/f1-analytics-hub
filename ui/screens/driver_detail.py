@@ -172,7 +172,7 @@ def _build_points_chart(state, driver):
     chart = line_chart(series, rounds, content_width(state) - 2 * SPACE_SM, height=200)
     return ft.Column([
         SectionHeader("Набор очков",
-                      subtitle="Гонки и спринты, по этапам" + (" · против напарника" if len(people) > 1 else "")),
+                      subtitle="Гонки и спринты, по этапам" + (", против напарника" if len(people) > 1 else "")),
         AnimatedCard(ft.Column([chart, legend(series)], spacing=SPACE_XS)),
     ], spacing=SPACE_SM)
 
@@ -223,7 +223,7 @@ def _build_race_results(state, driver, results):
             ft.Text(r["position"], size=FONT_BODY_SMALL, color=DANGER, weight=ft.FontWeight.BOLD),
             width=34, height=34, alignment=ft.Alignment.CENTER, bgcolor=SURFACE_ELEVATED,
             border_radius=RADIUS_SM, tooltip=r["status"])
-        start = f"квал. P{quali[r['round']]} · старт {r['grid']}" if r["round"] in quali else f"старт {r['grid']}"
+        start = f"квал. P{quali[r['round']]}, старт {r['grid']}" if r["round"] in quali else f"старт {r['grid']}"
         rows.append(ft.Container(
             content=ft.Row([
                 badge,
@@ -232,7 +232,7 @@ def _build_race_results(state, driver, results):
                             ft.Text(r["race_name"], size=FONT_BODY, weight=ft.FontWeight.W_600, color=TEXT_PRIMARY,
                                     max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True)] + extras,
                            spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                    ft.Text(f"Этап {r['round']} · {start} · {fmt_date_str(r['date'])}",
+                    ft.Text(f"Этап {r['round']}, {start}, {fmt_date_str(r['date'])}",
                             size=FONT_CAPTION, color=TEXT_MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                 ], spacing=1, expand=True),
                 ft.Column([

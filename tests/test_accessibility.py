@@ -163,6 +163,22 @@ class ContrastTest(unittest.TestCase):
                     found += [f"{f}: {m}" for m in re.findall(r"GRADIENT_RED|ACCENT_GLOW|bgcolor=DANGER", text)]
         self.assertEqual(found, [])
 
+    def test_no_middle_dot_joins(self):
+        """Подписи без склеек «A · B · C» (шаблонный приём): перечисления — через запятую, счётчики — в скобках."""
+        import os
+        import re
+        root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ui")
+        found = []
+        for folder, _, files in os.walk(root):
+            for f in files:
+                if f.endswith(".py"):
+                    with open(os.path.join(folder, f), encoding="utf-8") as fh:
+                        for i, line in enumerate(fh, 1):
+                            code = line.split("#")[0]
+                            if re.search(r"[\"'][^\"']*·[^\"']*[\"']", code):
+                                found.append(f"{f}:{i}")
+        self.assertEqual(found, [])
+
     def test_contrast_formula(self):
         self.assertAlmostEqual(ds.contrast("#000000", "#FFFFFF"), 21.0)
         self.assertAlmostEqual(ds.contrast("#777777", "#777777"), 1.0)

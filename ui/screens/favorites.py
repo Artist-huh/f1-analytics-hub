@@ -67,7 +67,7 @@ def _build_favorites_list(state, drivers, missing):
         trailing = star_button(True, lambda e, i=d["driver_id"]: state.toggle_favorite(i))
         points = float(d["points"])
         cards.append(driver_row(state, d, trailing=trailing,
-                                subtitle=f"{points:g} {plural(points, 'очко', 'очка', 'очков')} · {d['team']}"))
+                                subtitle=f"{points:g} {plural(points, 'очко', 'очка', 'очков')}, {d['team']}"))
     for driver_id in missing:
         cards.append(ft.Container(
             content=ft.Row([
