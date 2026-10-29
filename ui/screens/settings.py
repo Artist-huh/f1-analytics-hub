@@ -2,7 +2,7 @@
 import flet as ft
 
 from design_system import *
-from services import db, log, media, notify
+from services import db, log, media, notify, report
 from services import f1_api as api
 from services.version import VERSION
 from ui.fmt import fmt_updated
@@ -142,9 +142,33 @@ def build(state):
                 12, MUTED),
             txt("Данные: Jolpica F1 API, OpenF1. Фото пилотов, логотипы, болиды и схемы трасс © Formula 1 "
                 "и команды; флаги — flagcdn.com. Приложение не связано с Formula 1 и FIA.", 11, DIM),
+            button("Сообщить о проблеме", lambda e: _report_problem(state), primary=False,
+                   icon=ft.Icons.BUG_REPORT_ROUNDED),
+            txt("Откроется страница обращения на GitHub: версия, система и конец журнала — без имени "
+                "пользователя и путей к папкам. Полный отчёт копируется в буфер обмена. Отправляете вы сами.",
+                11, DIM),
         ], spacing=6)),
     ]
     return screen(state, "Настройки", body, back=True)
+
+
+def _report_problem(state):
+    """Копирует отчёт в буфер и открывает новое обращение на GitHub с уже заполненным текстом."""
+    full, url = report.prepare(log.log_path())
+    page = state.page
+    clipboard, launcher = ft.Clipboard(), ft.UrlLauncher()     # сервисы регистрируются на текущей странице
+
+    async def send():
+        try:
+            await clipboard.set(full)
+            await launcher.launch_url(url)
+        except Exception:      # нет браузера, буфер занят: отчёт не критичен, но причину — в журнал
+            log.get("settings").exception("отчёт о проблеме не открыт")
+
+    run_task = getattr(page, "run_task", None)
+    if run_task:
+        run_task(send)
+    page.show_dialog(ft.SnackBar(ft.Text("Отчёт скопирован. Открываем страницу обращения на GitHub…")))
 
 
 def _confirm_clear(state):

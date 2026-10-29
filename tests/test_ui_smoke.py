@@ -1463,6 +1463,31 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("О приложении", t)
         self.assertIn("Фото и логотипы", t)
 
+    def test_problem_report(self):
+        """Отчёт о проблеме: без имени пользователя и путей к его папкам, ссылка не длиннее, чем примет GitHub,
+        кнопка в «Настройках» показывает подсказку, что делать дальше."""
+        from services import report
+        home = os.path.expanduser("~")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "f1_hub.log")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("".join(f"2026-10-30 12:00:{i:02d} INFO f1hub.db: база {home}\\.f1_analytics_hub\\f1_hub.db "
+                                f"{'длинная строка ' * 20}\n" for i in range(200)))
+            full, url = report.prepare(path)
+        self.assertNotIn(home, full)
+        self.assertIn("~", full)
+        self.assertIn("Версия:", full)
+        self.assertLessEqual(len(url), report.MAX_URL)
+        self.assertTrue(url.startswith(report.ISSUES))
+        self.assertIn("(журнал отключён)", report.build(None))
+        self.assertIn("(журнал не прочитан", report.log_tail(os.path.join(home, "нет-такого.log")))
+        self.state.load()
+        tree = app.SUBS["settings"](self.state)
+        with mock.patch.object(report, "prepare", return_value=("отчёт", report.ISSUES)) as prepare:
+            clickable(tree, "Сообщить о проблеме")[0].on_click(Ctl())
+        prepare.assert_called_once()
+        self.assertTrue(self.page.dialogs)                                  # подсказка «Отчёт скопирован…»
+
     def test_version_has_one_source(self):
         """Номер версии записан только в pyproject.toml: раньше он был в шести местах, и при выпуске
         «Настройки» показывали старый номер."""

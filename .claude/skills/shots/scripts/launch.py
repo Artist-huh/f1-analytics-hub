@@ -5,6 +5,7 @@
          driver_detail, team, history, title, predict, strategy, favorites, race_strategy, circuit
   WIDTH, HEIGHT  размер окна (по умолчанию 440×880 — телефон; 1100×800 — компьютер)
   LIT    превью стартовых огней на главной: сколько горит (0–5), независимо от даты гонки
+  SCROLL прокрутить экран: end — до конца, число — на столько px вниз
 """
 import os
 import sys
@@ -60,8 +61,31 @@ def wrapped(page):
                 state.ui["team"] = state.constructors[0]["name"]
             state.open_sub(name)
         state.render()
+        if os.environ.get("SCROLL"):                     # прокрутка экрана: окно не бывает выше монитора
+            threading.Timer(2.0, lambda: page.run_task(scroll)).start()
+
+    async def scroll():
+        """SCROLL=end — до конца, SCROLL=600 — на 600 px вниз. Прокручивается самая большая колонка экрана."""
+        value = os.environ["SCROLL"]
+        cols = [c for c in _walk(page) if isinstance(c, ft.Column) and c.scroll]
+        if cols:
+            await cols[-1].scroll_to(offset=-1 if value == "end" else float(value), duration=0)
 
     threading.Timer(2.0, lambda: app.run_on_ui(page, go)).start()
+
+
+def _walk(node, seen=None):
+    """Все элементы страницы: содержимое Flet 1.0 лежит в controls / content / views."""
+    seen = seen if seen is not None else set()
+    if node is None or id(node) in seen:
+        return
+    seen.add(id(node))
+    yield node
+    for attr in ("views", "controls", "content"):
+        child = getattr(node, attr, None)
+        for item in child if isinstance(child, list) else [child]:
+            if isinstance(item, ft.BaseControl):
+                yield from _walk(item, seen)
 
 
 ft.run(wrapped, assets_dir=app.ASSETS_DIR)
