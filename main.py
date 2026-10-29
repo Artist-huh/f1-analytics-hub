@@ -7,7 +7,6 @@ import time
 import flet as ft
 
 import design_system as ds
-from design_system import *
 from services import f1_api, log, notify, widget
 from services import live as live_service
 from ui import theming
@@ -95,18 +94,18 @@ def build_screen(state):
         # текст ошибки — в журнале (logger.exception выше), пользователю — что делать дальше
         return ft.Column(
             [
-                ft.Icon(ft.Icons.ERROR_ROUNDED, size=64, color=DANGER),
-                ft.Text("Не удалось показать экран", size=FONT_H3, color=TEXT_PRIMARY),
+                ft.Icon(ft.Icons.ERROR_ROUNDED, size=64, color=ds.DANGER),
+                ft.Text("Не удалось показать экран", size=ds.FONT_H3, color=ds.TEXT_PRIMARY),
                 ft.Text("Попробуй открыть его ещё раз или вернись на главную. Подробности записаны в журнал "
                         "приложения — его можно приложить к сообщению об ошибке.",
-                        size=FONT_BODY_SMALL, color=TEXT_MUTED, text_align=ft.TextAlign.CENTER),
+                        size=ds.FONT_BODY_SMALL, color=ds.TEXT_MUTED, text_align=ft.TextAlign.CENTER),
                 ft.Row([ft.FilledTonalButton("Повторить", icon=ft.Icons.REFRESH_ROUNDED,
                                              on_click=lambda e: state.render()),
                         ft.TextButton("На главную", on_click=lambda e: state.open_tab(0))],
-                       alignment=ft.MainAxisAlignment.CENTER, spacing=SPACE_SM),
+                       alignment=ft.MainAxisAlignment.CENTER, spacing=ds.SPACE_SM),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=SPACE_MD,
+            spacing=ds.SPACE_MD,
         )
 
 
@@ -182,7 +181,7 @@ def nav_bar(on_change):
 def main(page: ft.Page):
     page.title = "F1 Analytics Hub"
     page.padding = 0
-    page.fonts = dict(FONTS)
+    page.fonts = dict(ds.FONTS)
 
     # Размеры окна на десктопе (на телефоне игнорируются)
     try:
@@ -223,7 +222,7 @@ def main(page: ft.Page):
     content = ft.Container(
         content=switcher,
         expand=True,
-        padding=ft.Padding.symmetric(horizontal=SPACE_MD, vertical=SPACE_XS),
+        padding=ft.Padding.symmetric(horizontal=ds.SPACE_MD, vertical=ds.SPACE_XS),
     )
     nav = nav_bar(lambda e: state.open_tab(e.control.selected_index))
 
@@ -248,7 +247,7 @@ def main(page: ft.Page):
                 page.update()
                 page.window.width, page.window.height = 340, 300
                 page.window.always_on_top = True
-                content.padding = ft.Padding.all(SPACE_SM)
+                content.padding = ft.Padding.all(ds.SPACE_SM)
             else:
                 page.window.always_on_top = False
                 page.window.width = normal.get("width") or 440
@@ -355,8 +354,8 @@ def main(page: ft.Page):
     def fit_width():
         """Контент не шире MAX_CONTENT_WIDTH (по центру); в узком окне подписи навигации — только у активной вкладки."""
         width = page.width or 440
-        side = max(SPACE_MD, (width - MAX_CONTENT_WIDTH) / 2)
-        content.padding = ft.Padding.symmetric(horizontal=side, vertical=SPACE_XS)
+        side = max(ds.SPACE_MD, (width - MAX_CONTENT_WIDTH) / 2)
+        content.padding = ft.Padding.symmetric(horizontal=side, vertical=ds.SPACE_XS)
         nav.label_behavior = (ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED if width < NARROW_WIDTH
                               else ft.NavigationBarLabelBehavior.ALWAYS_SHOW)
 

@@ -330,6 +330,40 @@ class UiAppTest(UiTestCase):
         self.assertNotIn("boom", " ".join(t))                  # технический текст — в журнал, а не на экран
         self.assertTrue(clickable(tree, "На главную") and clickable(tree, "Повторить"))
 
+    def test_error_screen_follows_theme(self):
+        """main.py брал цвета через «import *» и не перезагружается при смене темы: в светлой теме сообщение
+        об ошибке рисовалось белым по светлому фону — его не было видно."""
+        from ui import theming
+        self.addCleanup(theming.apply, "dark")
+        theming.apply("light")
+        self.state.load()
+        original = app.TABS[0]
+        app.TABS[0] = mock.Mock(side_effect=RuntimeError("boom"))
+        try:
+            tree = app.build_screen(self.state)
+        finally:
+            app.TABS[0] = original
+        title = next(n for n in walk(tree) if getattr(n, "value", None) == "Не удалось показать экран")
+        self.assertEqual(title.color, design_system.TEXT_PRIMARY)
+        self.assertEqual(design_system.TEXT_PRIMARY, "#15151E")                # тёмный текст светлой темы
+
+    def test_star_imports_of_tokens_are_reloaded_on_theme_change(self):
+        """Кто берёт токены через «from design_system import *», получает копии значений — после смены темы
+        их обновит только перезагрузка модуля. Поэтому каждый такой модуль обязан быть в списке ui.theming."""
+        import re
+
+        from ui import theming
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        star = set()
+        for folder in (".", "ui", os.path.join("ui", "screens"), "services"):
+            for path in glob.glob(os.path.join(root, folder, "*.py")):
+                with open(path, encoding="utf-8") as f:
+                    if re.search(r"^from design_system import \*", f.read(), re.MULTILINE):
+                        rel = os.path.relpath(path, root)[:-3].replace(os.sep, ".")
+                        star.add(rel)
+        self.assertTrue(star)
+        self.assertEqual(star - set(theming._screen_modules()), set())
+
 
 class FmtTest(unittest.TestCase):
     def test_plural(self):
