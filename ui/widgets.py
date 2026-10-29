@@ -88,7 +88,7 @@ def button(label, on_click, primary=True, icon=None, disabled=False):
                                    colors=GRADIENT_ACCENT) if primary else None,
         bgcolor=None if primary else RAISED, border_radius=12, height=TOUCH,
         padding=ft.Padding.symmetric(horizontal=16), on_click=None if disabled else on_click, ink=not disabled,
-        shadow=glow(strength=0.3) if primary else None, opacity=0.6 if disabled else None,
+        shadow=glow(strength=0.3) if primary else None, opacity=0.6 if disabled else 1.0,   # None Flet не примет
         disabled=disabled,
     )
 

@@ -44,10 +44,37 @@ if state.schedule:
 if state.constructors:
     state.ui["team"] = state.constructors[0]["name"]
 errors = []
+import dataclasses
+import flet as ft
+
+
+def validate(tree, name):
+    """Проверка полей, как перед отправкой на экран (BaseControl._before_update_safe -> validate):
+    конструктор принимает, например, opacity=None, а падает приложение только при показе."""
+    seen, stack = set(), [tree]
+    while stack:
+        obj = stack.pop()
+        if isinstance(obj, (list, tuple)):
+            stack.extend(obj)
+            continue
+        if not isinstance(obj, ft.BaseControl) or id(obj) in seen:
+            continue
+        seen.add(id(obj))
+        try:
+            obj._before_update_safe()
+        except Exception as exc:
+            errors.append(f"{name}: {type(obj).__name__}: {exc}")
+        for f in dataclasses.fields(obj):              # поля Flet лежат во внутреннем _values, vars() их не видит
+            if not f.name.startswith("_"):
+                v = getattr(obj, f.name, None)
+                if isinstance(v, (ft.BaseControl, list, tuple)):
+                    stack.append(v)
+
+
 screens = [(f"tab{i}", b) for i, b in enumerate(app.TABS)] + list(app.SUBS.items())
 for name, build in screens:
     try:
-        build(state)
+        validate(build(state), name)
     except Exception:
         errors.append(f"{name}: {traceback.format_exc(limit=3)}")
 # Live Timing с живым снимком: таблица, трасса, радио, мини-карточка — настоящими элементами
@@ -71,11 +98,11 @@ state.sub = "live"
 for view in ("table", "track", "radio"):
     state.ui["live_view"] = view
     try:
-        app.SUBS["live"](state)
+        validate(app.SUBS["live"](state), f"live/{view}")
     except Exception:
         errors.append(f"live/{view}: {traceback.format_exc(limit=3)}")
 try:
-    live_table.driver_card(state, row, live._state["data"])
+    validate(live_table.driver_card(state, row, live._state["data"]), "driver_card")
 except Exception:
     errors.append(f"driver_card: {traceback.format_exc(limit=3)}")
 print(json.dumps({"screens": len(screens), "errors": errors}, ensure_ascii=False))
