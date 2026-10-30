@@ -41,6 +41,7 @@ jobs:
       shell: bash
       run: |
         python -m venv venv
+        venv/Scripts/python.exe -m pip install -q --upgrade pip
         venv/Scripts/python.exe -m pip install -q -r requirements.txt pillow -c constraints.txt
 
     - name: Снимки и сравнение с эталоном

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Точные версии: обновления приходят от Dependabot и проходят через тесты. Полный снимок — constraints.txt
 flet[all]==1.0.5  # Flet 1.x API (field borders via border=OutlineInputBorder)
 requests==2.34.2
