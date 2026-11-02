@@ -228,6 +228,52 @@ def _attach_phone_radio(page):
 
     radio.attach_phone_engine(run)
     logger.info("радио: расшифровка на телефоне через whisper.cpp и ML Kit")
+    if _phone_selftest_requested():
+        threading.Thread(target=_phone_radio_selftest, name="f1-radio-selftest", daemon=True).start()
+
+
+SELFTEST_SPEECH = "https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/samples/jfk.wav"
+
+
+def _phone_selftest_requested():
+    """Самопроверка радио на телефоне (CI): iPhone-симулятор передаёт переменную окружения,
+    эмулятору Android — системное свойство (adb shell setprop debug.f1hub.radio_selftest 1)."""
+    if os.environ.get("F1_HUB_RADIO_SELFTEST"):
+        return True
+    if notify.is_android():
+        import subprocess
+        try:
+            out = subprocess.run(["getprop", "debug.f1hub.radio_selftest"], capture_output=True, text=True,
+                                 timeout=5).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return out == "1"
+    return False
+
+
+def _phone_radio_selftest():
+    """Телефон: скачать лёгкую модель whisper.cpp и перевод ML Kit, расшифровать и перевести образец речи
+    (whisper.cpp samples/jfk.wav — речь Кеннеди, общественное достояние) и записать итог в журнал."""
+    import requests
+
+    from services import db, radio
+    try:
+        started = time.monotonic()
+        model = "base.en-q5_1"
+        radio.models_dir().mkdir(parents=True, exist_ok=True)
+        if not radio._whisper_file(model).exists():
+            radio._download_whisper(model)
+        db.set_setting("radio_model", model)
+        if db.get_setting("radio_translation") != "1":
+            if not radio._phone["run"]("download_translation"):
+                raise RuntimeError("модель перевода ML Kit не скачалась")
+            db.set_setting("radio_translation", "1")
+        resp = requests.get(SELFTEST_SPEECH, timeout=60)
+        resp.raise_for_status()
+        en, ru = radio._process_on_phone(resp.content)
+        logger.info("радио: самопроверка за %.1f с — %s | %s", time.monotonic() - started, en, ru)
+    except Exception as exc:
+        logger.error("радио: самопроверка не прошла — %r", exc)
 
 
 def main(page: ft.Page):

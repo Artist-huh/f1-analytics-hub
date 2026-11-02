@@ -1,0 +1,28 @@
+name: flet_radio
+description: Радио команд F1 Analytics Hub на телефоне — расшифровка whisper.cpp и перевод ML Kit, офлайн
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.1.3
+  # whisper.cpp 1.9.2 (MIT): Android собирает из исходников, iPhone — готовый XCFramework
+  whisper_cpp_flutter_plus: 0.5.1
+  # Google ML Kit, перевод на устройстве: бесплатно, модель en->ru ~30 МБ, скачивается один раз
+  google_mlkit_translation: 0.13.1
+
+  flet:
+    path: ../../../../../../../packages/flet
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      ios:
+        ffiPlugin: true

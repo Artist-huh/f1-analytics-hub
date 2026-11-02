@@ -5,6 +5,8 @@
 Нажатия по экрану на симуляторе без XCUITest не сделать, поэтому проверяем то, что видно снаружи:
 процесс не упал за WAIT секунд, первый экран построен (снимки экрана), в журнале приложения
 нет трассировок и «Не удалось показать экран», нет отчётов о падении Runner.
+Радио: переменная F1_HUB_RADIO_SELFTEST (через SIMCTL_CHILD_) включает самопроверку — whisper.cpp и ML Kit
+расшифровывают и переводят образец речи; в расшифровке должно быть «country» (речь Кеннеди).
 """
 import glob
 import json
@@ -15,6 +17,7 @@ import sys
 import time
 
 WAIT = 120          # первый запуск: распаковка Python и загрузка данных
+RADIO_WAIT = 600    # самопроверка радио: скачать модели (~60 МБ whisper + ML Kit) и расшифровать
 FAIL_MARKERS = ("Traceback", "ошибка построения экрана")
 
 
@@ -42,6 +45,19 @@ def shot(udid, out, name):
     run("io", udid, "screenshot", os.path.join(out, f"{name}.png"), check=False)
 
 
+def radio_selftest(container, started):
+    """Ждать итог самопроверки радио в журнале приложения: «радио: самопроверка за N с — en | ru»."""
+    deadline = started + WAIT + RADIO_WAIT
+    while time.time() < deadline:
+        for path in glob.glob(os.path.join(container, "**", "f1_hub.log"), recursive=True):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                line = next((ln for ln in fh if "радио: самопроверка" in ln), "")
+            if line:
+                return line.split("радио: самопроверка", 1)[-1].strip()
+        time.sleep(10)
+    return ""
+
+
 def main():
     app, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
@@ -54,7 +70,9 @@ def main():
     run("bootstatus", udid, "-b", timeout=600)
     run("install", udid, app)
     started = time.time()
-    run("launch", udid, bundle_id)
+    # переменные с префиксом SIMCTL_CHILD_ simctl передаёт запускаемому приложению
+    subprocess.run(["xcrun", "simctl", "launch", udid, bundle_id], check=True, timeout=300,
+                   env=dict(os.environ, SIMCTL_CHILD_F1_HUB_RADIO_SELFTEST="1"))
 
     failures = []
     for i in range(WAIT // 20):
@@ -65,6 +83,7 @@ def main():
             break
 
     container = run("get_app_container", udid, bundle_id, "data", check=False).strip()
+    radio = radio_selftest(container, started) if container and not failures else ""
     logs = glob.glob(os.path.join(container, "**", "f1_hub.log"), recursive=True) if container else []
     text = ""
     for path in logs:
@@ -80,12 +99,15 @@ def main():
     crashes = glob.glob(os.path.expanduser("~/Library/Logs/DiagnosticReports/Runner*"))
     if crashes:
         failures.append(f"отчёты о падении: {[os.path.basename(c) for c in crashes]}")
+    if "country" not in radio.lower() or "не прошла" in radio:
+        failures.append(f"самопроверка радио: {radio or 'нет строки в журнале за ' + str(RADIO_WAIT) + ' с'}")
     run("terminate", udid, bundle_id, check=False)
 
     if failures:
         print("ПРОБЛЕМЫ:\n  " + "\n  ".join(failures))
         sys.exit(1)
     print(f"iPhone: приложение запущено и работает {WAIT} с, журнал без ошибок ({len(text.splitlines())} строк)")
+    print(f"радио: {radio}")
 
 
 if __name__ == "__main__":

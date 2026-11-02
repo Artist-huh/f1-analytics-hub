@@ -26,17 +26,22 @@ exclude = ["venv", "tests", "build", "dist", "docs", ".github", "packages", "*.b
 adaptive_icon_background = "#15151E"
 # Уведомления на Android: отправка — NotificationManager через pyjnius (есть в репозитории пакетов Flet),
 # запрос разрешения POST_NOTIFICATIONS — официальное расширение Flet (версия = версии Flet).
-# Радио команд — проигрывание через flet-audio; расшифровки и перевода на Android нет (тяжёлые модели).
+# Радио команд — проигрывание через flet-audio; расшифровка (whisper.cpp) и перевод (Google ML Kit) —
+# своё расширение packages/flet_radio, тот же движок и та же модель, что на компьютере.
 # Виджет на главный экран — своё расширение packages/flet_home_widget (Java AppWidgetProvider).
-dependencies = ["pyjnius", "flet-permission-handler==1.0.5", "flet-audio==1.0.5", "flet-home-widget"]
+dependencies = ["pyjnius", "flet-permission-handler==1.0.5", "flet-audio==1.0.5", "flet-home-widget", "flet-radio"]
 
 [tool.flet.ios]
-# iPhone: радио проигрывается через flet-audio, вибрация — встроенный сервис Flet.
-# Расшифровки радио, системных уведомлений и виджета нет — вместо уведомлений плашка в приложении.
-dependencies = ["flet-audio==1.0.5"]
+# iPhone: радио проигрывается через flet-audio, расшифровка и перевод — packages/flet_radio,
+# вибрация — встроенный сервис Flet. Системных уведомлений и виджета нет — вместо уведомлений плашка.
+dependencies = ["flet-audio==1.0.5", "flet-radio"]
 
 [tool.flet.android.dev_packages]
 flet-home-widget = "packages/flet_home_widget"
+flet-radio = "packages/flet_radio"
+
+[tool.flet.ios.dev_packages]
+flet-radio = "packages/flet_radio"
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true

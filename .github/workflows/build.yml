@@ -155,6 +155,23 @@ jobs:
         F1_HUB_LOG: "off"
       run: python -m unittest discover -s tests -t .
 
+    # whisper_cpp_flutter_plus (расшифровка радио) собирает whisper.cpp только под ARM, а эмулятор в test-android —
+    # x86_64. Скрипт инициализации Gradle добавляет плагину x86_64, чтобы самопроверку радио можно было пройти
+    # на эмуляторе (на телефонах ARM ничего не меняется).
+    - name: whisper.cpp for the x86_64 emulator (Gradle init script)
+      run: |
+        mkdir -p ~/.gradle/init.d
+        cat > ~/.gradle/init.d/whisper-x86_64.gradle <<'EOF'
+        gradle.beforeProject { p ->
+          if (p.name == 'whisper_cpp_flutter_plus') {
+            p.pluginManager.withPlugin('com.android.library') {
+              p.android.defaultConfig.ndk.abiFilters.add('x86_64')
+            }
+          }
+        }
+        EOF
+        cat ~/.gradle/init.d/whisper-x86_64.gradle
+
     - name: Build APKs per ABI (flet build installs Flutter itself; Android SDK is on the runner)
       run: flet build apk --split-per-abi --yes --no-rich-output --skip-flutter-doctor
 

@@ -5,6 +5,8 @@
 Ставит приложение, проходит знакомство первого запуска (команда, пилоты, уведомления), ждёт главный
 экран, проходит вкладки нижнего меню и делает скриншоты,
 проверяет системную кнопку «назад», тестовое уведомление и виджет на главный экран, сохраняет logcat.
+Радио: свойство debug.f1hub.radio_selftest=1 включает в приложении самопроверку — whisper.cpp и ML Kit
+расшифровывают и переводят образец речи; в расшифровке должно быть «country» (речь Кеннеди).
 Элементы ищутся по тексту в дереве доступности (uiautomator dump) — Flutter его заполняет,
 поэтому координаты не зашиты. Код выхода 1 — приложение не запустилось или упало.
 """
@@ -132,12 +134,38 @@ def foreground():
     return PACKAGE in "".join(ln for ln in out.splitlines() if "mResumedActivity" in ln or "topResumedActivity" in ln)
 
 
+RADIO_WAIT = 600     # скачать модели (~60 МБ whisper + ML Kit) и расшифровать на эмуляторе x86_64
+
+
+def radio_selftest(log_path, proc, failures):
+    """Ждать итог самопроверки радио в журнале приложения: «радио: самопроверка за N с — en | ru»."""
+    deadline = time.time() + RADIO_WAIT
+    line = ""
+    while time.time() < deadline:
+        text = log_path.read_text(encoding="utf-8", errors="replace")
+        line = next((ln for ln in text.splitlines() if "радио: самопроверка" in ln), "")
+        if line:
+            break
+        time.sleep(10)
+    proc.terminate()
+    result = line.split("радио: самопроверка", 1)[-1].strip()
+    if "country" in result.lower() and "не прошла" not in result:
+        print(f"радио: {result}")
+    else:
+        failures.append(f"самопроверка радио: {result or 'нет строки в журнале за ' + str(RADIO_WAIT) + ' с'}")
+
+
 def main():
     apk, out = Path(sys.argv[1]), Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
     failures = []
     adb("install", "-r", "-g", str(apk), timeout=600)            # -g: выдать разрешения (уведомления)
     adb("logcat", "-c", check=False)
+    adb("shell", "setprop", "debug.f1hub.radio_selftest", "1", check=False)   # самопроверка радио
+    radio_log = out / "radio.txt"            # только строки радио — не вытеснятся из кольцевого буфера logcat
+    radio_out = open(radio_log, "w", encoding="utf-8")   # noqa: SIM115 — пишет adb до конца проверки
+    radio_proc = subprocess.Popen(["adb", "logcat", "-e", "радио:|RadioEngine|whisper"],
+                                  stdout=radio_out, stderr=subprocess.DEVNULL)
     adb("shell", "am", "start", "-n", ACTIVITY)
     started = time.time()
     first, xml = wait_any(["Добро пожаловать", "F1 Hub"], timeout=300)   # первый запуск распаковывает Python
@@ -214,6 +242,8 @@ def main():
         print("виджет: данные получены")
     else:
         failures.append(f"виджет не получил данные: {widget_log[-3:]}")
+    radio_selftest(radio_log, radio_proc, failures)
+    radio_out.close()
     if failures:
         print("ПРОБЛЕМЫ:\n  " + "\n  ".join(failures))
         return 1
