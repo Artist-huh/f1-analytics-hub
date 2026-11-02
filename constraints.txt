@@ -48,13 +48,13 @@ msgpack==1.2.4
 numpy==2.4.6
 oauthlib==4.0.0
 onnxruntime==1.31.0
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
 packaging==26.3
 pefile==2024.8.26
 pillow==13.0.0
 protobuf==7.36.2
-pydantic==2.14.1
-pydantic_core==2.50.1
+pydantic==2.14.2
+pydantic_core==2.50.2
 Pygments==2.21.0
 pyinstaller==6.22.3
 pyinstaller-hooks-contrib==2026.9

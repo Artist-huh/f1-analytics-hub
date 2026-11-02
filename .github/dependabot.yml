@@ -11,6 +11,8 @@ updates:
     groups:
       flet:                 # Flet и его расширения выходят одной версией — обновлять вместе
         patterns: ["flet", "flet-*"]
+      pydantic:             # pydantic требует строго свою версию pydantic-core: по отдельности не ставятся
+        patterns: ["pydantic", "pydantic-core", "pydantic_core"]
     ignore:
       # flet-cli 1.0.5 требует chardet<6: chardet 7 (запрос #4) не ставится вместе с Flet. Снять, когда
       # Flet разрешит новую версию
