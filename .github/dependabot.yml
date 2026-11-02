@@ -11,6 +11,11 @@ updates:
     groups:
       flet:                 # Flet и его расширения выходят одной версией — обновлять вместе
         patterns: ["flet", "flet-*"]
+    ignore:
+      # flet-cli 1.0.5 требует chardet<6: chardet 7 (запрос #4) не ставится вместе с Flet. Снять, когда
+      # Flet разрешит новую версию
+      - dependency-name: chardet
+        versions: [">=6"]
     commit-message:
       prefix: "Зависимости"
 
