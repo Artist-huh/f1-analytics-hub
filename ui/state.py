@@ -348,7 +348,7 @@ class AppState:
 
     # ---------- уведомления ----------
     def notifications_on(self, kind):
-        """kind: 'sessions' — за час до квалификации/спринта/гонки, 'results' — итоги избранных."""
+        """kind — ключ из services.alerts.KINDS (сессии, live, итоги этапа, избранные, чемпионат, прогнозы)."""
         return api.get_setting(f"notif_{kind}", "1") == "1"
 
     def set_notifications(self, kind, on):
@@ -363,34 +363,79 @@ class AppState:
         except ValueError:
             return []
 
-    def _mark_sent(self, nid):
-        api.set_setting("notified", json.dumps((self._sent() + [nid])[-100:]))
+    def _mark_sent(self, nids):
+        api.set_setting("notified", json.dumps((self._sent() + list(nids))[-300:]))
+
+    def _standings_memory(self, rnd):
+        """Места и лидер чемпионата до последнего этапа (для «поднялся на 3-е место» и «новый лидер»).
+        Запоминаются при смене этапа. -> (места {driver_id: место}, id лидера)"""
+        try:
+            saved = json.loads(api.get_setting("notif_standings", "{}"))
+        except ValueError:
+            saved = {}
+        current = {d["driver_id"]: stats.to_int(d["position"]) for d in self.standings}
+        leader = self.standings[0]["driver_id"] if self.standings else None
+        if saved.get("round") != rnd:
+            api.set_setting("notif_standings", json.dumps({"round": rnd, "positions": current, "leader": leader,
+                                                           "previous": saved.get("positions") or {},
+                                                           "previous_leader": saved.get("leader")}))
+            return saved.get("positions") or {}, saved.get("leader")
+        return saved.get("previous") or {}, saved.get("previous_leader")
+
+    def pending_alerts(self, now=None):
+        """Все события, о которых можно сообщить сейчас. -> [(вид, id, заголовок, текст, по времени ли)].
+        «По времени» — напоминания и live: их нельзя прислать задним числом, остальное — итоги, которые
+        при первом запуске уже случились (их только запоминаем, чтобы не засыпать старыми новостями)."""
+        from services import alerts, predictions
+        now = time.time() if now is None else now
+        season = self.season
+        rnd = str(max((stats.to_int(r["round"]) or 0 for r in self.season_results), default=0))
+        out = [("sessions", *a, True) for a in notify.due_reminders(self.schedule, now)]
+        out += [("live", *a, True) for a in alerts.sessions_started(self.schedule, now)]
+        out += [("live", *a, True) for a in alerts.live_flags(live.snapshot()[0])]
+        out += [("stage", *a, False) for a in alerts.stage_results(season, self.schedule, self.standings,
+                                                                   self.season_results, self.qualifying, self.sprints)]
+        result = notify.favorites_result(self.favorites, self.standings, self.season_results)
+        out += [("results", *result, False)] if result else []
+        previous, previous_leader = self._standings_memory(rnd)
+        out += [("results", *a, False) for a in alerts.favorites_moves(season, rnd, self.favorites, self.standings,
+                                                                     previous)]
+        out += [("championship", *a, False) for a in alerts.championship(season, rnd, self.standings,
+                                                                        previous_leader, self.title_race())]
+        race = api.get_next_race(now)
+        if race:
+            has_pick = bool(predictions.load(season, race["round"]))
+            out += [("predictions", *a, True) for a in alerts.prediction_reminder(
+                season, race, predictions.lock_time(race), has_pick, now)]
+        out += [("predictions", *a, False) for a in alerts.prediction_scored(
+            season, self.schedule, predictions.load_season(season), self.season_results, self.qualifying)]
+        return out
 
     def check_notifications(self, now=None):
         """Отправить то, что пора (зовётся раз в 30 с из main). -> список отправленных id."""
         if self.notifier is None:
             return []
-        sent, done = set(self._sent()), []
-        if self.notifications_on("sessions"):
-            for nid, title, text in notify.due_reminders(self.schedule, now, sent=sent):
-                self.notifier.send(nid, title, text)
-                self._mark_sent(nid)
-                done.append(nid)
-        result = notify.favorites_result(self.favorites, self.standings, self.season_results)
-        if result:
-            seen = api.get_setting("notif_results_seen")
-            if not seen:                      # первый запуск: старый итог не присылаем
-                api.set_setting("notif_results_seen", result[0])
-            elif result[0] != seen:
-                api.set_setting("notif_results_seen", result[0])
-                if self.notifications_on("results"):
-                    self.notifier.send(*result)
-                    done.append(result[0])
+        sent, done, seen = set(self._sent()), [], []
+        first_run = api.get_setting("notif_primed") != "1"
+        for kind, nid, title, text, timely in self.pending_alerts(now):
+            if nid in sent:
+                continue
+            seen.append(nid)
+            sent.add(nid)
+            if not self.notifications_on(kind) or (first_run and not timely):
+                continue                          # выключено или старая новость при первом запуске
+            self.notifier.send(nid, title, text)
+            done.append(nid)
+        if seen:
+            self._mark_sent(seen)
+        if first_run:
+            api.set_setting("notif_primed", "1")
         return done
 
     def test_notification(self):
         if self.notifier:
-            self.notifier.send("test", "F1 Analytics Hub", "Уведомления работают: напомним за час до старта")
+            self.notifier.send("test", "F1 Analytics Hub",
+                               "Уведомления работают: напомним о сессиях, пришлём итоги этапа и новости чемпионата")
 
     # ---------- оформление ----------
     def set_theme(self, name, team=None):

@@ -27,22 +27,34 @@ class UiAppTest(UiTestCase):
         self.state.notifier = mock.Mock(send=lambda *a: sent.append(a))
         race = self.state.schedule[3]                          # Италия: квалификация за сутки до гонки
         quali = next(s for s in race["sessions"] if s["key"] == "Qualifying")
-        self.assertEqual(self.state.check_notifications(now=quali["ts"] - 1200), ["2026:4:Qualifying"])
+        # первый запуск: напоминания приходят, а уже случившиеся итоги (поул, подиум, чемпион) только запоминаются
+        self.assertEqual(self.state.check_notifications(now=quali["ts"] - 1200),
+                         ["2026:4:Qualifying", "2026:4:predict"])     # прогноза нет, приём закроется со стартом
         self.assertEqual(self.state.check_notifications(now=quali["ts"] - 600), [])   # повторно не шлём
         api.toggle_favorite("leclerc")
+        add_podium()                                           # полный подиум на этапе 3
         self.state.load()
-        self.state.check_notifications()                       # первый раз: старый итог только запоминаем
-        self.assertEqual(len(sent), 1)
-        api.set_setting("notif_results_seen", "2026:2:result")  # «вышли» новые результаты
-        self.assertEqual(self.state.check_notifications(), ["2026:3:result"])
-        self.assertEqual(sent[-1][1], "Итоги: Japanese GP")
+        api.set_setting("notified", "[]")                      # как будто итоги этапа вышли после первого запуска
+        done = self.state.check_notifications(now=quali["ts"] + 3 * 3600)
+        for nid in ("2026:3:pole", "2026:3:race", "2026:3:result", "2026:champion"):
+            self.assertIn(nid, done)
+        titles = [a[1] for a in sent]
+        self.assertIn("Итоги: Japanese GP", titles)
+        self.assertIn("Antonelli — чемпион мира 2026!", titles)
+        self.assertIn("Гонка: победа — Leclerc", titles)
         t = texts(self.build("settings"))
         self.assertIn("Уведомления".lower(), " ".join(t).lower())
+        from services import alerts
+        for title, _hint in alerts.KINDS.values():
+            self.assertIn(title, t)                            # переключатель на каждый вид уведомлений
         switches = [n for n in walk(self.build("settings"))
                     if type(n).__name__ == "Switch" and getattr(n, "tooltip", None) != "Меньше движения"]
         switches[0].on_change(Ctl(control=Ctl(value=False)))
         self.assertFalse(self.state.notifications_on("sessions"))
-        self.assertEqual(self.state.check_notifications(now=quali["ts"] - 100), [])  # выключено
+        api.set_setting("notified", "[]")
+        done = self.state.check_notifications(now=quali["ts"] - 100)
+        self.assertNotIn("2026:4:Qualifying", done)            # напоминания о сессиях выключены
+        self.assertIn("2026:4:predict", done)                  # а о прогнозе — свой переключатель, включён
 
     def test_settings_clear_requires_confirmation(self):
         fill_db()

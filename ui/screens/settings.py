@@ -2,7 +2,7 @@
 import flet as ft
 
 from design_system import *
-from services import db, log, media, notify, report
+from services import alerts, db, log, media, notify, report
 from services import f1_api as api
 from services.version import VERSION
 from ui.fmt import fmt_updated
@@ -78,11 +78,11 @@ def _notifications_card(state):
 
     return card(ft.Column([
         txt("Уведомления", 16, bold=True, head=True),
-        switch("sessions", "О сессиях", "За час до квалификации, спринта и гонки"),
-        switch("results", "Итоги избранных", "Места и очки избранных пилотов после гонки"),
+        *[switch(kind, title, hint) for kind, (title, hint) in alerts.KINDS.items()],
         button("Проверить уведомление", lambda e: state.test_notification(), primary=False,
                icon=ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED),
-        txt("Приходят, пока приложение запущено (свёрнутое — тоже).", 11, DIM),
+        txt("Приходят, пока приложение запущено (свёрнутое — тоже). Сервера у приложения нет: уведомления "
+            "собирает само приложение из тех же данных, что на экранах.", 11, DIM),
         *([ft.Row([
             ft.Column([txt("Вибрация", 14, bold=True),
                        txt("Сейфти-кар, красный флаг и обгоны избранных в Live Timing", 11, MUTED)],

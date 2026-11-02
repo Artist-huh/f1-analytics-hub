@@ -861,7 +861,8 @@ class NotifyTest(unittest.TestCase):
         self.assertEqual(notify.due_reminders([race], now, sent={"2026:18:Qualifying"}), [])   # уже напомнили
         self.assertEqual(notify.due_reminders([self._race(now + 3 * 86400)], now), [])         # ещё рано
         practice = self._race(now + 2 * 86400 + 600)
-        self.assertEqual(notify.due_reminders([practice], now), [])                            # о практике — нет
+        self.assertEqual([d[0] for d in notify.due_reminders([practice], now)],                # о практике — тоже
+                         ["2026:18:FirstPractice"])
 
     def test_favorites_result(self):
         standings = [{"driver_id": "leclerc", "name": "Charles Leclerc"},
@@ -886,6 +887,80 @@ class NotifyTest(unittest.TestCase):
         with mock.patch.object(notify, "DesktopNotifier", mock.Mock()):
             self.assertEqual(notify.Notifier(run_async=tasks.append).send("y", "T", "B"), "desktop")
         self.assertEqual(len(tasks), 1)                    # корутина отдана в цикл событий Flet
+
+
+class AlertsTest(unittest.TestCase):
+    """О чём сообщать (services.alerts): чистые функции на маленьких данных."""
+    STANDINGS = [{"driver_id": "norris", "name": "Lando Norris", "position": "1", "points": "300"},
+                 {"driver_id": "leclerc", "name": "Charles Leclerc", "position": "2", "points": "280"},
+                 {"driver_id": "piastri", "name": "Oscar Piastri", "position": "3", "points": "270"}]
+    SCHEDULE = [{"season": "2026", "round": "18", "race_name": "United States Grand Prix",
+                 "sessions": [{"key": "Qualifying", "ts": 1000.0}, {"key": "Race", "ts": 90000.0}]}]
+
+    def test_session_started_only_in_first_minutes(self):
+        from services import alerts
+        started = alerts.sessions_started(self.SCHEDULE, 1000 + 60)
+        self.assertEqual([a[0] for a in started], ["2026:18:Qualifying:start"])
+        self.assertIn("Квалификация: старт", alerts.sessions_started(self.SCHEDULE, 1000)[0][1])
+        self.assertEqual(alerts.sessions_started(self.SCHEDULE, 1000 + alerts.STARTED_WINDOW + 1), [])
+        self.assertEqual(alerts.sessions_started(self.SCHEDULE, 999), [])
+
+    def test_live_flags(self):
+        from services import alerts
+        snap = {"live": True, "track": "Красный флаг", "lap": 12,
+                "session": {"name": "Race", "year": 2026, "location": "Austin"}}
+        (nid, title, text), = alerts.live_flags(snap)
+        self.assertEqual((title, text), ("Красный флаг", "Гонка, круг 12"))
+        self.assertEqual(alerts.live_flags(dict(snap, track=None)), [])           # зелёный флаг — тишина
+        self.assertEqual(alerts.live_flags(dict(snap, live=False)), [])           # сессия уже закончилась
+        self.assertNotEqual(nid, alerts.live_flags(dict(snap, lap=30))[0][0])     # новый флаг позже — новое
+
+    def test_stage_results(self):
+        from services import alerts
+        quali = [{"round": "18", "driver_id": "leclerc", "position": "1"},
+                 {"round": "17", "driver_id": "norris", "position": "1"}]
+        race = [{"round": "18", "driver_id": d, "position": p} for d, p in
+                (("piastri", "1"), ("norris", "2"), ("leclerc", "3"), ("x", "R"))]
+        out = {a[0]: a for a in alerts.stage_results("2026", self.SCHEDULE, self.STANDINGS, race, quali, [])}
+        self.assertEqual(out["2026:18:pole"][1], "Поул: Leclerc")
+        self.assertEqual(out["2026:18:race"][1:], ("Гонка: победа — Piastri",
+                                                   "United States Grand Prix — подиум: Piastri, Norris, Leclerc"))
+        self.assertNotIn("2026:18:sprint", out)                                     # спринта не было
+        self.assertEqual(alerts.stage_results("2026", self.SCHEDULE, self.STANDINGS, race[:2], [], []), [])
+
+    def test_favorites_moves(self):
+        from services import alerts
+        moves = alerts.favorites_moves("2026", "18", ["leclerc", "piastri"], self.STANDINGS,
+                                       {"leclerc": 3, "piastri": 2, "norris": 1})
+        self.assertEqual([a[1] for a in moves], ["Leclerc поднялся на 2-е место", "Piastri опустился на 3-е место"])
+        self.assertEqual(alerts.favorites_moves("2026", "18", ["norris"], self.STANDINGS, {"norris": 1}), [])
+        self.assertEqual(alerts.favorites_moves("2026", "18", ["leclerc"], self.STANDINGS, {}), [])   # нечего сравнить
+
+    def test_championship(self):
+        from services import alerts
+        out = alerts.championship("2026", "18", self.STANDINGS, "leclerc", {"clinched": False, "next_clinch": 12})
+        self.assertEqual([a[1] for a in out], ["Новый лидер чемпионата: Norris",
+                                               "Norris может стать чемпионом на следующем этапе"])
+        self.assertIn("на 12 очков больше, чем Leclerc", out[1][2])
+        champ = alerts.championship("2026", "18", self.STANDINGS, "norris", {"clinched": True, "next_clinch": None})
+        self.assertEqual([a[0] for a in champ], ["2026:champion"])                 # лидер тот же — только титул
+        self.assertEqual(alerts.championship("2026", "18", [], None, {}), [])
+
+    def test_predictions(self):
+        from services import alerts, predictions
+        race = self.SCHEDULE[0]
+        self.assertEqual(alerts.prediction_reminder("2026", race, 10000, False, 10000 - 3600)[0][0], "2026:18:predict")
+        self.assertEqual(alerts.prediction_reminder("2026", race, 10000, True, 10000 - 3600), [])     # прогноз есть
+        self.assertEqual(alerts.prediction_reminder("2026", race, 10000, False, 10000 - 5 * 3600), [])  # рано
+        self.assertEqual(alerts.prediction_reminder("2026", race, 10000, False, 10001), [])            # закрыт
+        results = [{"round": "18", "driver_id": d, "position": p} for d, p in
+                   (("piastri", "1"), ("norris", "2"), ("leclerc", "3"))]
+        quali = [{"round": "18", "driver_id": "leclerc", "position": "1"}]
+        pick = {"pole": "leclerc", "p1": "piastri", "p2": "norris", "p3": "leclerc"}
+        (nid, title, _), = alerts.prediction_scored("2026", self.SCHEDULE, {"18": pick}, results, quali)
+        self.assertEqual((nid, title), ("2026:18:predict-score",
+                                        f"Прогноз: {predictions.MAX_POINTS} из {predictions.MAX_POINTS} очков"))
+        self.assertEqual(alerts.prediction_scored("2026", self.SCHEDULE, {}, results, quali), [])     # не играл
 
 
 class StatsTest(unittest.TestCase):

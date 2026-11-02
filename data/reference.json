@@ -16,9 +16,12 @@
   "Practice 3": "Практика 3"
  },
  "remind_sessions": [
-  "Qualifying",
+  "FirstPractice",
+  "SecondPractice",
+  "ThirdPractice",
   "SprintQualifying",
   "SprintShootout",
+  "Qualifying",
   "Sprint",
   "Race"
  ],
