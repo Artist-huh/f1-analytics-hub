@@ -185,6 +185,49 @@ def _log_radio_support():
         logger.warning("радио: офлайн-расшифровка недоступна — нет %s", ", ".join(missing))
     else:
         logger.info("радио: офлайн-расшифровка доступна")
+        _radio_selftest()
+
+
+def _radio_selftest():
+    """F1_HUB_RADIO_SELFTEST=<запись mp3>: расшифровать и перевести её в собранном приложении и записать итог
+    в журнал (проверка сборки в CI: tools/desktop_smoke.py --radio, tools/android_smoke.py). Модели уже скачаны."""
+    path = os.environ.get("F1_HUB_RADIO_SELFTEST")
+    if not path:
+        return
+    from services import radio
+    try:
+        started = time.monotonic()
+        if not radio.models_ready():
+            raise RuntimeError(f"модели не скачаны ({radio.models_dir()})")
+        with open(path, "rb") as f:
+            data = f.read()
+        if radio.on_phone():
+            en, ru = radio._process_on_phone(data)
+        else:
+            en = radio.transcribe_audio(data)
+            ru = radio.translate(en) if en else ""
+        logger.info("радио: самопроверка за %.1f с — %s | %s", time.monotonic() - started, en, ru)
+    except Exception as exc:
+        logger.error("радио: самопроверка не прошла — %r", exc)
+
+
+def _attach_phone_radio(page):
+    """Телефон: расшифровку и перевод радио делает расширение flet_radio (whisper.cpp + Google ML Kit).
+    Радио работает в фоновом потоке, а сервис — в цикле событий страницы: поток отдаёт вызов в цикл
+    (page.run_task) и ждёт ответа."""
+    from services import radio
+    try:
+        from flet_radio import RadioEngine
+    except ImportError as exc:
+        logger.warning("радио: расширение flet_radio недоступно — %r", exc)
+        return
+    engine = RadioEngine()                       # сервис регистрируется на текущей странице
+
+    def run(method, **kwargs):
+        return page.run_task(getattr(engine, method), **kwargs).result(timeout=900)
+
+    radio.attach_phone_engine(run)
+    logger.info("радио: расшифровка на телефоне через whisper.cpp и ML Kit")
 
 
 def main(page: ft.Page):
@@ -205,6 +248,8 @@ def main(page: ft.Page):
     # если упаковщик потеряет нативные библиотеки, сборка упадёт в CI, а не расшифровка у пользователя.
     if not notify.is_mobile():
         threading.Thread(target=_log_radio_support, name="f1-radio-check", daemon=True).start()
+    else:
+        _attach_phone_radio(page)
 
     # Инициализация данных
     f1_api.bootstrap()

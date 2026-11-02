@@ -24,8 +24,9 @@ import requests
 from . import db, live, log
 
 # Модель расшифровки на выбор: на настоящем радио small.en заметно точнее (base.en путает слова и на шуме
-# пишет «[INAUDIBLE]»). Размер в МБ — вместе с моделью перевода (~100 МБ).
-WHISPER_MODELS = {"small.en-q5_1": ("Точная", 290), "base.en-q5_1": ("Лёгкая", 160)}
+# пишет «[INAUDIBLE]»). Размер модели в МБ; перевод — ещё TRANSLATION_MB (Argos на компьютере, ML Kit на телефоне).
+WHISPER_MODELS = {"small.en-q5_1": ("Точная", 190), "base.en-q5_1": ("Лёгкая", 60)}
+TRANSLATION_MB = {"computer": 100, "phone": 60}
 DEFAULT_WHISPER = "small.en-q5_1"
 WHISPER_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{}.bin"
 MAX_WHISPER = 600 * 1024 * 1024
@@ -73,8 +74,30 @@ def argos_dir() -> Path:
     return models_dir() / "argos-en_ru"
 
 
+# ---------------------------------------------------------------- телефон
+# На Android и iPhone расшифровку и перевод делает расширение flet_radio (whisper.cpp + Google ML Kit):
+# main.py передаёт сюда run(метод, **аргументы) — вызов сервиса RadioEngine из рабочего потока.
+_phone = {"run": None}
+
+
+def attach_phone_engine(run):
+    _phone["run"] = run
+
+
+def on_phone():
+    return _phone["run"] is not None
+
+
+def download_mb(model):
+    """Сколько скачивать для модели model вместе с переводом (МБ)."""
+    return WHISPER_MODELS[model][1] + TRANSLATION_MB["phone" if on_phone() else "computer"]
+
+
 def supported():
-    """Есть ли библиотеки расшифровки (на Android и в урезанных сборках их нет)."""
+    """Можно ли расшифровывать: на телефоне — есть расширение flet_radio, на компьютере — библиотеки."""
+    from . import notify
+    if notify.is_mobile():
+        return on_phone()
     return not missing_libraries()
 
 
@@ -86,8 +109,8 @@ def missing_libraries():
     for name in ("pywhispercpp.model", "miniaudio", "ctranslate2", "sentencepiece"):
         try:
             importlib.import_module(name)
-        except (ImportError, OSError):
-            missing.append(name.split(".")[0])
+        except (ImportError, OSError) as exc:     # с причиной: «нет miniaudio» не говорит, чего не хватает
+            missing.append(f"{name.split('.')[0]} ({type(exc).__name__}: {exc})")
     return missing
 
 
@@ -102,6 +125,8 @@ def whisper_model():
 
 
 def models_ready():
+    if on_phone():
+        return bool(whisper_model()) and db.get_setting("radio_translation") == "1"
     return bool(whisper_model()) and (argos_dir() / "model" / "model.bin").exists()
 
 
@@ -125,7 +150,11 @@ def download_models(on_done=None, model=DEFAULT_WHISPER):
                 _download_whisper(model)
             _remove_old_models()
             _download["progress"] = 0.5
-            if not (argos_dir() / "model" / "model.bin").exists():
+            if on_phone():
+                if not _phone["run"]("download_translation"):       # модели ML Kit en и ru
+                    raise RuntimeError("модель перевода не скачалась")
+                db.set_setting("radio_translation", "1")
+            elif not (argos_dir() / "model" / "model.bin").exists():
                 _download_argos()
             _download.update(state="done", progress=1.0)
         except Exception as exc:
@@ -291,12 +320,30 @@ def transcribe_audio(data):
     return " ".join(s.text.strip() for s in segments).strip()
 
 
+def _process_on_phone(data):
+    """Телефон: запись — во временный файл, расшифровка и перевод — в расширении flet_radio."""
+    tmp = models_dir() / f"radio-{threading.get_ident()}.mp3"
+    tmp.write_bytes(data)
+    try:
+        en = _phone["run"]("transcribe", model_path=str(_whisper_file(whisper_model())), audio_path=str(tmp),
+                           prompt=F1_PROMPT, threads=min(os.cpu_count() or 4, 4))
+    finally:
+        tmp.unlink(missing_ok=True)
+    ru = _phone["run"]("translate", text=_plain_english(en)) if en else ""
+    # ML Kit переводит текст целиком — правим термины по предложениям, как на компьютере
+    return en, " ".join(_fix_russian(s) for s in split_sentences(ru))
+
+
 def process(url):
     """Скачать запись, расшифровать, перевести. -> {"en", "ru"} (и в кэш)."""
     resp = requests.get(url, timeout=TIMEOUT)
     resp.raise_for_status()
-    en = transcribe_audio(resp.content)
-    result = {"en": en, "ru": translate(en) if en else "", "at": time.time()}
+    if on_phone():
+        en, ru = _process_on_phone(resp.content)
+    else:
+        en = transcribe_audio(resp.content)
+        ru = translate(en) if en else ""
+    result = {"en": en, "ru": ru, "at": time.time()}
     db.save_archive(tx_key(url), result)
     return result
 

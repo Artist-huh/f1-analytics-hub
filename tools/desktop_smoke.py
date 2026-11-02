@@ -28,12 +28,31 @@ def stop(proc):
         os.killpg(proc.pid, signal.SIGKILL)
 
 
+SPEECH = "Box, box. Safety car, safety car."
+
+
+def speech(folder):
+    """Запись для самопроверки радио: синтез речи средствами системы (SAPI на Windows, say на macOS) —
+    без чужих записей F1 и без сети. -> путь к wav."""
+    path = os.path.join(folder, "radio-selftest.wav")
+    if os.name == "nt":
+        ps = ("Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+              f"$s.SetOutputToWaveFile('{path}'); $s.Speak('{SPEECH}'); $s.Dispose()")
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True, timeout=60)
+    else:
+        subprocess.run(["say", "-o", path, "--data-format=LEI16@16000", SPEECH], check=True, timeout=60)
+    return path
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # консоль Windows в CI — cp1252
     exe = os.path.abspath(sys.argv[1])
+    check_radio = "--radio" in sys.argv[2:]           # расшифровка и перевод в собранном приложении
     tmp = tempfile.mkdtemp(prefix="f1hub-smoke-")
     log_path = os.path.join(tmp, "f1_hub.log")
     env = dict(os.environ, F1_HUB_DB=os.path.join(tmp, "f1_hub.db"))
+    if check_radio:
+        env["F1_HUB_RADIO_SELFTEST"] = speech(tmp)
     started = time.time()
     kw = {"start_new_session": True} if os.name != "nt" else {}
     proc = subprocess.Popen([exe], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
@@ -63,11 +82,16 @@ def main():
     radio = next((ln for ln in text.splitlines() if "радио: офлайн-расшифровка" in ln), "")
     if "доступна" not in radio or "недоступна" in radio:     # упаковщик потерял whisper.cpp или перевод
         failures.append(f"в сборке нет офлайн-расшифровки радио: {radio.strip() or 'строки «радио:» нет в журнале'}")
+    selftest = next((ln.split(" — ", 1)[-1].strip() for ln in text.splitlines() if "радио: самопроверка" in ln), "")
+    if check_radio and ("safety" not in selftest.lower() or "не прошла" in selftest):
+        failures.append(f"самопроверка радио: {selftest or 'нет строки в журнале'}")
     if failures:
         print("ПРОБЛЕМЫ:\n  " + "\n  ".join(failures))
         sys.exit(1)
     print(f"запуск: первая запись в журнале через {first_log:.1f} с, приложение работает {WAIT} с без ошибок, "
           "офлайн-расшифровка радио есть")
+    if check_radio:
+        print(f"радио: «{SPEECH}» -> {selftest}")
 
 
 if __name__ == "__main__":

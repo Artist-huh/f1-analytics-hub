@@ -30,6 +30,8 @@ echo [3/4] Refreshing the bundled data snapshot (needs internet; otherwise data\
 "%PY%" -m services.seed export --refresh || echo Snapshot not refreshed - using the existing data\seed.json
 
 echo [4/4] Building
+rem winrt ships an old msvcp140.dll (14.29): sentencepiece crashes with it - use the newer system copy
+"%PY%" tools\fix_msvc_runtime.py || goto :fail
 "%FLET%" pack main.py -y --name F1AnalyticsHub --icon assets\icon.ico ^
     --add-data "assets;assets" "data;data" "pyproject.toml;." ^
     --product-name "F1 Analytics Hub" --file-description "F1 Analytics Hub" ^
@@ -42,7 +44,14 @@ echo [4/4] Building
     --pyinstaller-build-args=--collect-all=desktop_notifier ^
     --pyinstaller-build-args=--collect-submodules=winrt ^
     --pyinstaller-build-args=--collect-all=pywhispercpp ^
+    --pyinstaller-build-args=--exclude-module=pywhispercpp.examples ^
     --pyinstaller-build-args=--hidden-import=_pywhispercpp ^
+    --pyinstaller-build-args=--hidden-import=miniaudio ^
+    --pyinstaller-build-args=--hidden-import=_miniaudio ^
+    --pyinstaller-build-args=--hidden-import=_cffi_backend ^
+    --pyinstaller-build-args=--hidden-import=ctranslate2 ^
+    --pyinstaller-build-args=--hidden-import=sentencepiece ^
+    --pyinstaller-build-args=--hidden-import=pywhispercpp.model ^
     --pyinstaller-build-args=--collect-binaries=ctranslate2 || goto :fail
 
 echo.

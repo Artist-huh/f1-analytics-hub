@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import sys
 import tempfile
 import threading
 import time
@@ -879,6 +880,23 @@ class NotifyTest(unittest.TestCase):
                                               "Leclerc — P2 (+18), Lawson — сход"))
         self.assertIsNone(notify.favorites_result(["norris"], standings, results))
 
+    @unittest.skipUnless(sys.platform == "win32", "конфликт winrt и sentencepiece — только Windows")
+    def test_notification_then_translation_does_not_crash(self):
+        """Windows: winrt (уведомления), загруженный раньше sentencepiece (перевод радио), ронял процесс
+        ошибкой сегментации — приложение закрывалось на первом переводе после уведомления. В отдельном
+        процессе: падение там не уронит тесты, а код выхода покажет его."""
+        import subprocess
+        code = ("from services import notify\n"
+                "from desktop_notifier import DesktopNotifier\n"
+                "DesktopNotifier(app_name='test')\n"
+                "import winrt.windows.ui.notifications\n"
+                "import sentencepiece, ctranslate2\n"
+                "print('ok')\n")
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        res = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True, timeout=120,
+                             env=dict(os.environ, F1_HUB_LOG="off"))
+        self.assertEqual((res.returncode, res.stdout.strip()), (0, "ok"), res.stderr[-500:])
+
     def test_notifier_falls_back_to_in_app(self):
         shown = []
         n = notify.Notifier(run_async=None, fallback=lambda t, b: shown.append(t))
@@ -962,6 +980,60 @@ class AlertsTest(unittest.TestCase):
         self.assertEqual((nid, title), ("2026:18:predict-score",
                                         f"Прогноз: {predictions.MAX_POINTS} из {predictions.MAX_POINTS} очков"))
         self.assertEqual(alerts.prediction_scored("2026", self.SCHEDULE, {}, results, quali), [])     # не играл
+
+
+class RadioPhoneTest(unittest.TestCase):
+    """Радио на телефоне: расшифровка и перевод — в расширении flet_radio (whisper.cpp + ML Kit), а скачивание
+    модели whisper, жаргон F1 и кэш — общие с компьютером."""
+
+    def setUp(self):
+        from services import radio
+        self.radio = radio
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(self.tmp.cleanup)
+        for patcher in (mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name,
+                                                     "F1_HUB_DB": os.path.join(self.tmp.name, "r.db")}),
+                        mock.patch.object(notify, "is_mobile", return_value=True)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.calls = []
+
+        def run(method, **kwargs):
+            self.calls.append((method, kwargs))
+            return {"download_translation": True, "transcribe": "Box, box. Safety car.",
+                    "translate": "Сделай пит-стоп. Машина безопасности."}[method]
+
+        radio.attach_phone_engine(run)
+        self.addCleanup(radio.attach_phone_engine, None)
+
+    def test_phone_pipeline(self):
+        radio = self.radio
+        self.assertTrue(radio.supported())
+        self.assertFalse(radio.models_ready())
+        self.assertEqual(radio.download_mb("base.en-q5_1"), 60 + radio.TRANSLATION_MB["phone"])
+        done = threading.Event()
+        with mock.patch.object(radio, "_download_whisper",
+                               side_effect=lambda name: radio._whisper_file(name).write_bytes(b"x")):
+            radio.models_dir().mkdir(parents=True, exist_ok=True)
+            radio.download_models(on_done=done.set, model="base.en-q5_1")
+            self.assertTrue(done.wait(5))
+        self.assertEqual(radio.download_state()["state"], "done")
+        self.assertTrue(radio.models_ready())
+        self.assertIn(("download_translation", {}), self.calls)                 # модели ML Kit, не Argos
+        self.assertFalse(radio.argos_dir().exists())
+        resp = mock.Mock(content=b"ID3 mp3", raise_for_status=lambda: None)
+        with mock.patch.object(radio.requests, "get", return_value=resp):
+            result = radio.process("https://r/1.mp3")
+        method, kw = self.calls[-2]
+        self.assertEqual(method, "transcribe")
+        self.assertEqual((kw["prompt"], kw["model_path"]), (radio.F1_PROMPT,
+                                                            str(radio._whisper_file("base.en-q5_1"))))
+        self.assertFalse(os.path.exists(kw["audio_path"]))                     # временный файл удалён
+        self.assertEqual(self.calls[-1], ("translate", {"text": "make a pit stop. Safety car."}))   # жаргон до
+        self.assertEqual(result["ru"], "Сделай пит-стоп. Сейфти-кар.")                              # и после
+        self.assertEqual(radio.cached("https://r/1.mp3")["en"], "Box, box. Safety car.")
+        radio.attach_phone_engine(None)
+        self.assertFalse(radio.supported())                                    # расширения нет — честно «нет»
 
 
 class StatsTest(unittest.TestCase):

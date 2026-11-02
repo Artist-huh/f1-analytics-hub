@@ -186,7 +186,7 @@ class UiLiveTest(UiTestCase):
             self.assertFalse(old.exists())                                       # 465 МБ освобождены
             self.assertTrue(radio.models_ready())                                # перевод распакован выше
         with mock.patch.object(radio, "supported", return_value=False):          # Android: без перевода
-            self.assertIn("Перевод радио работает в версии для компьютера. Здесь — запись в оригинале.",
+            self.assertIn("Расшифровка радио недоступна в этой сборке. Здесь — запись в оригинале.",
                           texts(self.build("race_strategy")))
 
     def test_openf1_locked_during_session(self):

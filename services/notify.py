@@ -7,11 +7,18 @@
 Уведомления проверяются, пока приложение запущено (в том числе свёрнуто): фонового сервиса
 у приложения нет.
 """
+import contextlib
 import os
 import time
 import zlib
 
 from . import log, reference
+
+# Windows: если сначала загрузить уведомления (winrt), а потом токенизатор перевода радио (sentencepiece),
+# процесс падает с ошибкой сегментации — приложение закрывалось на первом переводе после уведомления.
+# В обратном порядке обе библиотеки работают, поэтому sentencepiece — до desktop_notifier.
+with contextlib.suppress(ImportError):          # на телефоне и в сборках без радио его нет
+    import sentencepiece  # noqa: F401
 
 try:   # статический импорт — чтобы PyInstaller (flet pack) включил пакет в .exe
     from desktop_notifier import DesktopNotifier

@@ -81,7 +81,7 @@ def _finish_codes(state, race):
 # ---------------------------------------------------------------- перевод: модели
 def _translate_card(state):
     if not radio.supported():
-        return AnimatedCard(ft.Text("Перевод радио работает в версии для компьютера. Здесь — запись в оригинале.",
+        return AnimatedCard(ft.Text("Расшифровка радио недоступна в этой сборке. Здесь — запись в оригинале.",
                                     size=FONT_BODY_SMALL, color=TEXT_SECONDARY))
     if radio.models_ready():
         return ft.Container()
@@ -98,9 +98,10 @@ def _translate_card(state):
         if dl["state"] == "error":
             body.append(ft.Text(f"Не получилось: {dl['error']}", size=FONT_CAPTION, color=DANGER))
         body.append(ft.Row([
-            button(f"{label} (~{size} МБ)", lambda e, m=model: (radio.download_models(state.render, m), state.render()),
+            button(f"{label} (~{radio.download_mb(model)} МБ)",
+                   lambda e, m=model: (radio.download_models(state.render, m), state.render()),
                    primary=model == radio.DEFAULT_WHISPER, icon=ft.Icons.DOWNLOAD_ROUNDED)
-            for model, (label, size) in radio.WHISPER_MODELS.items()], wrap=True, spacing=SPACE_XS,
+            for model, (label, _size) in radio.WHISPER_MODELS.items()], wrap=True, spacing=SPACE_XS,
             run_spacing=SPACE_XS))
     return AnimatedCard(ft.Column(body, spacing=SPACE_XS))
 
