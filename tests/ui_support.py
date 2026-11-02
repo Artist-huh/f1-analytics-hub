@@ -180,8 +180,12 @@ def reset_design():
 def join_workers(timeout=5.0):
     """Дождаться фоновых потоков экранов (ручное обновление, загрузка результатов):
     иначе поток может открыть временную БД, пока тест её удаляет (WinError 32)."""
+    short_lived = ("f1-manual-refresh", "f1-results-", "f1-live", "f1-media-prefetch", "f1-archive-",
+                   "f1-radio-")       # циклы f1-refresh, f1-ticker, f1-live-watch останавливаются иначе
     for t in threading.enumerate():
-        if t is not threading.current_thread() and t.name.startswith(("f1-manual-refresh", "f1-results-")):
+        if t is threading.current_thread() or t.name == "f1-live-watch":
+            continue
+        if t.name.startswith(short_lived):
             t.join(timeout)
 
 
@@ -195,7 +199,9 @@ class UiTestCase(unittest.TestCase):
     """База тестов интерфейса: заглушка Flet, временная БД, страница-подделка."""
 
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        # Windows не даёт удалить файл, который ещё держит фоновый поток (WinError 32): тест падал на уборке
+        # за собой, случайный и только под нагрузкой. Недоудалённая временная папка — мусор, а не ошибка.
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         os.environ["F1_HUB_DB"] = os.path.join(self.tmp.name, "ui.db")
         seed_env = mock.patch.dict(os.environ, {"F1_HUB_SEED": os.path.join(self.tmp.name, "no-seed.json"),
                                                 "FLET_APP_STORAGE_DATA": self.tmp.name})   # модели радио и т. п.

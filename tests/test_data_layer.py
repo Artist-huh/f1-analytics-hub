@@ -623,8 +623,12 @@ class DataLayerTest(unittest.TestCase):
         with mock.patch.object(f1_api, "MAX_CALLBACK_FAILURES", 2):
             h_bad = f1_api.start_background_refresh(interval=0.1, on_update=bad)
             h_good = f1_api.start_background_refresh(interval=0.1, on_update=good)
-            for i in range(8):                                 # меняем данные -> каждый цикл есть on_update
+            # меняем данные -> каждый цикл есть on_update; ждём результата, а не фиксированное время:
+            # под нагрузкой (коммит, сборка рядом) за 2 с цикл успевал меньше обновлений, и тест падал зря
+            deadline, i = time.monotonic() + 10, 0
+            while (calls["good"] < 3 or calls["bad"] < 2) and time.monotonic() < deadline:
                 self.patch_net(standings=standings_json(str(100 + i)))
+                i += 1
                 time.sleep(0.25)
             h_good.set()
             f1_api.shutdown()                                  # дождаться цикла, пока подмена ещё действует

@@ -37,9 +37,21 @@ SCREENS = {
 }
 
 
+def git_bash():
+    """Git Bash, а не bash.exe из WSL: тот стоит в System32 раньше по PATH (на машине GitHub — без Linux)."""
+    for path in (os.environ.get("GIT_BASH", ""), r"C:\Program Files\Git\bin\bash.exe",
+                 r"C:\Program Files (x86)\Git\bin\bash.exe"):
+        if path and os.path.exists(path):
+            return path
+    found = shutil.which("bash")
+    if not found or "system32" in found.lower():
+        raise RuntimeError("не найден Git Bash (укажите путь в переменной GIT_BASH)")
+    return found
+
+
 def shoot(out, name, shot, env):
     full = dict(os.environ, FROZEN="1", **env)
-    subprocess.run(["bash", SHOOT, out, name, shot], env=full, check=False, timeout=120)
+    subprocess.run([git_bash(), SHOOT, out, name, shot], env=full, check=False, timeout=120)
     path = os.path.join(out, f"{name}.png")
     if not os.path.exists(path):
         raise RuntimeError(f"{name}: снимок не получен, см. {name}.log")
