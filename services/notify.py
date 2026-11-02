@@ -9,6 +9,7 @@
 """
 import os
 import time
+import zlib
 
 from . import log, reference
 
@@ -37,6 +38,12 @@ def is_ios():
 def is_mobile():
     """Телефон (Android или iPhone): нет окон, горячих клавиш и мини-виджета, есть вибрация."""
     return is_android() or is_ios()
+
+
+def notification_id(nid):
+    """Номер уведомления Android — тот же, что в F1Reminders.java (CRC32): если событие пришлёт и приложение,
+    и системный будильник, второе заменит первое, а не задублирует. hash() не годится: он свой в каждом запуске."""
+    return zlib.crc32(nid.encode("utf-8")) % 100000
 
 
 # ---------------------------------------------------------------- что отправлять
@@ -133,7 +140,7 @@ def _android_send(title, text, nid):
     builder.setContentText(text)
     builder.setAutoCancel(True)
     builder.setContentIntent(PendingIntent.getActivity(activity, 0, intent, PendingIntent.FLAG_IMMUTABLE))
-    manager.notify(abs(hash(nid)) % 100000, builder.build())
+    manager.notify(notification_id(nid), builder.build())
 
 
 def _app_icon():

@@ -159,3 +159,35 @@ def prediction_scored(season, schedule, picks, season_results, qualifying):
         return []
     return [(f"{season}:{rnd}:predict-score", f"Прогноз: {result['total']} из {predictions.MAX_POINTS} очков",
              f"{_race_name(schedule, season, rnd)} — разбор на экране «Прогнозы»")]
+
+
+# ---------------------------------------------------------------- при закрытом приложении (Android)
+PLAN_HORIZON = 14 * 86400       # будильники — на две недели вперёд (ближайшие этапы)
+PLAN_MAX = 40
+
+
+def planned(schedule, now, kinds_on, lead, prediction=None):
+    """События с заранее известным временем — для системного будильника Android, чтобы они пришли и при
+    закрытом приложении. kinds_on — включённые виды; prediction — (этап, время закрытия приёма) или None.
+    id — те же, что у уведомлений из приложения. -> [{id, at_ms, title, text}] по времени."""
+    from ui.fmt import fmt_clock, fmt_day
+    out = []
+    remind = set(reference.REMIND_SESSIONS)
+    for race in schedule:
+        for s in race["sessions"]:
+            name = reference.SESSIONS.get(s["key"], s["key"])
+            base = f"{race.get('season', '')}:{race['round']}:{s['key']}"
+            when = f"{race['race_name']} · старт {fmt_day(s['ts'])} в {fmt_clock(s['ts'])}"
+            if "sessions" in kinds_on and s["key"] in remind:
+                out.append({"id": base, "at": s["ts"] - lead, "title": f"{name} через {lead // 60} мин",
+                            "text": when})
+            if "live" in kinds_on:
+                out.append({"id": f"{base}:start", "at": s["ts"], "title": f"{name}: старт",
+                            "text": f"{race['race_name']} — открой Live Timing: позиции, отрывы, шины"})
+    if "predictions" in kinds_on and prediction:
+        race, lock_ts = prediction
+        out.append({"id": f"{race.get('season', '')}:{race['round']}:predict", "at": lock_ts - PREDICT_LEAD,
+                    "title": "Прогноз ещё не сделан",
+                    "text": f"{race['race_name']}: приём закроется через 3 ч — выбери поул и подиум"})
+    soon = sorted((a for a in out if now < a["at"] <= now + PLAN_HORIZON), key=lambda a: a["at"])[:PLAN_MAX]
+    return [{"id": a["id"], "at_ms": int(a["at"] * 1000), "title": a["title"], "text": a["text"]} for a in soon]

@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import unittest
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -1193,6 +1194,36 @@ class HomeWidgetTest(unittest.TestCase):
             w = widget.Widget(page)
             self.assertFalse(w.push({"title": "x"}))
             self.assertFalse(w.enabled)
+
+    def test_reminders_planned_for_closed_app(self):
+        """Android: напоминания, старт сессии и прогноз отдаются системному будильнику — придут и при
+        закрытом приложении. Тот же id, что у уведомления из приложения, — и тот же номер, что в Java."""
+        from services import alerts, widget
+        race = {"season": "2026", "round": "18", "race_name": "United States Grand Prix",
+                "sessions": [{"key": "FirstPractice", "ts": 10_000.0}, {"key": "Qualifying", "ts": 90_000.0},
+                             {"key": "Race", "ts": 200_000.0}]}
+        items = alerts.planned([race], 5_000, {"sessions", "live", "predictions"}, 3600, (race, 90_000.0))
+        self.assertEqual([(i["id"], i["at_ms"]) for i in items[:3]],
+                         [("2026:18:FirstPractice", 6_400_000), ("2026:18:FirstPractice:start", 10_000_000),
+                          ("2026:18:predict", 79_200_000)])                 # за 3 ч до закрытия приёма
+        self.assertEqual(items[0]["title"], "Практика 1 через 60 мин")
+        self.assertEqual(alerts.planned([race], 5_000, set(), 3600, (race, 90_000.0)), [])    # всё выключено
+        only = alerts.planned([race], 95_000, {"sessions"}, 3600)
+        self.assertEqual([i["id"] for i in only], ["2026:18:Race"])           # прошедшие не планируются
+        self.assertEqual(alerts.planned([race], 5_000 - 20 * 86400, {"sessions"}, 3600), [])  # дальше 2 недель
+        # CRC32 «2026:18:Race» — как java.util.zip.CRC32 в F1Reminders.notificationId
+        self.assertEqual(notify.notification_id("2026:18:Race"), zlib.crc32(b"2026:18:Race") % 100000)
+        self.assertEqual(notify.notification_id("x"), notify.notification_id("x"))
+        page, fake = mock.Mock(), mock.Mock()
+        with mock.patch.object(notify, "is_android", return_value=False):
+            self.assertFalse(widget.Widget(page).schedule(items))             # компьютер — ничего
+        with mock.patch.object(notify, "is_android", return_value=True), \
+                mock.patch.dict("sys.modules", {"flet_home_widget": mock.Mock(HomeWidget=lambda: fake)}):
+            w = widget.Widget(page)
+            self.assertTrue(w.schedule(items))
+            self.assertFalse(w.schedule(list(items)))                         # не изменился — не шлём
+            self.assertTrue(w.schedule(items[1:]))
+        self.assertEqual(page.run_task.call_count, 2)
 
 
 def datetime_ts(text):

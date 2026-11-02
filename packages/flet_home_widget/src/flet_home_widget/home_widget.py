@@ -17,3 +17,8 @@ class HomeWidget(ft.Service):
             arguments={"title": title, "subtitle": subtitle, "start_ms": int(start_ms), "top": top,
                        "status": status, "live": bool(live)},
         )
+
+    async def schedule(self, items_json: str) -> int:
+        """Уведомления при закрытом приложении: JSON-список [{id, at_ms, title, text}] заменяет прежний;
+        системный будильник покажет каждое в свой момент. -> сколько запланировано."""
+        return await self._invoke_method(method_name="schedule", arguments={"items": items_json})

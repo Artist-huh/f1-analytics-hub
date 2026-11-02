@@ -31,6 +31,9 @@ class UiAppTest(UiTestCase):
         self.assertEqual(self.state.check_notifications(now=quali["ts"] - 1200),
                          ["2026:4:Qualifying", "2026:4:predict"])     # прогноза нет, приём закроется со стартом
         self.assertEqual(self.state.check_notifications(now=quali["ts"] - 600), [])   # повторно не шлём
+        planned = [i["id"] for i in self.state.planned_notifications(now=quali["ts"] - 3 * 86400)]
+        for nid in ("2026:4:Qualifying", "2026:4:Race", "2026:4:Race:start", "2026:4:predict"):
+            self.assertIn(nid, planned)                       # Android: придут и при закрытом приложении
         api.toggle_favorite("leclerc")
         add_podium()                                           # полный подиум на этапе 3
         self.state.load()

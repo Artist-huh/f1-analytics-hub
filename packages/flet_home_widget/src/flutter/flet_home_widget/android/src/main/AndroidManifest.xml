@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- будильники напоминаний ставятся заново после перезагрузки телефона -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application>
         <!-- Виджет F1 Hub на главный экран: данные пишет приложение, отсчёт ведёт Chronometer -->
         <receiver
@@ -11,6 +13,15 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/f1hw_widget_info" />
+        </receiver>
+        <!-- Напоминания при закрытом приложении: системный будильник -> уведомление (F1Reminders) -->
+        <receiver
+            android:name="com.f1hub.flet_home_widget.F1Reminders"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
         </receiver>
     </application>
 </manifest>

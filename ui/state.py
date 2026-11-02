@@ -411,6 +411,17 @@ class AppState:
             season, self.schedule, predictions.load_season(season), self.season_results, self.qualifying)]
         return out
 
+    def planned_notifications(self, now=None):
+        """Что поручить системному будильнику Android, чтобы пришло и при закрытом приложении:
+        напоминания о сессиях, старт сессии, напоминание о прогнозе (время известно заранее)."""
+        from services import alerts, predictions
+        now = time.time() if now is None else now
+        kinds = {k for k in alerts.KINDS if self.notifications_on(k)}
+        race, prediction = api.get_next_race(now), None
+        if race and not predictions.load(self.season, race["round"]):
+            prediction = (race, predictions.lock_time(race))
+        return alerts.planned(self.schedule, now, kinds, notify.LEAD, prediction)
+
     def check_notifications(self, now=None):
         """Отправить то, что пора (зовётся раз в 30 с из main). -> список отправленных id."""
         if self.notifier is None:

@@ -23,6 +23,12 @@ class HomeWidgetService extends FletService {
         }
         return await _channel.invokeMethod<int>(
             'update', Map<String, dynamic>.from(args as Map));
+      case "schedule":
+        if (defaultTargetPlatform != TargetPlatform.android) {
+          return 0;
+        }
+        return await _channel.invokeMethod<int>(
+            'schedule', Map<String, dynamic>.from(args as Map));
       default:
         throw Exception("Unknown HomeWidget method: $name");
     }

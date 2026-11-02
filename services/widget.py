@@ -3,6 +3,7 @@
 Что показать — чистая функция widget_data(). Отправка — только на Android и только при изменении:
 отсчёт до старта виджет ведёт сам (Chronometer), поэтому раз в секунду ничего слать не нужно.
 """
+import json
 import time
 
 from . import log, notify, reference
@@ -46,6 +47,7 @@ class Widget:
         self.page = page
         self.service = None
         self.sent = None
+        self.planned = None            # последний отданный список напоминаний
         self.enabled = notify.is_android()
 
     def push(self, data):
@@ -72,6 +74,32 @@ class Widget:
                 logger.info("виджет обновлён, на экране: %s", count)
             except Exception as exc:
                 logger.warning("виджет не обновлён: %r", exc)
+
+        self.page.run_task(send)
+        return True
+
+    def schedule(self, items):
+        """Уведомления при закрытом приложении (Android): отдать список системному будильнику, если он
+        изменился. items — services.alerts.planned()."""
+        if not self.enabled or items == self.planned:
+            return False
+        if self.service is None:
+            try:
+                from flet_home_widget import HomeWidget
+            except ImportError as exc:
+                logger.warning("напоминания при закрытом приложении недоступны: %r", exc)
+                self.enabled = False
+                return False
+            self.service = HomeWidget()
+        self.planned = items
+        service, payload = self.service, json.dumps(items, ensure_ascii=False)
+
+        async def send():
+            try:
+                count = await service.schedule(payload)
+                logger.info("запланировано уведомлений при закрытом приложении: %s", count)
+            except Exception as exc:
+                logger.warning("напоминания не запланированы: %r", exc)
 
         self.page.run_task(send)
         return True

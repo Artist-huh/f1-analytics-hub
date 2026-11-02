@@ -81,7 +81,9 @@ def _notifications_card(state):
         *[switch(kind, title, hint) for kind, (title, hint) in alerts.KINDS.items()],
         button("Проверить уведомление", lambda e: state.test_notification(), primary=False,
                icon=ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED),
-        txt("Приходят, пока приложение запущено (свёрнутое — тоже). Сервера у приложения нет: уведомления "
+        txt(("Напоминания о сессиях, старт сессии и напоминание о прогнозе придут и при закрытом приложении; "
+             "итоги, чемпионат и флаги — пока оно запущено (свёрнутое — тоже).") if notify.is_android() else
+            "Приходят, пока приложение запущено (свёрнутое — тоже). Сервера у приложения нет: уведомления "
             "собирает само приложение из тех же данных, что на экранах.", 11, DIM),
         *([ft.Row([
             ft.Column([txt("Вибрация", 14, bold=True),

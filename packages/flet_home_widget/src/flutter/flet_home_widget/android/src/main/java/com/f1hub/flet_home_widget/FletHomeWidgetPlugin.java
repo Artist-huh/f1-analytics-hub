@@ -14,7 +14,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 
-/** Принимает данные виджета из приложения (канал flet_home_widget) и перерисовывает виджеты. */
+/** Канал flet_home_widget: update — данные виджета, schedule — уведомления при закрытом приложении. */
 public class FletHomeWidgetPlugin implements FlutterPlugin, MethodChannel.MethodCallHandler {
     static final String TAG = "F1Widget";
     private MethodChannel channel;
@@ -35,6 +35,16 @@ public class FletHomeWidgetPlugin implements FlutterPlugin, MethodChannel.Method
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
+        if ("schedule".equals(call.method)) {
+            try {
+                Map<?, ?> args = (Map<?, ?>) call.arguments;
+                result.success(F1Reminders.schedule(context, str(args.get("items"))));
+            } catch (Exception ex) {
+                Log.w(TAG, "напоминания не запланированы", ex);
+                result.error("schedule_failed", ex.toString(), null);
+            }
+            return;
+        }
         if (!"update".equals(call.method)) {
             result.notImplemented();
             return;

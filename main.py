@@ -411,6 +411,10 @@ def main(page: ft.Page):
     def tick():
         update_widget()
         try:
+            home_widget.schedule(state.planned_notifications())   # Android: придут и при закрытом приложении
+        except Exception as exc:
+            logger.warning("напоминания: %r", exc)
+        try:
             state.check_notifications()
         except Exception as exc:
             logger.warning("уведомления: %r", exc)
