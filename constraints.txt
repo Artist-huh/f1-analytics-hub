@@ -32,7 +32,7 @@ flet-web==1.0.5
 fonttools==4.67.0
 fsspec==2026.9.0
 h11==0.16.0
-hf-xet==1.7.0
+hf-xet==1.7.1
 httpcore==1.0.9
 httpcore2==2.16.0
 httptools==0.9.0
