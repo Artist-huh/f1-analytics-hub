@@ -178,6 +178,15 @@ def nav_bar(on_change):
     )
 
 
+def _log_radio_support():
+    from services import radio
+    missing = radio.missing_libraries()
+    if missing:
+        logger.warning("радио: офлайн-расшифровка недоступна — нет %s", ", ".join(missing))
+    else:
+        logger.info("радио: офлайн-расшифровка доступна")
+
+
 def main(page: ft.Page):
     page.title = "F1 Analytics Hub"
     page.padding = 0
@@ -191,6 +200,11 @@ def main(page: ft.Page):
         page.window.min_height = 640
     except Exception:
         pass
+
+    # Радио на компьютере: есть ли в сборке whisper.cpp и перевод. Строку проверяет tools/desktop_smoke.py —
+    # если упаковщик потеряет нативные библиотеки, сборка упадёт в CI, а не расшифровка у пользователя.
+    if not notify.is_mobile():
+        threading.Thread(target=_log_radio_support, name="f1-radio-check", daemon=True).start()
 
     # Инициализация данных
     f1_api.bootstrap()

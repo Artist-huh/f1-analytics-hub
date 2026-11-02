@@ -41,9 +41,9 @@ echo [4/4] Building
     --pyinstaller-build-args=--exclude-module=tests ^
     --pyinstaller-build-args=--collect-all=desktop_notifier ^
     --pyinstaller-build-args=--collect-submodules=winrt ^
-    --pyinstaller-build-args=--collect-all=faster_whisper ^
-    --pyinstaller-build-args=--collect-binaries=ctranslate2 ^
-    --pyinstaller-build-args=--exclude-module=onnxruntime || goto :fail
+    --pyinstaller-build-args=--collect-all=pywhispercpp ^
+    --pyinstaller-build-args=--hidden-import=_pywhispercpp ^
+    --pyinstaller-build-args=--collect-binaries=ctranslate2 || goto :fail
 
 echo.
 echo Done: dist\F1AnalyticsHub.exe

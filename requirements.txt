@@ -4,6 +4,9 @@ flet[all]==1.0.5  # Flet 1.x API (field borders via border=OutlineInputBorder)
 requests==2.34.2
 websockets==17.3   # live timing: официальный поток F1 (SignalR Core)
 flet-audio==1.0.5       # проигрывание радио команд (версия = версии Flet)
-faster-whisper==1.2.1   # радио: офлайн-расшифровка речи (только компьютер)
-sentencepiece==0.2.2    # радио: токенизатор модели перевода Argos en->ru (CTranslate2 ставится с faster-whisper)
+pywhispercpp==1.5.1     # радио: офлайн-расшифровка — whisper.cpp (тот же движок, что на телефонах)
+miniaudio==1.71         # радио: mp3 -> звук для Whisper без FFmpeg
+numpy==2.4.6            # радио: звук для Whisper (miniaudio -> массив)
+ctranslate2==4.8.4      # радио: движок модели перевода Argos en->ru
+sentencepiece==0.2.2    # радио: токенизатор модели перевода Argos en->ru
 desktop-notifier==6.2.0 # системные уведомления на компьютере (на Android — pyjnius, см. pyproject.toml)

@@ -175,7 +175,7 @@ Windows: двойной клик по `start.bat` (создаст окружен
 | Зачёты, результаты гонок, квалификации, спринты, календарь | [Jolpica F1 API](https://github.com/jolpica/jolpica-f1) |
 | Live Timing во время сессии, радио текущей сессии | livetiming.formula1.com (SignalR Core) |
 | Соответствие пилот → официальный портрет, стратегия, радио прошедших гонок | [OpenF1](https://openf1.org) |
-| Расшифровка и перевод радио (офлайн) | [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [Argos Translate](https://github.com/argosopentech/argos-translate) |
+| Расшифровка и перевод радио (офлайн) | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) ([pywhispercpp](https://github.com/absadiki/pywhispercpp)), [Argos Translate](https://github.com/argosopentech/argos-translate) |
 | Портреты, логотипы, болиды, схемы трасс | media.formula1.com |
 | Чемпионы 1950–2025 | Jolpica, собраны в `data/champions.json` (`tools/build_champions.py`) |
 | Флаги | [flagcdn.com](https://flagcdn.com) |
@@ -191,7 +191,7 @@ Windows: двойной клик по `start.bat` (создаст окружен
 
 ## 🛠️ Технологии
 
-Python 3.10+ · [Flet 1.0](https://flet.dev) (Flutter) · SQLite · requests · faster-whisper · CTranslate2 · ruff · unittest (109 тестов)
+Python 3.10+ · [Flet 1.0](https://flet.dev) (Flutter) · SQLite · requests · whisper.cpp · CTranslate2 · ruff · unittest (168 тестов)
 
 ```
 main.py                    оболочка: навигация, анимация смены экранов, «назад» на Android

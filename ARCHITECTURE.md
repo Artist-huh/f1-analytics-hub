@@ -75,7 +75,7 @@
   из `main.tick`; отправленное запоминается в `settings`.
 
 - **`services/radio.py`** — радио команд: список записей OpenF1 (`team_radio` по сессии гонки), очередь
-  расшифровки в одном фоновом потоке. Whisper (faster-whisper) → английский текст; перевод — модель Argos
+  расшифровки в одном фоновом потоке. Whisper (whisper.cpp через pywhispercpp, mp3 декодирует miniaudio) → английский текст; перевод — модель Argos
   en→ru, загруженная прямо в CTranslate2 + SentencePiece (без пакета argostranslate и torch); перед
   переводом жаргон заменяется обычными словами, после — правятся термины. Модели — в `models/` папки данных,
   расшифровки — в `archive` (ключ `radio_tx:<url>`).

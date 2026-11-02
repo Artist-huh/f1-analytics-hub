@@ -90,7 +90,7 @@ jobs:
       run: |
         pip install pillow   # PyInstaller converts icon.png to .icns with it
         VER=$(python -c "from services.version import VERSION; print(VERSION)")   # номер — из pyproject.toml
-        flet pack main.py -y --name F1AnalyticsHub --icon assets/icon.png --add-data "assets:assets" "data:data" "pyproject.toml:." --product-name "F1 Analytics Hub" --product-version "$VER" --bundle-id com.f1hub.analytics --pyinstaller-build-args=--collect-all=desktop_notifier --pyinstaller-build-args=--collect-all=faster_whisper --pyinstaller-build-args=--collect-binaries=ctranslate2 --pyinstaller-build-args=--exclude-module=onnxruntime
+        flet pack main.py -y --name F1AnalyticsHub --icon assets/icon.png --add-data "assets:assets" "data:data" "pyproject.toml:." --product-name "F1 Analytics Hub" --product-version "$VER" --bundle-id com.f1hub.analytics --pyinstaller-build-args=--collect-all=desktop_notifier --pyinstaller-build-args=--collect-all=pywhispercpp --pyinstaller-build-args=--hidden-import=_pywhispercpp --pyinstaller-build-args=--collect-binaries=ctranslate2
 
     - name: Launch check (.app starts, runs 60 s, log without errors)
       run: python tools/desktop_smoke.py dist/F1AnalyticsHub.app/Contents/MacOS/F1AnalyticsHub

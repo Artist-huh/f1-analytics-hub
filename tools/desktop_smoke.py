@@ -60,10 +60,14 @@ def main():
     bad = [ln for ln in text.splitlines() if any(m in ln for m in FAIL_MARKERS)]
     if bad:
         failures.append(f"в журнале ошибки: {bad[:3]}")
+    radio = next((ln for ln in text.splitlines() if "радио: офлайн-расшифровка" in ln), "")
+    if "доступна" not in radio or "недоступна" in radio:     # упаковщик потерял whisper.cpp или перевод
+        failures.append(f"в сборке нет офлайн-расшифровки радио: {radio.strip() or 'строки «радио:» нет в журнале'}")
     if failures:
         print("ПРОБЛЕМЫ:\n  " + "\n  ".join(failures))
         sys.exit(1)
-    print(f"запуск: первая запись в журнале через {first_log:.1f} с, приложение работает {WAIT} с без ошибок")
+    print(f"запуск: первая запись в журнале через {first_log:.1f} с, приложение работает {WAIT} с без ошибок, "
+          "офлайн-расшифровка радио есть")
 
 
 if __name__ == "__main__":

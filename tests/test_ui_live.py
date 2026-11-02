@@ -136,8 +136,8 @@ class UiLiveTest(UiTestCase):
         fake_sp = mock.Mock()
         with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}), \
                 mock.patch.dict(sys.modules, {"sentencepiece": fake_sp, "ctranslate2": mock.Mock(),
-                                              "faster_whisper": mock.Mock()}), \
-                mock.patch.object(radio, "whisper_model", return_value="small.en"), \
+                                              "pywhispercpp": mock.Mock(), "pywhispercpp.model": mock.Mock()}), \
+                mock.patch.object(radio, "whisper_model", return_value="small.en-q5_1"), \
                 mock.patch.dict(radio._models, clear=True):
             radio._load_models()
         self.assertEqual(fake_sp.SentencePieceProcessor.call_args.kwargs, {"model_proto": b"x"})
@@ -170,16 +170,20 @@ class UiLiveTest(UiTestCase):
         self.assertEqual(self.state.ui["radio_playing"], "https://r/2.mp3")
         with mock.patch.object(radio, "supported", return_value=True), \
                 mock.patch.object(radio, "download_models") as dl:
-            clickable(self.build("race_strategy"), "Лёгкая (~350 МБ)")[0].on_click(Ctl())
-        self.assertEqual(dl.call_args[0][1], "base.en")
+            clickable(self.build("race_strategy"), "Лёгкая (~160 МБ)")[0].on_click(Ctl())
+        self.assertEqual(dl.call_args[0][1], "base.en-q5_1")
         with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}):
             self.assertIsNone(radio.whisper_model())
-            for name in ("base.en", "small.en"):
-                (radio.models_dir() / f"whisper-{name}").mkdir(parents=True, exist_ok=True)
-                (radio.models_dir() / f"whisper-{name}" / "model.bin").write_bytes(b"x")
-            self.assertEqual(radio.whisper_model(), "small.en")                  # по умолчанию — точная
-            db.set_setting("radio_model", "base.en")
-            self.assertEqual(radio.whisper_model(), "base.en")                   # выбор пользователя
+            for name in ("base.en-q5_1", "small.en-q5_1"):
+                radio._whisper_file(name).write_bytes(b"x")
+            self.assertEqual(radio.whisper_model(), "small.en-q5_1")             # по умолчанию — точная
+            db.set_setting("radio_model", "base.en-q5_1")
+            self.assertEqual(radio.whisper_model(), "base.en-q5_1")              # выбор пользователя
+            old = radio.models_dir() / "whisper-small.en"                        # модель faster-whisper (до 2.7)
+            old.mkdir()
+            (old / "model.bin").write_bytes(b"x")
+            radio._remove_old_models()
+            self.assertFalse(old.exists())                                       # 465 МБ освобождены
             self.assertTrue(radio.models_ready())                                # перевод распакован выше
         with mock.patch.object(radio, "supported", return_value=False):          # Android: без перевода
             self.assertIn("Перевод радио работает в версии для компьютера. Здесь — запись в оригинале.",

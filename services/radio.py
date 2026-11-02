@@ -2,13 +2,16 @@
 
 Всё бесплатно и без ключей:
   записи      — OpenF1 team_radio (во время сессий закрыт, как и остальной OpenF1);
-  расшифровка — faster-whisper: Whisper small.en (~465 МБ, точнее на шумном радио) или base.en (~145 МБ);
+  расшифровка — whisper.cpp (pywhispercpp): Whisper small.en (~190 МБ, точнее на шумном радио) или base.en
+                (~60 МБ) в сжатом виде q5_1; mp3 декодирует miniaudio (без FFmpeg);
   перевод     — модель Argos Translate en→ru (~100 МБ), запускается напрямую через CTranslate2 + SentencePiece.
-Модели скачиваются один раз по кнопке и лежат в папке данных (models/). Только компьютер:
-на Android тяжёлые библиотеки не собираются — там лента и проигрывание без перевода.
+Модели скачиваются один раз по кнопке и лежат в папке данных (models/). whisper.cpp есть и для телефонов —
+тот же движок и те же модели, поэтому расшифровка везде одинаковая.
+До 2.7 расшифровка шла через faster-whisper: на 12 записях Гран-при Мексики whisper.cpp small.en-q5_1
+распознаёт так же, на 20 % быстрее и в 2,5 раза меньше по размеру (сравнение — в истории коммита).
 Готовые расшифровки кэшируются в таблице archive (ключ radio_tx:<url>) — второй раз не считаются.
 """
-import io
+import os
 import re
 import shutil
 import threading
@@ -20,10 +23,13 @@ import requests
 
 from . import db, live, log
 
-# Модель расшифровки на выбор: на настоящем радио small.en заметно точнее при почти той же скорости.
-# Размер — вместе с моделью перевода (~200 МБ).
-WHISPER_MODELS = {"small.en": ("Точная", 670), "base.en": ("Лёгкая", 350)}
-DEFAULT_WHISPER = "small.en"
+# Модель расшифровки на выбор: на настоящем радио small.en заметно точнее (base.en путает слова и на шуме
+# пишет «[INAUDIBLE]»). Размер в МБ — вместе с моделью перевода (~100 МБ).
+WHISPER_MODELS = {"small.en-q5_1": ("Точная", 290), "base.en-q5_1": ("Лёгкая", 160)}
+DEFAULT_WHISPER = "small.en-q5_1"
+WHISPER_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{}.bin"
+MAX_WHISPER = 600 * 1024 * 1024
+OLD_WHISPER_DIRS = ("whisper-small.en", "whisper-base.en")   # модели faster-whisper до 2.7 — больше не нужны
 ARGOS_URL = "https://argos-net.com/v1/translate-en_ru-1_9.argosmodel"
 F1_PROMPT = "Formula 1 team radio. Box, box. Tyres, lap, pit, gap, push, copy, mode, delta, safety car."
 TIMEOUT = (5, 60)
@@ -69,23 +75,30 @@ def argos_dir() -> Path:
 
 def supported():
     """Есть ли библиотеки расшифровки (на Android и в урезанных сборках их нет)."""
-    try:
-        import ctranslate2  # noqa: F401
-        import faster_whisper  # noqa: F401
-        import sentencepiece  # noqa: F401
-    except ImportError:
-        return False
-    return True
+    return not missing_libraries()
 
 
-def _whisper_dir(name):
-    return models_dir() / f"whisper-{name}"
+def missing_libraries():
+    """Каких библиотек радио нет (пустой список — всё на месте). Нативная часть whisper.cpp не загрузится —
+    ImportError или OSError (нет DLL в сборке)."""
+    import importlib
+    missing = []
+    for name in ("pywhispercpp.model", "miniaudio", "ctranslate2", "sentencepiece"):
+        try:
+            importlib.import_module(name)
+        except (ImportError, OSError):
+            missing.append(name.split(".")[0])
+    return missing
+
+
+def _whisper_file(name):
+    return models_dir() / f"ggml-{name}.bin"
 
 
 def whisper_model():
     """Скачанная модель расшифровки (выбранная пользователем — в первую очередь) или None."""
     order = [db.get_setting("radio_model")] + list(WHISPER_MODELS)
-    return next((n for n in order if n in WHISPER_MODELS and (_whisper_dir(n) / "model.bin").exists()), None)
+    return next((n for n in order if n in WHISPER_MODELS and _whisper_file(n).exists()), None)
 
 
 def models_ready():
@@ -108,9 +121,9 @@ def download_models(on_done=None, model=DEFAULT_WHISPER):
     def job():
         try:
             models_dir().mkdir(parents=True, exist_ok=True)
-            if not (_whisper_dir(model) / "model.bin").exists():
-                from faster_whisper.utils import download_model
-                download_model(model, output_dir=str(_whisper_dir(model)))
+            if not _whisper_file(model).exists():
+                _download_whisper(model)
+            _remove_old_models()
             _download["progress"] = 0.5
             if not (argos_dir() / "model" / "model.bin").exists():
                 _download_argos()
@@ -122,6 +135,34 @@ def download_models(on_done=None, model=DEFAULT_WHISPER):
             on_done()
 
     threading.Thread(target=job, name="f1-radio-models", daemon=True).start()
+
+
+def _download_whisper(name):
+    """Модель whisper.cpp с Hugging Face: во временный файл, потом переименование — оборванная загрузка
+    не оставит битую модель. Больше MAX_WHISPER — ошибка (ответ сервера, а не модель)."""
+    target = _whisper_file(name)
+    part = target.with_suffix(".part")
+    with requests.get(WHISPER_URL.format(name), stream=True, timeout=TIMEOUT) as resp:
+        resp.raise_for_status()
+        total, done = int(resp.headers.get("content-length") or 0), 0
+        with open(part, "wb") as f:
+            for chunk in resp.iter_content(1 << 20):
+                done += len(chunk)
+                if done > MAX_WHISPER:
+                    raise RuntimeError("модель расшифровки больше ожидаемого — загрузка остановлена")
+                f.write(chunk)
+                if total:
+                    _download["progress"] = 0.5 * done / total
+    if done < 10 * 1024 * 1024:
+        part.unlink(missing_ok=True)
+        raise RuntimeError("сервер вернул не модель (слишком маленький файл)")
+    os.replace(part, target)
+
+
+def _remove_old_models():
+    """Модели faster-whisper (до 2.7) занимают до 465 МБ и больше не используются."""
+    for name in OLD_WHISPER_DIRS:
+        shutil.rmtree(models_dir() / name, ignore_errors=True)
 
 
 MAX_ARGOS = 400 * 1024 * 1024   # пакет en->ru — около 100 МБ
@@ -169,8 +210,12 @@ def _load_models():
     with _lock:
         name = whisper_model()
         if _models.get("whisper_name") != name:
-            from faster_whisper import WhisperModel
-            _models["whisper"] = WhisperModel(str(_whisper_dir(name)), device="cpu", compute_type="int8")
+            from pywhispercpp.model import Model
+            # suppress_nst: без него на шуме мотора модель пишет «[Music]» вместо фразы;
+            # no_context: каждая запись — отдельный разговор, прошлый текст не подсказывает следующий
+            _models["whisper"] = Model(str(_whisper_file(name)), redirect_whispercpp_logs_to=None,
+                                       n_threads=os.cpu_count() or 4, initial_prompt=F1_PROMPT, no_context=True,
+                                       suppress_nst=True, print_progress=False, print_realtime=False)
             _models["whisper_name"] = name
         if "translator" not in _models:
             import ctranslate2
@@ -232,10 +277,17 @@ def translate(text):
     return " ".join(_fix_russian(m["sp"].decode(r.hypotheses[0])) for r in results).strip()
 
 
-def transcribe_audio(audio):
-    """Путь к файлу или поток (mp3/wav) -> английский текст."""
-    segments, _ = _load_models()["whisper"].transcribe(audio, beam_size=5, initial_prompt=F1_PROMPT,
-                                                       condition_on_previous_text=False)
+def decode_audio(data):
+    """mp3/wav (байты) -> моно 16 кГц float32 — то, что ждёт Whisper. miniaudio вместо FFmpeg."""
+    import miniaudio
+    import numpy as np
+    decoded = miniaudio.decode(data, output_format=miniaudio.SampleFormat.FLOAT32, nchannels=1, sample_rate=16000)
+    return np.frombuffer(decoded.samples, dtype=np.float32)
+
+
+def transcribe_audio(data):
+    """Запись (байты mp3/wav) -> английский текст."""
+    segments = _load_models()["whisper"].transcribe(decode_audio(data))
     return " ".join(s.text.strip() for s in segments).strip()
 
 
@@ -243,7 +295,7 @@ def process(url):
     """Скачать запись, расшифровать, перевести. -> {"en", "ru"} (и в кэш)."""
     resp = requests.get(url, timeout=TIMEOUT)
     resp.raise_for_status()
-    en = transcribe_audio(io.BytesIO(resp.content))
+    en = transcribe_audio(resp.content)
     result = {"en": en, "ru": translate(en) if en else "", "at": time.time()}
     db.save_archive(tx_key(url), result)
     return result
