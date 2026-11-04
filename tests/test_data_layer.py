@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import os
@@ -1002,6 +1003,81 @@ class AlertsTest(unittest.TestCase):
         self.assertEqual((nid, title), ("2026:18:predict-score",
                                         f"Прогноз: {predictions.MAX_POINTS} из {predictions.MAX_POINTS} очков"))
         self.assertEqual(alerts.prediction_scored("2026", self.SCHEDULE, {}, results, quali), [])     # не играл
+
+
+class ModelDownloadTest(unittest.TestCase):
+    """Загрузка моделей радио: сверка SHA-256, без обрывков на диске, неполный пакет перевода не «готов»
+    (находки аудита безопасности SEC-1, SEC-2, SEC-3)."""
+
+    def setUp(self):
+        from services import radio
+        self.radio = radio
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(self.tmp.cleanup)
+        env = mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name,
+                                           "F1_HUB_DB": os.path.join(self.tmp.name, "m.db")})
+        env.start()
+        self.addCleanup(env.stop)
+        radio.models_dir().mkdir(parents=True)
+
+    def _serve(self, body, fail_after=None):
+        class Resp:
+            headers = {"content-length": str(len(body))}
+
+            def raise_for_status(self):
+                pass
+
+            def iter_content(self, size):
+                for i in range(0, len(body), size):
+                    if fail_after is not None and i >= fail_after:
+                        raise requests.ConnectionError("обрыв")
+                    yield body[i:i + size]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        return mock.patch.object(self.radio.requests, "get", return_value=Resp())
+
+    def test_whisper_model_checked_by_sha256(self):
+        radio = self.radio
+        fake = b"<html>Wi-Fi login</html>" * 500_000                    # ~12 МБ «не модели»
+        with self._serve(fake), self.assertRaises(RuntimeError):
+            radio._download_whisper("base.en-q5_1")
+        self.assertEqual(list(radio.models_dir().iterdir()), [])        # ни модели, ни .part
+        with self._serve(fake, fail_after=1 << 20), self.assertRaises(requests.ConnectionError):
+            radio._download_whisper("base.en-q5_1")
+        self.assertEqual(list(radio.models_dir().iterdir()), [])        # обрыв не оставил обрывок
+        good = b"lmgg" + b"\0" * 100
+        with mock.patch.dict(radio.WHISPER_SHA256, {"base.en-q5_1": hashlib.sha256(good).hexdigest()}), \
+                self._serve(good):
+            radio._download_whisper("base.en-q5_1")
+        self.assertEqual(radio._whisper_file("base.en-q5_1").read_bytes(), good)
+        self.assertIn(radio.WHISPER_COMMIT, radio.WHISPER_URL)          # ссылка закреплена на коммите
+
+    def test_incomplete_translation_package_is_not_ready(self):
+        import io
+        import zipfile
+        radio = self.radio
+        radio._whisper_file("base.en-q5_1").write_bytes(b"x")
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("translate-en_ru/model/model.bin", b"x")            # без sentencepiece.model
+        pkg = radio.models_dir() / "pkg.zip"
+        pkg.write_bytes(buf.getvalue())
+        with self.assertRaises(RuntimeError):
+            radio.extract_argos(pkg)
+        self.assertFalse(radio.models_ready())                          # раньше считалась готовой
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:                            # zip-бомба: мало сжато, много внутри
+            z.writestr("translate-en_ru/model/model.bin", b"\0" * (2 << 20))
+            z.writestr("translate-en_ru/sentencepiece.model", b"x")
+        pkg.write_bytes(buf.getvalue())
+        with mock.patch.object(radio, "MAX_ARGOS_UNPACKED", 1 << 20), self.assertRaises(RuntimeError):
+            radio.extract_argos(pkg)
+        self.assertFalse(radio.argos_dir().exists())
 
 
 class RadioPhoneTest(unittest.TestCase):

@@ -170,7 +170,7 @@ class UiLiveTest(UiTestCase):
         self.assertEqual(self.state.ui["radio_playing"], "https://r/2.mp3")
         with mock.patch.object(radio, "supported", return_value=True), \
                 mock.patch.object(radio, "download_models") as dl:
-            clickable(self.build("race_strategy"), "Лёгкая (~160 МБ)")[0].on_click(Ctl())
+            clickable(self.build("race_strategy"), "Лёгкая (~260 МБ)")[0].on_click(Ctl())
         self.assertEqual(dl.call_args[0][1], "base.en-q5_1")
         with mock.patch.dict(os.environ, {"FLET_APP_STORAGE_DATA": self.tmp.name}):
             self.assertIsNone(radio.whisper_model())

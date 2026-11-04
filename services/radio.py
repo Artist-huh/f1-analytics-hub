@@ -11,6 +11,7 @@
 распознаёт так же, на 20 % быстрее и в 2,5 раза меньше по размеру (сравнение — в истории коммита).
 Готовые расшифровки кэшируются в таблице archive (ключ radio_tx:<url>) — второй раз не считаются.
 """
+import hashlib
 import os
 import re
 import shutil
@@ -26,12 +27,22 @@ from . import db, live, log
 # Модель расшифровки на выбор: на настоящем радио small.en заметно точнее (base.en путает слова и на шуме
 # пишет «[INAUDIBLE]»). Размер модели в МБ; перевод — ещё TRANSLATION_MB (Argos на компьютере, ML Kit на телефоне).
 WHISPER_MODELS = {"small.en-q5_1": ("Точная", 190), "base.en-q5_1": ("Лёгкая", 60)}
-TRANSLATION_MB = {"computer": 100, "phone": 60}
+TRANSLATION_MB = {"computer": 200, "phone": 60}     # пакет Argos — 196 МБ, модели ML Kit en и ru — ~60 МБ
 DEFAULT_WHISPER = "small.en-q5_1"
-WHISPER_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{}.bin"
+# Модели разбирает нативный код (whisper.cpp, CTranslate2, SentencePiece), поэтому скачанный файл сверяется
+# с SHA-256, а ссылка закреплена на коммите репозитория моделей: подмена файла на сервере или ответ вроде
+# страницы входа в Wi-Fi не станут «моделью». Суммы — из LFS Hugging Face и проверены на скачанных файлах.
+WHISPER_COMMIT = "5359861c739e955e79d9a303bcbc70fb988958b1"
+WHISPER_URL = f"https://huggingface.co/ggerganov/whisper.cpp/resolve/{WHISPER_COMMIT}/ggml-{{}}.bin"
+WHISPER_SHA256 = {
+    "small.en-q5_1": "bfdff4894dcb76bbf647d56263ea2a96645423f1669176f4844a1bf8e478ad30",
+    "base.en-q5_1": "4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f",
+}
 MAX_WHISPER = 600 * 1024 * 1024
 OLD_WHISPER_DIRS = ("whisper-small.en", "whisper-base.en")   # модели faster-whisper до 2.7 — больше не нужны
 ARGOS_URL = "https://argos-net.com/v1/translate-en_ru-1_9.argosmodel"
+ARGOS_SHA256 = "591d743ae103752b88ffc38785c50421320f4eff93c8967e0d3d2e14d4e27811"
+MAX_ARGOS_UNPACKED = 600 * 1024 * 1024      # zip-бомба: маленький архив не распакуется в гигабайты
 F1_PROMPT = "Formula 1 team radio. Box, box. Tyres, lap, pit, gap, push, copy, mode, delta, safety car."
 TIMEOUT = (5, 60)
 
@@ -124,10 +135,14 @@ def whisper_model():
     return next((n for n in order if n in WHISPER_MODELS and _whisper_file(n).exists()), None)
 
 
+def _argos_ready():
+    return (argos_dir() / "model" / "model.bin").exists() and (argos_dir() / "sentencepiece.model").exists()
+
+
 def models_ready():
     if on_phone():
         return bool(whisper_model()) and db.get_setting("radio_translation") == "1"
-    return bool(whisper_model()) and (argos_dir() / "model" / "model.bin").exists()
+    return bool(whisper_model()) and _argos_ready()
 
 
 def download_state():
@@ -154,7 +169,7 @@ def download_models(on_done=None, model=DEFAULT_WHISPER):
                 if not _phone["run"]("download_translation"):       # модели ML Kit en и ru
                     raise RuntimeError("модель перевода не скачалась")
                 db.set_setting("radio_translation", "1")
-            elif not (argos_dir() / "model" / "model.bin").exists():
+            elif not _argos_ready():
                 _download_argos()
             _download.update(state="done", progress=1.0)
         except Exception as exc:
@@ -166,25 +181,37 @@ def download_models(on_done=None, model=DEFAULT_WHISPER):
     threading.Thread(target=job, name="f1-radio-models", daemon=True).start()
 
 
+def _download_checked(url, part, sha256, limit, progress):
+    """Скачать url в part, считая SHA-256 на лету. Не совпала сумма, больше limit или обрыв — part удаляется
+    и бросается ошибка: на диске не остаётся ни обрывка, ни подменённого файла. progress(доля 0..1)."""
+    digest, done = hashlib.sha256(), 0
+    try:
+        with requests.get(url, stream=True, timeout=TIMEOUT) as resp:
+            resp.raise_for_status()
+            total = int(resp.headers.get("content-length") or 0)
+            with open(part, "wb") as f:
+                for chunk in resp.iter_content(1 << 20):
+                    done += len(chunk)
+                    if done > limit:
+                        raise RuntimeError("файл больше ожидаемого — загрузка остановлена")
+                    digest.update(chunk)
+                    f.write(chunk)
+                    if total:
+                        progress(done / total)
+        if digest.hexdigest() != sha256:
+            raise RuntimeError("скачанный файл не совпал с ожидаемым (контрольная сумма) — повтори позже")
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
+
+
 def _download_whisper(name):
-    """Модель whisper.cpp с Hugging Face: во временный файл, потом переименование — оборванная загрузка
-    не оставит битую модель. Больше MAX_WHISPER — ошибка (ответ сервера, а не модель)."""
+    """Модель whisper.cpp с Hugging Face: проверка SHA-256, затем переименование — битая или подменённая
+    модель не появится под рабочим именем."""
     target = _whisper_file(name)
     part = target.with_suffix(".part")
-    with requests.get(WHISPER_URL.format(name), stream=True, timeout=TIMEOUT) as resp:
-        resp.raise_for_status()
-        total, done = int(resp.headers.get("content-length") or 0), 0
-        with open(part, "wb") as f:
-            for chunk in resp.iter_content(1 << 20):
-                done += len(chunk)
-                if done > MAX_WHISPER:
-                    raise RuntimeError("модель расшифровки больше ожидаемого — загрузка остановлена")
-                f.write(chunk)
-                if total:
-                    _download["progress"] = 0.5 * done / total
-    if done < 10 * 1024 * 1024:
-        part.unlink(missing_ok=True)
-        raise RuntimeError("сервер вернул не модель (слишком маленький файл)")
+    _download_checked(WHISPER_URL.format(name), part, WHISPER_SHA256[name], MAX_WHISPER,
+                      lambda share: _download.__setitem__("progress", 0.5 * share))
     os.replace(part, target)
 
 
@@ -194,45 +221,49 @@ def _remove_old_models():
         shutil.rmtree(models_dir() / name, ignore_errors=True)
 
 
-MAX_ARGOS = 400 * 1024 * 1024   # пакет en->ru — около 100 МБ
+MAX_ARGOS = 400 * 1024 * 1024   # пакет en->ru — 196 МБ
 
 
 def _download_argos():
     """Пакет Argos — zip с папкой model/ (CTranslate2) и sentencepiece.model. Распаковываем только их."""
     tmp = models_dir() / "argos.part"
-    with requests.get(ARGOS_URL, stream=True, timeout=TIMEOUT) as resp:
-        resp.raise_for_status()
-        total = int(resp.headers.get("content-length") or 0)
-        done = 0
-        with open(tmp, "wb") as f:
-            for chunk in resp.iter_content(1 << 16):
-                f.write(chunk)
-                done += len(chunk)
-                if done > MAX_ARGOS:                 # сбойный ответ не должен забить диск
-                    raise RuntimeError("пакет перевода больше ожидаемого — загрузка прервана")
-                if total:
-                    _download["progress"] = 0.5 + 0.5 * done / total
-    extract_argos(tmp)
-    tmp.unlink(missing_ok=True)
+    try:
+        _download_checked(ARGOS_URL, tmp, ARGOS_SHA256, MAX_ARGOS,
+                          lambda share: _download.__setitem__("progress", 0.5 + 0.5 * share))
+        extract_argos(tmp)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def extract_argos(package):
+    """Распаковка во временную папку и замена прежней модели, только если в пакете есть обе части:
+    сбой или неполный пакет не оставят «готовую» модель без токенизатора и не сотрут рабочую."""
     target = argos_dir()
-    shutil.rmtree(target, ignore_errors=True)
-    with zipfile.ZipFile(package) as z:
-        for info in z.infolist():
-            parts = Path(info.filename).parts[1:]          # без корневой папки пакета
-            if not parts or info.is_dir() or not (parts[0] == "model" or parts[0] == "sentencepiece.model"):
-                continue
-            out = target.joinpath(*parts)
-            # «zip slip»: model/../../файл вывел бы запись за пределы папки модели — такие пути пропускаем
-            if not out.resolve().is_relative_to(target.resolve()):
-                continue
-            out.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(info) as src, open(out, "wb") as dst:
-                shutil.copyfileobj(src, dst)
-    if not (target / "model" / "model.bin").exists():
-        raise RuntimeError("в пакете перевода нет модели")
+    staging = target.with_name(target.name + ".new")
+    shutil.rmtree(staging, ignore_errors=True)
+    try:
+        with zipfile.ZipFile(package) as z:
+            unpacked = 0
+            for info in z.infolist():
+                parts = Path(info.filename).parts[1:]          # без корневой папки пакета
+                if not parts or info.is_dir() or not (parts[0] == "model" or parts[0] == "sentencepiece.model"):
+                    continue
+                out = staging.joinpath(*parts)
+                # «zip slip»: model/../../файл вывел бы запись за пределы папки модели — такие пути пропускаем
+                if not out.resolve().is_relative_to(staging.resolve()):
+                    continue
+                unpacked += info.file_size
+                if unpacked > MAX_ARGOS_UNPACKED:
+                    raise RuntimeError("пакет перевода распаковывается в слишком большой объём")
+                out.parent.mkdir(parents=True, exist_ok=True)
+                with z.open(info) as src, open(out, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+        if not ((staging / "model" / "model.bin").exists() and (staging / "sentencepiece.model").exists()):
+            raise RuntimeError("в пакете перевода нет модели или токенизатора")
+        shutil.rmtree(target, ignore_errors=True)
+        os.replace(staging, target)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
 
 
 def _load_models():
