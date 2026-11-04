@@ -137,6 +137,11 @@ def bootstrap():
 
 
 # ---------- чтение (мгновенное, из БД) ----------
+def get_standings_round():
+    """Этап, после которого посчитан сохранённый зачёт (строка) или None."""
+    return db.get_meta("standings_round")
+
+
 def get_cached_standings():
     return db.load_standings()
 

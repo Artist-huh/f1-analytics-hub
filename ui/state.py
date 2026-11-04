@@ -125,7 +125,16 @@ class AppState:
         return race or {"round": rnd, **podiums[rnd][0]}, podiums[rnd]
 
     def season_left(self, now=None):
-        """(гонок осталось, спринтов осталось, у ближайшего уик-энда есть спринт)."""
+        """(гонок осталось, спринтов осталось, у ближайшего уик-энда есть спринт) — по отношению к зачёту.
+        Считаем от этапа, по который посчитан зачёт, а не по часам: через 2 часа после старта последней гонки
+        она уже «прошла», а зачёт ещё старый — и выходило ложное «X — чемпион мира» (уведомление шло
+        один раз и навсегда). Если этап зачёта неизвестен — по часам, как раньше."""
+        counted = stats.to_int(api.get_standings_round())
+        if counted is not None and self.schedule and self.schedule[0].get("season", self.season) == self.season:
+            races = [r for r in self.schedule if (stats.to_int(r["round"]) or 0) > counted]
+            sprints = [s for r in races for s in r["sessions"] if s["key"] == "Sprint"]
+            next_sprint = bool(races) and any(s["key"] == "Sprint" for s in races[0]["sessions"])
+            return len(races), len(sprints), next_sprint
         now = time.time() if now is None else now
         races = [r for r in self.schedule if api.race_state(r, now) != "past"]
         sprints = [s for r in self.schedule for s in r["sessions"] if s["key"] == "Sprint" and s["ts"] > now]
@@ -392,7 +401,9 @@ class AppState:
         rnd = str(max((stats.to_int(r["round"]) or 0 for r in self.season_results), default=0))
         out = [("sessions", *a, True) for a in notify.due_reminders(self.schedule, now)]
         out += [("live", *a, True) for a in alerts.sessions_started(self.schedule, now)]
-        out += [("live", *a, True) for a in alerts.live_flags(live.snapshot()[0])]
+        snap = live.snapshot()[0]
+        out += [("live", *a, True) for a in alerts.live_flags(snap, getattr(self, "_live_track", None))]
+        self._live_track = snap.get("track") if snap else None
         out += [("stage", *a, False) for a in alerts.stage_results(season, self.schedule, self.standings,
                                                                    self.season_results, self.qualifying, self.sprints)]
         result = notify.favorites_result(self.favorites, self.standings, self.season_results)

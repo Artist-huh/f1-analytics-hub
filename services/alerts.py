@@ -58,16 +58,20 @@ def sessions_started(schedule, now):
     return out
 
 
-def live_flags(snapshot):
-    """Сейфти-кар, VSC, красный флаг в идущей сессии (из снимка Live Timing)."""
+def live_flags(snapshot, previous=None):
+    """Сейфти-кар, VSC, красный флаг: сообщаем, когда флаг появился (previous — флаг прошлого снимка), а не
+    пока он держится. Раньше в id был номер круга: один сейфти-кар на 6 кругов давал 6 уведомлений, а второй
+    красный флаг квалификации (кругов нет) терялся. id — время снимка, когда флаг появился."""
     if not snapshot or not snapshot.get("live") or snapshot.get("track") not in LIVE_FLAGS:
+        return []
+    if snapshot.get("track") == previous:
         return []
     session = snapshot.get("session") or {}
     lap = snapshot.get("lap") or ""
     name = reference.SESSIONS.get(session.get("name", ""), session.get("name") or "Сессия")
     where = name + (f", круг {lap}" if lap else "")
     key = f"{session.get('year', '')}:{session.get('location', '')}:{session.get('name', '')}"
-    return [(f"{key}:flag:{snapshot['track']}:{lap}", snapshot["track"], where)]
+    return [(f"{key}:flag:{snapshot['track']}:{int(snapshot.get('updated') or 0)}", snapshot["track"], where)]
 
 
 # ---------------------------------------------------------------- итоги этапа
@@ -125,10 +129,25 @@ def championship(season, rnd, standings, previous_leader, title):
         out.append((f"{season}:champion", f"{name} — чемпион мира {season}!",
                     "Титул оформлен: соперники уже не догонят"))
     elif title.get("next_clinch") is not None and len(standings) > 1:
-        rival = standings[1]["name"].split()[-1]
+        terms = title.get("next_clinch_terms") or [(standings[1], title["next_clinch"])]
         out.append((f"{season}:{rnd}:clinch", f"{name} может стать чемпионом на следующем этапе",
-                    f"Для этого нужно набрать на {title['next_clinch']} очков больше, чем {rival}"))
+                    "Для этого нужно " + ", ".join(_clinch_term(r, n) for r, n in terms)))
     return out
+
+
+def _clinch_term(rival, need):
+    """Условие против одного соперника: опередить, не уступить или уступить не больше чем на N."""
+    who = rival["name"].split()[-1]
+    if need > 0:
+        return f"набрать на {need} {_points(need)} больше, чем {who}"
+    if need == 0:
+        return f"набрать не меньше, чем {who}"
+    return f"уступить {who} не больше {-need} {_points(-need)}"
+
+
+def _points(n):
+    from ui.fmt import plural
+    return plural(n, "очко", "очка", "очков")
 
 
 # ---------------------------------------------------------------- прогнозы

@@ -955,7 +955,29 @@ class AlertsTest(unittest.TestCase):
         self.assertEqual((title, text), ("Красный флаг", "Гонка, круг 12"))
         self.assertEqual(alerts.live_flags(dict(snap, track=None)), [])           # зелёный флаг — тишина
         self.assertEqual(alerts.live_flags(dict(snap, live=False)), [])           # сессия уже закончилась
-        self.assertNotEqual(nid, alerts.live_flags(dict(snap, lap=30))[0][0])     # новый флаг позже — новое
+        # флаг держится несколько кругов — одно уведомление (раньше — по одному на каждый круг)
+        self.assertEqual(alerts.live_flags(dict(snap, lap=13), "Красный флаг"), [])
+        # второй флаг после зелёного — новое уведомление с другим id
+        again = alerts.live_flags(dict(snap, lap=30, updated=5000), None)
+        self.assertEqual(len(again), 1)
+        self.assertNotEqual(nid, again[0][0])
+        # красный флаг квалификации без кругов: второй после зелёного не теряется
+        quali = dict(snap, lap=None, session={"name": "Qualifying", "year": 2026, "location": "Austin"})
+        first = alerts.live_flags(dict(quali, updated=100))[0][0]
+        self.assertNotEqual(first, alerts.live_flags(dict(quali, updated=900), None)[0][0])
+
+    def test_title_terms_against_every_rival(self):
+        from services import alerts, stats
+        rows = [{"driver_id": "a", "name": "A Alpha", "points": 300},
+                {"driver_id": "b", "name": "B Beta", "points": 270},
+                {"driver_id": "c", "name": "C Gamma", "points": 255}]
+        title = stats.title_race(rows, 2, 0)            # после следующей гонки останется 25 очков
+        self.assertEqual(title["next_clinch"], 0)
+        names = [r["driver_id"] for r, _ in title["next_clinch_terms"]]
+        self.assertEqual(names, ["b", "c"])               # условие и против третьего, не только второго
+        (_, _, text), = [a for a in alerts.championship(2026, 20, rows, "a", title) if a[0].endswith("clinch")]
+        self.assertIn("Beta", text)
+        self.assertIn("Gamma", text)
 
     def test_stage_results(self):
         from services import alerts

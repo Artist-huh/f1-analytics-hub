@@ -589,6 +589,17 @@ class UiSeasonTest(UiTestCase):
         clickable(home, "Antonelli — чемпион мира")[0].on_click(Ctl())
         self.assertEqual(self.state.sub, "title")
 
+    def test_season_left_counts_from_standings_round(self):
+        """Гонка по часам уже прошла, а зачёт ещё старый: оставшиеся этапы считаются от этапа зачёта,
+        иначе выходило ложное «чемпион определён» (аудит, BUG-3)."""
+        from services import db
+        fill_db()
+        self.state.load()
+        db.set_meta("standings_round", "2")
+        self.assertEqual(self.state.season_left()[:2], (3, 0))      # этапы 3–5 ещё не в зачёте
+        db.set_meta("standings_round", "")
+        self.assertEqual(self.state.season_left()[:2], (2, 0))      # этап зачёта неизвестен — по часам
+
     def test_strategy_defaults_to_next_race_track(self):
         fill_db()
         self.state.load()

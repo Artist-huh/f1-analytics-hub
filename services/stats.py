@@ -166,11 +166,14 @@ def title_race(rows, races_left, sprints_left, kind="drivers", next_has_sprint=F
       contenders — [(строка, очки, максимум_возможных, отставание)] для тех, кто ещё в борьбе;
       clinched — лидер уже чемпион (никто не догонит даже при идеальном раскладе);
       next_clinch — на сколько очков лидеру нужно опередить второго в ближайшей гонке (уик-энде),
-                    чтобы оформить титул досрочно; None — в ближайшую гонку это невозможно или уже чемпион.
+                    чтобы оформить титул досрочно; None — в ближайшую гонку это невозможно или уже чемпион;
+      next_clinch_terms — [(строка соперника, на сколько очков его надо опередить)] для каждого, кто может
+                    помешать: при трёх претендентах условия против второго мало (аудит, BUG-4).
+                    Отрицательное число — сколько можно уступить.
     Ничьи по очкам решаются числом побед — здесь не учитываются: «может стать» = может хотя бы сравняться.
     """
     if not rows:
-        return {"available": 0, "contenders": [], "clinched": False, "next_clinch": None}
+        return {"available": 0, "contenders": [], "clinched": False, "next_clinch": None, "next_clinch_terms": []}
     available = remaining_points(races_left, sprints_left, kind)
     leader = _num(rows[0]["points"])
     contenders = []
@@ -180,16 +183,23 @@ def title_race(rows, races_left, sprints_left, kind="drivers", next_has_sprint=F
         if best >= leader:
             contenders.append((r, pts, best, leader - pts))
     clinched = len(rows) == 1 or leader - _num(rows[1]["points"]) > available
-    next_clinch = None
+    next_clinch, terms = None, []
     if not clinched and len(rows) > 1 and races_left > 0:
         after = available - RACE_MAX[kind] - (SPRINT_MAX[kind] if next_has_sprint else 0)
-        lead = leader - _num(rows[1]["points"])
         weekend_max = RACE_MAX[kind] + (SPRINT_MAX[kind] if next_has_sprint else 0)
-        need = after - lead + 1          # отрыв после уик-энда должен стать больше, чем останется очков
-        if need <= weekend_max:
-            need = max(need, 0)
-            next_clinch = int(need) if float(need).is_integer() else need
-    return {"available": available, "contenders": contenders, "clinched": clinched, "next_clinch": next_clinch}
+
+        def need(r):                     # отрыв после уик-энда должен стать больше, чем останется очков
+            value = after - (leader - _num(r["points"])) + 1
+            return int(value) if float(value).is_integer() else value
+
+        # соперник, которого нельзя обогнать больше чем на weekend_max, условия не меняет — его не перечисляем
+        terms = [(r, need(r)) for r in rows[1:] if need(r) > -weekend_max]
+        if terms and max(n for _, n in terms) <= weekend_max:
+            next_clinch = max(max(n for _, n in terms), 0)
+        else:
+            terms = []
+    return {"available": available, "contenders": contenders, "clinched": clinched, "next_clinch": next_clinch,
+            "next_clinch_terms": terms}
 
 
 # ---------------------------------------------------------------- разбор гонки

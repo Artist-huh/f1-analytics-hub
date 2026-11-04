@@ -140,6 +140,7 @@ def fill_db():
         race(5, "Singapore Grand Prix", "Marina Bay", "Marina Bay", now + 10 * 86400, "Singapore"),
     ]
     db.save_schedule("2026", rows)
+    db.set_meta("standings_round", "3")        # зачёт — по последнему прошедшему этапу подставного календаря
 
 
 def add_podium():
