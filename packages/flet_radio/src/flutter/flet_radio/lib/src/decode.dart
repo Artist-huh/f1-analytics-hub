@@ -31,15 +31,16 @@ Float32List _decodeSync(String path) {
   final free = lib.lookupFunction<_FreeC, _Free>('f1_radio_free');
   final cPath = path.toNativeUtf8();
   final frames = calloc<Int64>();
+  Pointer<Float> pcm = nullptr;
   try {
-    final pcm = decode(cPath, frames);
+    pcm = decode(cPath, frames);
     if (pcm == nullptr || frames.value == 0) {
       throw StateError('запись не декодирована: $path');
     }
-    final copy = Float32List.fromList(pcm.asTypedList(frames.value));
-    free(pcm.cast());
-    return copy;
+    return Float32List.fromList(pcm.asTypedList(frames.value));
   } finally {
+    // буфер декодера освобождается и при ошибке копирования (аудит, SEC-8)
+    if (pcm != nullptr) free(pcm.cast());
     calloc.free(cPath);
     calloc.free(frames);
   }

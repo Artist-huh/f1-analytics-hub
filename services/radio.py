@@ -45,7 +45,9 @@ ARGOS_SHA256 = "591d743ae103752b88ffc38785c50421320f4eff93c8967e0d3d2e14d4e27811
 MAX_ARGOS_UNPACKED = 600 * 1024 * 1024      # zip-бомба: маленький архив не распакуется в гигабайты
 F1_PROMPT = "Formula 1 team radio. Box, box. Tyres, lap, pit, gap, push, copy, mode, delta, safety car."
 TIMEOUT = (5, 60)
-CLIP_MAX = 15 * 1024 * 1024     # запись радио — сотни КБ; больше 15 МБ не читаем (и не отдаём декодеру)
+AUDIO_RATE = 16000              # Whisper ждёт моно 16 кГц
+MAX_AUDIO_SECONDS = 5 * 60      # запись радио — секунды; дальше 5 минут не декодируем
+CLIP_MAX = 15 * 1024 * 1024    # запись радио — сотни КБ; больше 15 МБ не читаем (и не отдаём декодеру)
 
 logger = log.get("radio")
 _lock = threading.Lock()
@@ -342,8 +344,20 @@ def decode_audio(data):
     """mp3/wav (байты) -> моно 16 кГц float32 — то, что ждёт Whisper. miniaudio вместо FFmpeg."""
     import miniaudio
     import numpy as np
-    decoded = miniaudio.decode(data, output_format=miniaudio.SampleFormat.FLOAT32, nchannels=1, sample_rate=16000)
-    return np.frombuffer(decoded.samples, dtype=np.float32)
+    # частями и не дальше MAX_AUDIO_SECONDS, как на телефоне (radio_decode.c): длинный файл с низким битрейтом
+    # иначе разворачивался в память целиком (аудит, SEC-8)
+    parts, total, limit = [], 0, AUDIO_RATE * MAX_AUDIO_SECONDS
+    stream = miniaudio.stream_memory(data, output_format=miniaudio.SampleFormat.FLOAT32, nchannels=1,
+                                     sample_rate=AUDIO_RATE, frames_to_read=AUDIO_RATE * 10)
+    for chunk in stream:
+        part = np.frombuffer(chunk, dtype=np.float32)[:limit - total]
+        parts.append(part.copy())
+        total += len(part)
+        if total >= limit:
+            break
+    if not total:
+        raise miniaudio.DecodeError("запись не декодирована")
+    return np.concatenate(parts)
 
 
 def transcribe_audio(data):

@@ -1490,6 +1490,29 @@ class LimitsTest(unittest.TestCase):
         self.assertEqual(track_map.decode_positions(base64.b64encode(ok).decode())["1"]["x"], 5)
 
 
+class AudioLimitTest(unittest.TestCase):
+    def test_long_recording_is_cut(self):
+        """Декодер не разворачивает в память больше MAX_AUDIO_SECONDS (аудит, SEC-8)."""
+        import importlib.util
+        import struct
+        import wave
+        if not importlib.util.find_spec("miniaudio"):
+            self.skipTest("miniaudio не установлен")
+        from services import radio
+
+        def wav(seconds):
+            buf = io.BytesIO()
+            with wave.open(buf, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(8000)
+                w.writeframes(struct.pack("<h", 1000) * 8000 * seconds)
+            return buf.getvalue()
+        self.assertEqual(len(radio.decode_audio(wav(3))), 3 * radio.AUDIO_RATE)
+        self.assertEqual(len(radio.decode_audio(wav(radio.MAX_AUDIO_SECONDS + 20))),
+                         radio.MAX_AUDIO_SECONDS * radio.AUDIO_RATE)
+
+
 class LogFormatTest(unittest.TestCase):
     def test_newline_cannot_forge_log_line(self):
         """Текст из сети с переводом строки не начинает поддельную запись журнала (аудит, SEC-5)."""
