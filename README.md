@@ -145,9 +145,8 @@
 ```bash
 git clone https://github.com/Artist-huh/f1-analytics-hub.git
 cd f1-analytics-hub
-pip install -r requirements.txt
+pip install -r requirements.txt -c constraints.txt
 python main.py              # окно приложения
-flet run --web main.py      # в браузере
 ```
 
 Windows: двойной клик по `start.bat` (создаст окружение и поставит зависимости при необходимости).
@@ -163,8 +162,8 @@ Windows: двойной клик по `start.bat` (создаст окружен
   на симуляторе iPhone. Платный аккаунт разработчика не нужен: подпишите `.ipa` своим Apple ID
   бесплатно через [Sideloadly](https://sideloadly.io) или [AltStore](https://altstore.io) и установите
   с компьютера. Подпись бесплатным Apple ID действует 7 дней, потом приложение переподписывают тем же способом.
-  На iPhone есть всё, кроме расшифровки радио, системных уведомлений и виджета (вместо уведомлений — плашка
-  в приложении).
+  На iPhone есть всё, кроме системных уведомлений в свёрнутом приложении и виджета (уведомления приходят,
+  пока приложение открыто).
 
 ---
 

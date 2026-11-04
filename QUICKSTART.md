@@ -12,22 +12,22 @@ start.bat
 Или вручную:
 
 ```bash
-# 1. Установить зависимости
-pip install flet requests
+# 1. Установить зависимости (версии закреплены в constraints.txt)
+pip install -r requirements.txt -c constraints.txt
 
 # 2. Запустить
 python main.py
 ```
 
-### macOS / Linux
+### macOS
 
 ```bash
-# 1. Установить зависимости
-pip3 install flet requests
-
-# 2. Запустить
-python3 main.py
+python3.11 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt -c constraints.txt
+python main.py
 ```
+
+Linux не собирается и не проверяется: запуск из исходников, скорее всего, работает, но не гарантирован.
 
 ---
 
@@ -48,8 +48,12 @@ build.bat
 ## Вариант 3: Скачать готовый .exe
 
 1. Перейти в [Releases](https://github.com/Artist-huh/f1-analytics-hub/releases)
-2. Скачать `F1AnalyticsHub.exe`
-3. Запустить (Python не нужен!)
+2. Скачать архив своей системы: `…-Windows.zip`, `…-macOS.zip`, APK для Android или `…-iOS-unsigned.ipa`
+3. Распаковать и запустить (Python не нужен)
+
+**macOS:** приложение не подписано сертификатом Apple, поэтому при первом запуске macOS напишет, что не может
+проверить разработчика. Откройте его через правый клик → «Открыть» → «Открыть» (один раз) или в «Системных
+настройках» → «Конфиденциальность и безопасность» → «Всё равно открыть».
 
 ---
 
@@ -81,7 +85,12 @@ build.bat
 | `F5` | Обновить данные |
 | `Ctrl+F` | Поиск пилота |
 | `Ctrl+K` | Сравнение |
+| `Ctrl+L` | Live Timing |
+| `Ctrl+M` | Мини-виджет |
+| `Ctrl+H` | Свернуть окно |
 | `Esc` | Назад |
+
+На macOS вместо `Ctrl` подходит `Cmd`, кроме `Cmd+M` и `Cmd+H`: это системные «Свернуть» и «Скрыть».
 
 ---
 
@@ -90,19 +99,19 @@ build.bat
 ### "ModuleNotFoundError: No module named 'flet'"
 
 ```bash
-pip install flet requests
+pip install -r requirements.txt -c constraints.txt
 ```
 
 ### "Python не найден"
 
-Установите Python 3.10+ с [python.org](https://python.org)
+Установите Python 3.11 с [python.org](https://python.org)
 
 При установке отметьте **"Add Python to PATH"**
 
 ### Приложение не запускается
 
-1. Проверьте версию Python: `python --version` (должно быть ≥ 3.10)
-2. Переустановите зависимости: `pip install --force-reinstall flet requests`
+1. Проверьте версию Python: `python --version` (нужна 3.11)
+2. Переустановите зависимости: `pip install -r requirements.txt -c constraints.txt --force-reinstall`
 3. Запустите с логами: `python main.py > log.txt 2>&1`
 
 ### Не загружаются данные
@@ -117,15 +126,15 @@ pip install flet requests
 ## Системные требования
 
 ### Минимальные
-- Windows 10/11, macOS 10.14+, Linux (любой)
-- Python 3.10+ (для запуска из исходников)
-- 100 МБ свободного места
+- Windows 10/11, macOS (сборка из GitHub Actions), Android 7+, iPhone с iOS 15.5+
+- Python 3.11 (для запуска из исходников)
+- 200 МБ свободного места, ещё ~250 МБ — если включить расшифровку радио
 - Интернет для обновления данных
 
 ### Рекомендуемые
 - Windows 11
-- Python 3.11+
-- 200 МБ свободного места
+- Python 3.11
+- 500 МБ свободного места
 - Стабильный интернет
 
 ---
@@ -134,7 +143,7 @@ pip install flet requests
 
 1. ⭐ **Добавьте избранных пилотов** (кнопка "Избранное")
 2. 📊 **Сравните двух гонщиков** (экран "Пилоты" → выбрать двух → "Сравнить")
-3. 📅 **Настройте уведомления о гонках** (в разработке)
+3. 📅 **Настройте уведомления** (Ещё → Настройки → Уведомления)
 4. 🎨 **Смените тему** (Ещё → Настройки)
 
 ---
