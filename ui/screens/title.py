@@ -26,7 +26,7 @@ def build(state):
         _summary(race),
     ]
     if race["clinched"]:
-        body.append(_champion(state, rows[0], view))
+        body.append(_champion(state, rows[0], view, early=race["races_left"] > 0))
     elif race["next_clinch"] is not None:
         body.append(_next_clinch(state, rows, race, view))
     body.append(_contenders(state, race, view, len(rows)))
@@ -75,14 +75,14 @@ def _avatar(state, row, view, size):
     return TeamLogo(row["name"], state.team_logo(row["name"]), size=size)
 
 
-def _champion(state, row, view):
+def _champion(state, row, view, early=True):
     name, _, color, _ = _who(state, row, view)
     return AnimatedCard(ft.Row([
         _avatar(state, row, view, 64),
         ft.Column([ft.Text("Чемпион мира" if view == "drivers" else "Обладатель Кубка конструкторов",
                            size=FONT_CAPTION, color=GOLD, font_family=FONT_ITALIC),
                    ft.Text(name, size=FONT_H3, color=TEXT_PRIMARY, font_family=FONT_HEADING),
-                   ft.Text(f"Титул оформлен досрочно, {row['points']} "
+                   ft.Text(f"Титул оформлен{' досрочно' if early else ''}, {row['points']} "
                            f"{plural(float(row['points']), 'очко', 'очка', 'очков')}", size=FONT_BODY_SMALL,
                            color=TEXT_MUTED)], spacing=2, expand=True),
         ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD, size=40),

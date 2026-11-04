@@ -1056,6 +1056,20 @@ class AlertsTest(unittest.TestCase):
         self.assertEqual((nid, title), ("2026:18:predict-score",
                                         f"Прогноз: {predictions.MAX_POINTS} из {predictions.MAX_POINTS} очков"))
         self.assertEqual(alerts.prediction_scored("2026", self.SCHEDULE, {}, results, quali), [])     # не играл
+        # без поула разыгрывается 20: идеальный подиум — 100 %, а не 80 %
+        stats = predictions.season_stats({"18": pick}, {"18": ["piastri", "norris", "leclerc"]}, {})
+        self.assertEqual((stats["points"], stats["max"]), (20, 20))
+
+    def test_small_texts(self):
+        from services import notify
+        from ui.fmt import plural
+        self.assertEqual([plural(n, "очко", "очка", "очков") for n in (1, 2, 5, 12.5, 0.5, 21.0)],
+                         ["очко", "очка", "очков", "очка", "очка", "очко"])
+        rows = [{"round": "3", "driver_id": d, "position": p, "points": "0", "race_name": "X GP"}
+                for d, p in (("a", "W"), ("b", "D"), ("c", "R"))]
+        standings = [{"driver_id": d, "name": f"N {d.upper()}"} for d in "abc"]
+        text = notify.favorites_result({"a", "b", "c"}, standings, rows)[2]
+        self.assertEqual(text, "A — не стартовал, B — дисквалификация, C — сход")
 
 
 class ModelDownloadTest(unittest.TestCase):
@@ -1397,6 +1411,7 @@ class HomeWidgetTest(unittest.TestCase):
         self.assertEqual((d["title"], d["live"], d["top"]), ("Гонка", True, "1. LEC   2. NOR"))
         self.assertEqual(d["subtitle"], "United States Grand Prix · круг 31/56 · Сейфти-кар")
         self.assertEqual(widget.widget_data(self.SCHEDULE, [], now=99999)["title"], "Сезон завершён")
+        self.assertEqual(widget.widget_data([], [], now=0)["title"], "Нет данных")       # первый запуск без сети
 
     def test_widget_push_only_on_android_and_on_change(self):
         from services import widget

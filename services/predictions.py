@@ -50,7 +50,9 @@ def score(pick, actual_pole, actual_podium):
             items[key] = (0, "мимо")
     if [pick.get(k) for k in ("p1", "p2", "p3")] == list(actual_podium):
         items["bonus"] = (PERFECT_BONUS, "весь подиум в точном порядке")
-    return {"total": sum(p for p, _ in items.values()), "items": items, "complete": True}
+    # без данных о поуле разыгрывается 20, а не 25 — иначе процент от максимума занижен (аудит, BUG-7)
+    return {"total": sum(p for p, _ in items.values()), "items": items, "complete": True,
+            "max": MAX_POINTS if actual_pole else MAX_POINTS - POLE_POINTS}
 
 
 # ---------------------------------------------------------------- хранение
@@ -82,9 +84,9 @@ def season_stats(picks, results_by_round, poles_by_round):
     for rnd, pick in picks.items():
         s = score(pick, poles_by_round.get(rnd), results_by_round.get(rnd))
         if s["complete"]:
-            scored.append((rnd, s["total"]))
+            scored.append((rnd, s["total"], s["max"]))
             exact += sum(1 for k, (p, _) in s["items"].items() if k != "bonus" and p == (POLE_POINTS if k == "pole"
                                                                                          else EXACT_POINTS))
-    best = max(scored, key=lambda x: x[1], default=None)
-    return {"points": sum(p for _, p in scored), "rounds": len(scored), "exact": exact, "best": best,
-            "max": len(scored) * MAX_POINTS}
+    best = max(((r, p) for r, p, _ in scored), key=lambda x: x[1], default=None)
+    return {"points": sum(p for _, p, _ in scored), "rounds": len(scored), "exact": exact, "best": best,
+            "max": sum(m for _, _, m in scored)}

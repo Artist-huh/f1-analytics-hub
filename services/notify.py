@@ -72,6 +72,9 @@ def due_reminders(schedule, now=None, lead=LEAD, sent=()):
     return out
 
 
+OUTCOMES = {"W": "не стартовал", "D": "дисквалификация", "E": "исключён", "F": "не квалифицировался"}
+
+
 def favorites_result(favorites, standings, season_results):
     """Итог последней гонки для избранных. -> (id, заголовок, текст) или None."""
     if not favorites or not season_results:
@@ -83,7 +86,7 @@ def favorites_result(favorites, standings, season_results):
     names = {d["driver_id"]: d["name"].split()[-1] for d in standings}
     parts = []
     for r in sorted(rows, key=lambda r: int(r["position"]) if r["position"].isdigit() else 99):
-        place = f"P{r['position']}" if r["position"].isdigit() else "сход"
+        place = f"P{r['position']}" if r["position"].isdigit() else OUTCOMES.get(r["position"], "сход")
         pts = f" (+{r['points']})" if r["points"] not in ("0", "") else ""
         parts.append(f"{names.get(r['driver_id'], r['driver_id'])} — {place}{pts}")
     race = rows[0]

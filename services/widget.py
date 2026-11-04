@@ -30,6 +30,9 @@ def widget_data(schedule, standings, live_now=None, live_data=None, now=None):
                 "status": f"обновлено в {stamp}", "live": True}
     upcoming = [r for r in schedule if r["start_ts"] > now]
     leaders = "\n".join(f"{d['position']}. {d['name'].split()[-1]} — {d['points']}" for d in standings[:3])
+    if not schedule:         # первый запуск без сети: календаря нет — это не «сезон завершён» (аудит, BUG-6)
+        return {"title": "Нет данных", "subtitle": "Открой приложение, чтобы загрузить календарь", "start_ms": 0,
+                "top": leaders, "status": "", "live": False}
     if not upcoming:
         return {"title": "Сезон завершён", "subtitle": "", "start_ms": 0, "top": leaders,
                 "status": f"обновлено в {stamp}", "live": False}

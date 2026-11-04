@@ -19,8 +19,10 @@ def nation_ru(nationality):
 
 
 def plural(n, one, few, many):
-    """1 очко, 2 очка, 5 очков."""
-    n = abs(int(n))
+    """1 очко, 2 очка, 5 очков; дробное — «12,5 очка», «0,5 очка» (половинные очки в F1 бывают)."""
+    if float(n) != int(float(n)):
+        return few
+    n = abs(int(float(n)))
     if n % 10 == 1 and n % 100 != 11:
         return one
     if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:

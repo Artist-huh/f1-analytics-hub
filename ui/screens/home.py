@@ -336,7 +336,8 @@ def _build_title_fight(state):
     race = state.title_race("drivers")
     contenders = race["contenders"]
     if race["clinched"]:
-        title, hint = f"{short_name(state.standings[0]['name'])} — чемпион мира", "Титул оформлен досрочно"
+        title = f"{short_name(state.standings[0]['name'])} — чемпион мира"
+        hint = "Титул оформлен досрочно" if race["races_left"] else "Титул оформлен"   # в последней гонке — не досрочно
     else:
         n = len(contenders)
         title = f"В борьбе {n} {plural(n, 'пилот', 'пилота', 'пилотов')}"
