@@ -59,6 +59,25 @@ class UiAppTest(UiTestCase):
         self.assertNotIn("2026:4:Qualifying", done)            # напоминания о сессиях выключены
         self.assertIn("2026:4:predict", done)                  # а о прогнозе — свой переключатель, включён
 
+    def test_prediction_reminder_uses_calendar_season(self):
+        """Стык сезонов: зачёт ещё 2026, календарь уже 2027. Прогноз сохранён экраном «Прогнозы» под 2027 —
+        напоминание «прогноз не сделан» не должно приходить (раньше его искали под 2026 — аудит, BUG-1)."""
+        from services import db, predictions
+        fill_db()
+        rows = db.load_schedule()
+        db.save_schedule("2027", [dict(r, season="2027") for r in rows])
+        self.state.load()
+        self.assertEqual(self.state.season, "2026")
+        race = self.state.schedule[3]
+        quali = next(s for s in race["sessions"] if s["key"] == "Qualifying")
+        ids = [a[1] for a in self.state.pending_alerts(now=quali["ts"] - 1200)]
+        self.assertIn("2027:4:predict", ids)
+        predictions.save("2027", race["round"], {"pole": "a", "p1": "a", "p2": "b", "p3": "c"})
+        ids = [a[1] for a in self.state.pending_alerts(now=quali["ts"] - 1200)]
+        self.assertNotIn("2027:4:predict", ids)
+        planned = [i["id"] for i in self.state.planned_notifications(now=quali["ts"] - 86400)]
+        self.assertNotIn("2027:4:predict", planned)          # будильник Android — тоже по сезону календаря
+
     def test_settings_clear_requires_confirmation(self):
         fill_db()
         self.state.load()

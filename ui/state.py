@@ -121,7 +121,8 @@ class AppState:
         if not podiums:
             return None, None
         rnd = max(podiums, key=int)
-        race = next((r for r in self.schedule if r["round"] == rnd), None)
+        season = podiums[rnd][0].get("season", self.season)      # календарь мог уже смениться на новый сезон
+        race = next((r for r in self.schedule if r["round"] == rnd and r.get("season", season) == season), None)
         return race or {"round": rnd, **podiums[rnd][0]}, podiums[rnd]
 
     def season_left(self, now=None):
@@ -414,12 +415,14 @@ class AppState:
         out += [("championship", *a, False) for a in alerts.championship(season, rnd, self.standings,
                                                                         previous_leader, self.title_race())]
         race = api.get_next_race(now)
-        if race:
-            has_pick = bool(predictions.load(season, race["round"]))
+        if race:     # прогноз хранится под сезоном календаря (экран «Прогнозы»), а не зачёта
+            race_season = race.get("season") or season
+            has_pick = bool(predictions.load(race_season, race["round"]))
             out += [("predictions", *a, True) for a in alerts.prediction_reminder(
-                season, race, predictions.lock_time(race), has_pick, now)]
+                race_season, race, predictions.lock_time(race), has_pick, now)]
+        done = self.season_results[0].get("season") or season if self.season_results else season
         out += [("predictions", *a, False) for a in alerts.prediction_scored(
-            season, self.schedule, predictions.load_season(season), self.season_results, self.qualifying)]
+            done, self.schedule, predictions.load_season(done), self.season_results, self.qualifying)]
         return out
 
     def planned_notifications(self, now=None):
@@ -429,7 +432,7 @@ class AppState:
         now = time.time() if now is None else now
         kinds = {k for k in alerts.KINDS if self.notifications_on(k)}
         race, prediction = api.get_next_race(now), None
-        if race and not predictions.load(self.season, race["round"]):
+        if race and not predictions.load(race.get("season") or self.season, race["round"]):
             prediction = (race, predictions.lock_time(race))
         return alerts.planned(self.schedule, now, kinds, notify.LEAD, prediction)
 

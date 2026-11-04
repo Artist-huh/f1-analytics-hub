@@ -85,12 +85,18 @@ def refresh_season_results(force=False, ignore_ttl=False):
         season, rnd, rows = jolpica.fetch_season_results()
         q_season, quali = jolpica.fetch_qualifying()
         s_season, sprints = jolpica.fetch_sprints()
-        if rows:
-            db.save_season_results(season, rnd, rows)
-        if quali:
-            db.save_qualifying(q_season, quali)
-        if sprints:
-            db.save_sprints(s_season, sprints)
+        # Все три таблицы — одного сезона, того же, что зачёт (он обновлён раньше в refresh_all). На стыке
+        # сезонов первая квалификация нового года иначе заменяла старые поулы, а результаты гонок оставались
+        # прошлогодними — поулы и прогнозы считались по смеси двух сезонов (аудит, BUG-2).
+        target = db.get_meta("standings_season") or season
+        for got, data, save, key in ((season, rows, lambda: db.save_season_results(season, rnd, rows), "results"),
+                                     (q_season, quali, lambda: db.save_qualifying(q_season, quali), "qualifying"),
+                                     (s_season, sprints, lambda: db.save_sprints(s_season, sprints), "sprints")):
+            if str(got) != str(target):
+                continue                         # другой сезон — ждём, пока зачёт перейдёт на него
+            # пустой ответ не стирает данные сезона (сбой API), но заменяет прошлогодние: у нового сезона их нет
+            if data or db.get_meta(f"{key}_season") != str(target):
+                save()
         db.set_meta("results_for_round", standings_round or "")
     return _refresh(job, force)
 

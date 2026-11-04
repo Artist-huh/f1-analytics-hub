@@ -177,6 +177,30 @@ class DataLayerTest(unittest.TestCase):
         os.environ.pop("F1_HUB_DB", None)
         self.tmp.cleanup()
 
+    def test_season_rollover_keeps_one_season(self):
+        """Январь: Jolpica «current» — уже новый сезон, а зачёт ещё прошлогодний. Первая квалификация нового
+        года не должна заменять поулы старого, пока у старого остаются результаты гонок (аудит, BUG-2)."""
+        row = {"driver_id": "a", "round": "24", "race_name": "Abu Dhabi GP", "circuit": "Yas", "country": "UAE",
+               "locality": "Abu Dhabi", "date": "2026-12-06", "position": "1", "grid": "1", "points": "25",
+               "status": "Finished", "team": "T", "fastest_rank": ""}
+        db.save_standings("2026", "24", [{"driver_id": "a", "position": "1", "points": 400, "wins": 10,
+                                          "name": "A Alpha"}])
+        db.save_season_results("2026", "24", [row])
+        db.save_qualifying("2026", [{"driver_id": "a", "round": "24", "position": "1"}])
+        new_quali = [{"driver_id": "b", "round": "1", "position": "1"}]
+        fetch = {"fetch_season_results": ("2027", "0", []), "fetch_qualifying": ("2027", new_quali),
+                 "fetch_sprints": ("2027", [])}
+        with mock.patch.multiple(jolpica, **{k: mock.Mock(return_value=v) for k, v in fetch.items()}):
+            self.assertTrue(f1_api.refresh_season_results(force=True, ignore_ttl=True))
+            self.assertEqual([q["round"] for q in db.load_qualifying()], ["24"])      # старый сезон целиком
+            self.assertEqual(len(db.load_season_results()), 1)
+            # зачёт перешёл на 2027 — все таблицы тоже; пустые результаты заменяют прошлогодние
+            db.save_standings("2027", "1", [{"driver_id": "b", "position": "1", "points": 25, "wins": 1,
+                                             "name": "B Beta"}])
+            self.assertTrue(f1_api.refresh_season_results(force=True, ignore_ttl=True))
+        self.assertEqual([q["driver_id"] for q in db.load_qualifying()], ["b"])
+        self.assertEqual(db.load_season_results(), [])
+
     def test_unclassified_rows_without_position(self):
         """Jolpica не даёт position неклассифицированным (58 сезонов из 76, бывало и в 2014–2017): только
         positionText «-». Раньше весь ответ падал с KeyError — «История» не открывалась почти ни для одного года,
