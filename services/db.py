@@ -6,6 +6,7 @@
 Данные пользователя (clear_cache их не трогает):
   favorites — избранные пилоты, settings — настройки, predictions — прогнозы игры
 """
+import contextlib
 import json
 import os
 import shutil
@@ -173,7 +174,9 @@ def _quarantine(path, exc):
             try:
                 src.replace(Path(f"{path}.broken-{stamp}{suffix}"))
             except OSError:
-                src.unlink(missing_ok=True)
+                # файл заперт (второй экземпляр, антивирус): не падаем при запуске (аудит, XP-11)
+                with contextlib.suppress(OSError):
+                    src.unlink(missing_ok=True)
     from . import log  # здесь: log сам импортирует db
     log.get("db").error("база повреждена (%s) — отложена как %s.broken-%s, создаём новую", exc, path.name, stamp)
 

@@ -19,7 +19,7 @@ copyright = "MIT License"
 
 [tool.flet.app]
 path = "."
-exclude = ["venv", "tests", "build", "dist", "docs", ".github", "packages", "*.bat", "*.md"]
+exclude = ["venv", "tests", "build", "dist", "docs", ".github", "packages", "tools", "*.bat", "*.md"]
 
 [tool.flet.android]
 # Тёмный фон под адаптивную иконку и сплэш — в цвет приложения

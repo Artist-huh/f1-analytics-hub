@@ -482,7 +482,7 @@ def main(page: ft.Page):
     fit_width()
     page.update()
     page.on_resize = on_resize
-    page.on_keyboard_event = lambda e: state.on_key(e.key, e.ctrl or e.meta)
+    page.on_keyboard_event = lambda e: state.on_key(e.key, e.ctrl or e.meta, cmd=e.meta and not e.ctrl)
 
     # Системная «назад» на Android: подэкран -> вкладка -> «Главная», и только потом выход
     async def on_confirm_pop(e):

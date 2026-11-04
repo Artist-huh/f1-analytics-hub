@@ -4,6 +4,7 @@
 перерисовку (выбранная вкладка, пилоты в сравнении), хранится в state.ui.
 """
 import json
+import sys
 import threading
 import time
 
@@ -484,11 +485,15 @@ class AppState:
         self.on_theme_change(ds.THEME, ds.THEME_TEAM)    # переходы страниц и экраны — заново
 
     # ---------- клавиатура ----------
-    def on_key(self, key, ctrl=False):
+    def on_key(self, key, ctrl=False, cmd=False):
         """Горячие клавиши: F5 — обновить, Ctrl+F — поиск пилота, Ctrl+K — сравнение, Ctrl+M — мини-виджет,
         Ctrl+L — Live Timing, Ctrl+H — свернуть окно, Esc — назад.
+        На macOS Cmd+M и Cmd+H — системные «Свернуть» и «Скрыть»: мини-виджет и сворачивание там только
+        с Ctrl, иначе Cmd+M сворачивал окно в Dock и одновременно включал мини-виджет (аудит, XP-4).
         Возвращает True, если клавиша обработана."""
         key = (key or "").upper()
+        if cmd and key in ("M", "H") and sys.platform == "darwin":
+            return False
         if key == "F5":
             self.refresh_now()
         elif ctrl and key == "F":

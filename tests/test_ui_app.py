@@ -221,6 +221,10 @@ class UiAppTest(UiTestCase):
         self.assertEqual((self.state.tab, self.state.sub), (3, None))
         self.assertFalse(self.state.on_key("Escape"))             # на вкладке «назад» некуда
         self.assertFalse(self.state.on_key("F"))                  # без Ctrl — обычный ввод
+        with mock.patch.object(sys, "platform", "darwin"), mock.patch.object(AppState, "toggle_mini") as mini:
+            self.assertFalse(self.state.on_key("M", ctrl=True, cmd=True))   # Cmd+M на Mac — системное «Свернуть»
+            self.assertTrue(self.state.on_key("M", ctrl=True))               # Ctrl+M — мини-виджет
+            mini.assert_called_once()
 
     def test_navigation_and_favorite_toggle(self):
         fill_db()
