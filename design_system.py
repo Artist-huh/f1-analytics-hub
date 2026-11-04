@@ -41,6 +41,9 @@ WARNING = "#F5A524"
 DANGER = "#FF5A5C"
 INFO = "#3B82F6"
 GOLD = "#FFC93C"             # звёздочка избранного
+GOLD_ON_COLOR = "#FFC93C"    # золото на цветных фонах (карточки команд): светлое в любой теме, как ON_COLOR
+HERO_END = "#0B0B10"         # конец градиента карточек команд: тёмный в любой теме, иначе белый текст
+                             # в светлой теме уходил в светлый BG_DEEP (до 2.3:1)
 
 # Герой главной — «стартовая решётка»: карбон в любой теме, контур трассы и стартовые огни
 HERO_CARBON = ["#2A2A37", "#101016"]
@@ -229,7 +232,7 @@ _GRADIENTS = {}   # команда -> (верх, низ): не зависит о
 
 def get_team_gradient(team_name: str) -> tuple[str, str]:
     key = team_key(team_name)
-    if key is None:                       # незнакомая команда — цвета поверхностей темы, не кэшируем
+    if key is None:                       # незнакомая команда — не кэшируем
         return _team_gradient(team_name)
     if key not in _GRADIENTS:
         _GRADIENTS[key] = _team_gradient(team_name)
@@ -240,8 +243,8 @@ def _team_gradient(team_name: str) -> tuple[str, str]:
     """Фон карточек пилота и команды под белым текстом. Светлые цвета (Mercedes, Sauber) сверху
     притемняются до 4.5:1 с белым — на карточках есть и мелкие подписи, не только крупные цифры."""
     team = TEAMS.get(team_key(team_name))
-    if not team:
-        return SURFACE_RAISED, SURFACE
+    if not team:      # незнакомая команда — карбон, а не поверхности темы: в светлой они светлые под белым текстом
+        return HERO_CARBON[0], HERO_CARBON[1]
     return _darken_for(ON_COLOR, team["color"], team["dark"]), team["dark"]
 
 

@@ -151,7 +151,7 @@ def _build_driver_card(state, d):
         padding=ft.Padding.only(left=SPACE_MD, top=SPACE_SM, bottom=SPACE_SM),
         height=height,
         gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                   colors=[top, bottom, BG_DEEP], stops=[0.0, 0.55, 1.0]),
+                                   colors=[top, bottom, HERO_END], stops=[0.0, 0.55, 1.0]),
         bgcolor=None,
         border=ft.Border.all(1, ft.Colors.with_opacity(0.25, top)),
         accent=top,

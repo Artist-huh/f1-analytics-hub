@@ -46,6 +46,19 @@ class ContrastTest(unittest.TestCase):
                 self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, top), AA)           # на карточках и мелкие подписи
                 self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, bottom), AA)
 
+    def test_team_cards_readable_in_every_theme(self):
+        """Карточки команд в светлой теме: конец градиента и золотая звезда не зависят от темы. Раньше
+        градиент уходил в светлый BG_DEEP (белый текст до 2.3:1), а звезда была тёмным золотом светлой
+        темы поверх тёмной подложки (1.3:1) — аудит, UX-1 и UX-2."""
+        for theme in ("dark", "light", "oled"):
+            ds.apply_theme(theme)
+            self.assertGreaterEqual(ds.contrast(ds.ON_COLOR, ds.HERO_END), AA)
+            for key in ds.TEAMS:
+                top, bottom = ds.get_team_gradient(key.replace("_", " "))
+                for bg in (top, bottom, ds.HERO_END):      # звезда — на подложке INK 35 %
+                    with self.subTest(theme=theme, team=key, bg=bg):
+                        self.assertGreaterEqual(ds.contrast(ds.GOLD_ON_COLOR, ds._mix(bg, ds.INK, 0.35)), 3.0)
+
     def test_text_on_accent_fill_in_every_theme(self):
         """Кнопки, вкладки, индикатор навигации: белый на ACCENT_FILL и обоих концах GRADIENT_ACCENT — 4.5:1,
         в том числе в теме любой команды (яркий цвет Mercedes или Sauber под белым был 1.7–1.8:1)."""

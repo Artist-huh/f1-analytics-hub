@@ -113,7 +113,7 @@ def _build_hero(state, driver, is_mobile):
         ], height=height, clip_behavior=ft.ClipBehavior.HARD_EDGE),
         height=height,
         gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                   colors=[top, bottom, BG_DEEP], stops=[0.0, 0.6, 1.0]),
+                                   colors=[top, bottom, HERO_END], stops=[0.0, 0.6, 1.0]),
         border_radius=RADIUS_LG,
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         shadow=glow(top, 0.3),

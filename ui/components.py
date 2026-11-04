@@ -400,8 +400,9 @@ def star_button(active, on_click, size=22, on_photo=False):
     белая звезда на тёмной круглой подложке (серая и золотая на цвете команды почти не видны)."""
     return ft.IconButton(
         icon=ft.Icons.STAR_ROUNDED if active else ft.Icons.STAR_BORDER_ROUNDED,
-        icon_color=(GOLD if active else ON_COLOR) if on_photo else (GOLD if active else TEXT_DIM), icon_size=size,
-        bgcolor=ft.Colors.with_opacity(0.35, INK) if on_photo else None,   # золотая — ≥ 4.9:1 на любой команде
+        icon_color=(GOLD_ON_COLOR if active else ON_COLOR) if on_photo else (GOLD if active else TEXT_DIM),
+        icon_size=size,
+        bgcolor=ft.Colors.with_opacity(0.35, INK) if on_photo else None,   # золотая — ≥ 3:1 на любой команде и теме
         tooltip="Убрать из избранного" if active else "В избранное",
         on_click=on_click, width=TOUCH, height=TOUCH,
     )

@@ -104,10 +104,10 @@ def _champion_hero(state, data, year):
         lines.append(ft.Text(f"Кубок конструкторов: {team_champ}", size=FONT_CAPTION, color=ON_COLOR))
     return ft.Container(
         ft.Row([_person_avatar(state, lead, 72), ft.Column(lines, spacing=2, expand=True),
-                ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD, size=44)],
+                ft.Icon(ft.Icons.EMOJI_EVENTS_ROUNDED, color=GOLD_ON_COLOR, size=44)],
                spacing=SPACE_MD, vertical_alignment=ft.CrossAxisAlignment.CENTER),
         gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                   colors=[top, bottom, BG_DEEP], stops=[0.0, 0.65, 1.0]),
+                                   colors=[top, bottom, HERO_END], stops=[0.0, 0.65, 1.0]),
         border_radius=RADIUS_LG, padding=SPACE_MD, shadow=glow(top, 0.3),
     )
 
