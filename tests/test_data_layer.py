@@ -1447,5 +1447,23 @@ def datetime_ts(text):
     return datetime.fromisoformat(text).replace(tzinfo=timezone.utc).timestamp()
 
 
+class BuildToolsTest(unittest.TestCase):
+    def test_ios_podfile_gets_mlkit_simulator_patch(self):
+        """Сборка для симулятора iPhone: помощник google_mlkit_commons подключается в Podfile шаблона Flutter
+        (require и вызов в конце post_install), повторный запуск ничего не дублирует."""
+        sys.path.insert(0, "tools")
+        try:
+            import ios_deployment_target as tool
+        finally:
+            sys.path.remove("tools")
+        pod = ("require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)\n"
+               "post_install do |installer|\n  installer.pods_project.targets.each do |target|\n"
+               "    flutter_additional_ios_build_settings(target)\n  end\nend\n")
+        out = tool.mlkit_simulator_patch(pod)
+        self.assertEqual(out.count("apple_silicon_simulator'"), 1)
+        self.assertTrue(out.endswith("  end\n  mlkit_apple_silicon_simulator_patch(installer)\nend\n"))
+        self.assertEqual(tool.mlkit_simulator_patch(out), out)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,13 @@ on:
 permissions:
   contents: write   # gh release upload
 
+env:
+  # имя тега — только через переменную окружения, не подстановкой в текст команды (инъекция в run:)
+  TAG: ${{ github.event.release.tag_name }}
+  # Python печатает по-русски: без этого на Windows вывод в cp1252 падает с UnicodeEncodeError
+  PYTHONUTF8: '1'
+  PYTHONIOENCODING: utf-8
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -57,13 +64,13 @@ jobs:
     - name: Create ZIP archive
       if: github.event_name == 'release'
       run: |
-        Compress-Archive -Path release\* -DestinationPath F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip
+        Compress-Archive -Path release\* -DestinationPath "F1AnalyticsHub-$env:TAG-Windows.zip"
 
     - name: Upload release asset
       if: github.event_name == 'release'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-Windows.zip" --clobber
+      run: gh release upload "$env:TAG" "F1AnalyticsHub-$env:TAG-Windows.zip" --clobber
 
   build-macos:
     runs-on: macos-latest
@@ -117,8 +124,8 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        mv release/F1AnalyticsHub-macOS.zip "F1AnalyticsHub-${{ github.event.release.tag_name }}-macOS.zip"
-        gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-macOS.zip" --clobber
+        mv release/F1AnalyticsHub-macOS.zip "F1AnalyticsHub-$TAG-macOS.zip"
+        gh release upload "$TAG" "F1AnalyticsHub-$TAG-macOS.zip" --clobber
 
   build-android:
     runs-on: ubuntu-latest
@@ -191,9 +198,9 @@ jobs:
       run: |
         for f in build/apk/*.apk; do
           abi=$(basename "$f" .apk | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64).*/\1/')
-          cp "$f" "F1AnalyticsHub-${{ github.event.release.tag_name }}-Android-$abi.apk"
+          cp "$f" "F1AnalyticsHub-$TAG-Android-$abi.apk"
         done
-        gh release upload "${{ github.event.release.tag_name }}" F1AnalyticsHub-*-Android-*.apk --clobber
+        gh release upload "$TAG" F1AnalyticsHub-*-Android-*.apk --clobber
 
   test-android:
     # Запуск APK на эмуляторе Android 14: главный экран, вкладки, «назад», уведомление, logcat
@@ -259,7 +266,7 @@ jobs:
         # проект и падает на pod install, затем поднимаем версию и собираем снова
         flet build ios-simulator --yes --no-rich-output --skip-flutter-doctor || true
         python tools/ios_deployment_target.py 15.5
-        flet build ios-simulator --yes --no-rich-output --skip-flutter-doctor
+        flet build ios-simulator --yes --no-rich-output --skip-flutter-doctor --verbose
 
     - name: Build unsigned IPA (Xcode archive -> Payload/Runner.app)
       run: |
@@ -289,8 +296,8 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        mv F1AnalyticsHub-iOS-unsigned.ipa "F1AnalyticsHub-${{ github.event.release.tag_name }}-iOS-unsigned.ipa"
-        gh release upload "${{ github.event.release.tag_name }}" "F1AnalyticsHub-${{ github.event.release.tag_name }}-iOS-unsigned.ipa" --clobber
+        mv F1AnalyticsHub-iOS-unsigned.ipa "F1AnalyticsHub-$TAG-iOS-unsigned.ipa"
+        gh release upload "$TAG" "F1AnalyticsHub-$TAG-iOS-unsigned.ipa" --clobber
 
   test-ios:
     # Запуск на симуляторе iPhone: приложение не падает, журнал без ошибок, снимки экрана

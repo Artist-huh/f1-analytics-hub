@@ -14,7 +14,9 @@ dependencies:
   # whisper.cpp 1.9.2 (MIT): Android собирает из исходников, iPhone — готовый XCFramework
   whisper_cpp_flutter_plus: 0.5.1
   # Google ML Kit, перевод на устройстве: бесплатно, модель en->ru ~30 МБ, скачивается один раз
-  google_mlkit_translation: 0.13.1
+  # 0.15.1 -> google_mlkit_commons 0.13: в нём патч Podfile для arm64-симулятора iPhone (раннеры CI — Apple Silicon,
+  # а у ML Kit нет arm64-simulator — без патча Xcode падал с «Framework 'Pods_Runner' not found»)
+  google_mlkit_translation: 0.15.1
 
   flet:
     path: ../../../../../../../packages/flet
