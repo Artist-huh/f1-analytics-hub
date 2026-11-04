@@ -518,11 +518,11 @@ def get_favorites():
 
 
 def toggle_favorite(driver_id):
-    """Добавляет/убирает пилота. Возвращает True, если теперь он в избранном."""
+    """Добавляет/убирает пилота. Возвращает True, если теперь он в избранном.
+    Сначала DELETE: это запись, SQLite сразу берёт блокировку, и второе быстрое нажатие (обработчики Flet идут
+    параллельно) ждёт первое. Раньше «проверить, затем вставить» в двух потоках давало IntegrityError."""
     with _connect() as con:
-        exists = con.execute("SELECT 1 FROM favorites WHERE driver_id=?", (driver_id,)).fetchone()
-        if exists:
-            con.execute("DELETE FROM favorites WHERE driver_id=?", (driver_id,))
+        if con.execute("DELETE FROM favorites WHERE driver_id=?", (driver_id,)).rowcount:
             return False
         con.execute("INSERT INTO favorites VALUES (?, ?)", (driver_id, time.time()))
         return True

@@ -439,6 +439,28 @@ class DataLayerTest(unittest.TestCase):
         self.assertIsNone(f1_api.get_next_race(now=sched["3"]["start_ts"] + 99999))  # сезон окончен
         self.assertEqual(f1_api.race_state(sched["1"], now=r2), "past")
 
+    def test_favorite_toggles_from_many_threads(self):
+        """Двойной тап по звёздочке: обработчики Flet идут параллельно. «Проверить, затем вставить» в двух
+        потоках давало IntegrityError (найдено нагрузочной проверкой). Теперь каждое нажатие — переключение."""
+        errors = []
+
+        def tap():
+            for _ in range(25):
+                try:
+                    db.toggle_favorite("leclerc")
+                except Exception as exc:
+                    errors.append(repr(exc))
+
+        threads = [threading.Thread(target=tap) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+        self.assertEqual(db.get_favorites(), [])                # 200 переключений — чётное число: не в избранном
+        self.assertTrue(db.toggle_favorite("leclerc"))
+        self.assertEqual(db.get_favorites(), ["leclerc"])
+
     def test_favorites_and_settings_survive_cache_clear(self):
         self.patch_net()
         f1_api.refresh_all(force=True)
