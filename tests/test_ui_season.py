@@ -431,6 +431,9 @@ class UiSeasonTest(UiTestCase):
         clickable(self.build("welcome"), "Дальше")[0].on_click(Ctl())
         self.assertEqual(self.state.ui["welcome"]["drivers"], ["leclerc"])      # пилоты команды отмечены сами
         clickable(self.build("welcome"), "Liam Lawson")[0].on_click(Ctl())
+        self.assertTrue(self.state.go_back())                                    # системная «назад» — шаг назад
+        self.assertEqual((self.state.sub, self.state.ui["welcome"]["step"]), ("welcome", 0))
+        clickable(self.build("welcome"), "Дальше")[0].on_click(Ctl())
         clickable(self.build("welcome"), "Дальше")[0].on_click(Ctl())
         switches = [n for n in walk(self.build("welcome")) if getattr(n, "tooltip", "") == "Напоминания о сессиях"]
         switches[0].on_change(Ctl(control=Ctl(value=False)))

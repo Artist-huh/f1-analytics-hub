@@ -84,6 +84,6 @@ def build_section(state):
                 pill("Квалификации", mode == "quali", lambda e: switch("quali"))], spacing=SPACE_XS),
         legend_row,
         AnimatedCard(grid),
-        ft.Text("Нажми на пилота — откроется его страница. Строки — по местам в чемпионате.",
+        ft.Text("Наведи или удерживай клетку — подсказка с этапом и местом. Строки — по местам в чемпионате.",
                 size=FONT_CAPTION, color=TEXT_DIM),
     ]

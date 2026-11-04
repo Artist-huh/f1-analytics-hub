@@ -387,7 +387,7 @@ def _build_favorites_strip(state, favs):
         for d in favs
     ]
     return ft.Column([
-        SectionHeader("Избранные", action_text="Все", on_action=lambda e: state.open_sub("favorites")),
+        SectionHeader("Избранные пилоты", action_text="Все", on_action=lambda e: state.open_sub("favorites")),
         ft.Row(chips, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO),
     ], spacing=SPACE_SM)
 

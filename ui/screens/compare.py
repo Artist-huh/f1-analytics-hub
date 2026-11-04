@@ -134,7 +134,7 @@ def _presets(state):
         out.append((f"Напарники {leader['team']}", [d["driver_id"] for d in mates]))
     favs = [i for i in state.favorites if state.driver(i)]
     if len(favs) >= 2:
-        out.append(("Избранные", favs[:MAX_COMPARE]))
+        out.append(("Избранные пилоты", favs[:MAX_COMPARE]))
     return out
 
 

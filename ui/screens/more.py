@@ -21,7 +21,7 @@ def build_menu(state):
     body = [
         _tile(ft.Icons.COMPARE_ARROWS_ROUNDED, "Сравнение пилотов", "2–4 пилота: очки, победы, поулы, личные встречи",
               lambda e: state.open_sub("compare"), section="compare"),
-        _tile(ft.Icons.SENSORS_ROUNDED, "Live-тайминг", "Позиции, отрывы, шины и пит-стопы — сейчас или итог сессии",
+        _tile(ft.Icons.SENSORS_ROUNDED, "Live Timing", "Позиции, отрывы, шины и пит-стопы — сейчас или итог сессии",
               lambda e: state.open_sub("live"), section="live"),
         _tile(ft.Icons.EMOJI_EVENTS_ROUNDED, "Борьба за титул", "Кто ещё может стать чемпионом и что нужно лидеру",
               lambda e: state.open_sub("title"), section="title"),

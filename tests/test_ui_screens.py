@@ -15,6 +15,11 @@ class UiScreensTest(UiTestCase):
                 self.assertTrue(t, name)
                 self.assertFalse(any("Не удалось показать" in x for x in t), name)
         self.assertIn("Данных пока нет", texts(self.build("tab0")))
+        self.state.refreshing = True                  # первая загрузка идёт — без «нет данных» и немой кнопки
+        t = texts(self.build("tab0"))
+        self.assertIn("Загружаем данные…", t)
+        self.assertNotIn("Данных пока нет", t)
+        self.state.refreshing = False
         self.assertIn("Таблицы пока нет", texts(self.build("tab1")))
         self.assertIn("Календарь ещё не загружен", texts(self.build("tab2")))
         self.assertIn("Список пилотов пуст", texts(self.build("tab3")))

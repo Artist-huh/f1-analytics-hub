@@ -153,10 +153,15 @@ def status_chip(state, compact=False):
 def empty_state(state, title, hint):
     """Данных ещё нет (первый запуск без сети): болид, объяснение и одна кнопка «Обновить»."""
     from ui.components import illustration
+    if state.refreshing:     # первая загрузка идёт: не «данных нет, нажми Обновить» (кнопка молчала бы) — UX-7
+        title, hint = "Загружаем данные…", "Первая загрузка — несколько секунд, дальше данные доступны и без сети."
+        action = ft.ProgressRing(width=28, height=28, stroke_width=3, color=ACCENT)
+    else:
+        action = button("Обновить", lambda e: state.refresh_now(), icon=ft.Icons.REFRESH_ROUNDED)
     return ft.Column(
         [ft.Container(height=24), illustration("car", 190), txt(title, 20, bold=True, head=True),
          txt(hint, 13, MUTED, text_align=ft.TextAlign.CENTER),
-         ft.Container(height=8), button("Обновить", lambda e: state.refresh_now(), icon=ft.Icons.REFRESH_ROUNDED)],
+         ft.Container(height=8), action],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6,
     )
 

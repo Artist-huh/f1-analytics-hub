@@ -89,7 +89,7 @@ class UiLiveTest(UiTestCase):
         live._state["data"]["session"]["start"] = 1000
         tree = self.build("live")
         self.assertIn("Сейфти-кар", texts(tree))
-        self.assertIn("Источник — официальный live timing F1: данные идут и во время сессии.", texts(tree))
+        self.assertIn("Источник — официальный Live Timing F1: данные идут и во время сессии.", texts(tree))
         clickable(tree, "Радио (2)")[0].on_click(Ctl())
         with mock.patch.object(radio, "supported", return_value=True), \
                 mock.patch.object(radio, "models_ready", return_value=True), \

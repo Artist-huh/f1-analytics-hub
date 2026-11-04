@@ -1,4 +1,4 @@
-"""Live-тайминг: позиции, отрывы, шины, пит-стопы и радио текущей сессии (поток F1, запасной — OpenF1)"""
+"""Live Timing: позиции, отрывы, шины, пит-стопы и радио текущей сессии (поток F1, запасной — OpenF1)"""
 import contextlib
 
 import flet as ft
@@ -30,8 +30,8 @@ def build(state):
                 title, hint = "Доступ к данным закрыт до конца сессии", live.LOCKED_TEXT
             else:
                 title, hint = "Нет данных о сессии", "OpenF1 не ответил. Проверь интернет и повтори."
-            body = [retry_block(title, hint, lambda e: live.refresh(on_done=state.render))]
-        return screen(state, "Live-тайминг", body, back=True)
+            body = [retry_block(title, hint, lambda e: (live.refresh(on_done=state.render), state.render()))]
+        return screen(state, "Live Timing", body, back=True)
 
     mode = state.ui.get("live_gap", "leader")
 
@@ -71,12 +71,12 @@ def build(state):
         body.append(_table(state, data, mode))
         if data["messages"]:
             body.append(_messages(data["messages"]))
-    source = ("Источник — официальный live timing F1: данные идут и во время сессии."
+    source = ("Источник — официальный Live Timing F1: данные идут и во время сессии."
               if data.get("source") == "F1" else
               "Источник — OpenF1. Во время сессии бесплатный доступ закрыт; после сессии показан её итог.")
     body.append(ft.Text(source, size=FONT_CAPTION, color=TEXT_DIM))
     s = data["session"]
-    return screen(state, "Live-тайминг", body, subtitle=f"{s['country']}, {s['location']}", back=True)
+    return screen(state, "Live Timing", body, subtitle=f"{s['country']}, {s['location']}", back=True)
 
 
 def _status_line(state, data):

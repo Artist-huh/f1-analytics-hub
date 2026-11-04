@@ -52,7 +52,7 @@ def _live(state, live_now):
                                   bgcolor=flag_bg, border_radius=RADIUS_SM,
                                   padding=ft.Padding.symmetric(horizontal=8, vertical=2)))
     if not data:
-        items.append(skeleton("Загружаем live timing…", "rows", 3))
+        items.append(skeleton("Загружаем Live Timing…", "rows", 3))
         return items
     for r in data["rows"][:5]:
         gap = r["interval"] if data["racing"] else r["gap"]

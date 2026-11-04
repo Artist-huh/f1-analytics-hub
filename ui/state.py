@@ -240,7 +240,11 @@ class AppState:
     def go_back(self):
         """Системная «назад» (Android, Esc): подэкран -> вкладка -> «Главная».
         False — дальше некуда (на Android приложение можно закрыть)."""
-        if self.sub:
+        step = (self.ui.get("welcome") or {}).get("step", 0)
+        if self.sub == "welcome" and step:   # знакомство: на прошлый шаг, а не на «Главную» мимо него (UX-19)
+            self.ui["welcome"]["step"] = step - 1
+            self.render()
+        elif self.sub:
             self.close_sub()
         elif self.tab != 0:
             self.open_tab(0)

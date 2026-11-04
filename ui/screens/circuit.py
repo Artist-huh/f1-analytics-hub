@@ -59,11 +59,15 @@ def build(state):
         sections += _history(state, data)
     elif cid and archive.loading(archive.circuit_key(cid)):
         sections.append(skeleton("Загружаем историю трассы…", "rows", 4))
+    elif not cid:          # старый снимок данных без кода трассы: поможет только обновление (аудит, UX-6)
+        sections.append(retry_block("История трассы не загружена",
+                                    "В сохранённых данных нет кода трассы — обнови данные.",
+                                    lambda e: state.refresh_now()))
     else:
         sections.append(retry_block("История трассы не загружена",
                                     "Нужен интернет: данные загружаются один раз и дальше доступны без сети.",
                                     lambda e: (archive.circuit(cid, on_done=state.render, force=True),
-                                               state.render()) if cid else None))
+                                               state.render())))
     return screen(state, race.get("locality") or "Трасса", sections, subtitle=race.get("circuit"), back=True)
 
 
