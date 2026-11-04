@@ -22,7 +22,7 @@ from pathlib import Path
 
 import requests
 
-from . import db, live, log
+from . import db, live, log, net
 
 # Модель расшифровки на выбор: на настоящем радио small.en заметно точнее (base.en путает слова и на шуме
 # пишет «[INAUDIBLE]»). Размер модели в МБ; перевод — ещё TRANSLATION_MB (Argos на компьютере, ML Kit на телефоне).
@@ -45,6 +45,7 @@ ARGOS_SHA256 = "591d743ae103752b88ffc38785c50421320f4eff93c8967e0d3d2e14d4e27811
 MAX_ARGOS_UNPACKED = 600 * 1024 * 1024      # zip-бомба: маленький архив не распакуется в гигабайты
 F1_PROMPT = "Formula 1 team radio. Box, box. Tyres, lap, pit, gap, push, copy, mode, delta, safety car."
 TIMEOUT = (5, 60)
+CLIP_MAX = 15 * 1024 * 1024     # запись радио — сотни КБ; больше 15 МБ не читаем (и не отдаём декодеру)
 
 logger = log.get("radio")
 _lock = threading.Lock()
@@ -367,12 +368,13 @@ def _process_on_phone(data):
 
 def process(url):
     """Скачать запись, расшифровать, перевести. -> {"en", "ru"} (и в кэш)."""
-    resp = requests.get(url, timeout=TIMEOUT)
-    resp.raise_for_status()
+    status, content = net.get_limited(requests.get, url, CLIP_MAX, timeout=TIMEOUT)
+    if status >= 400:
+        raise requests.HTTPError(f"HTTP {status}")
     if on_phone():
-        en, ru = _process_on_phone(resp.content)
+        en, ru = _process_on_phone(content)
     else:
-        en = transcribe_audio(resp.content)
+        en = transcribe_audio(content)
         ru = translate(en) if en else ""
     result = {"en": en, "ru": ru, "at": time.time()}
     db.save_archive(tx_key(url), result)

@@ -21,6 +21,14 @@ def log_path():
     return _log_file
 
 
+class _OneLineFormatter(logging.Formatter):
+    """Перевод строки в сообщении (текст из сети, имя файла) продолжает запись с отступом, а не начинает
+    поддельную строку журнала с чужим временем и уровнем (аудит, SEC-5). Трассировки — тоже с отступом."""
+
+    def format(self, record):
+        return super().format(record).replace("\r", "").replace("\n", "\n    ")
+
+
 def setup():
     global _configured, _log_file
     with _lock:
@@ -29,7 +37,7 @@ def setup():
         root = logging.getLogger("f1hub")
         root.setLevel(logging.INFO)
         root.propagate = False
-        fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S")
+        fmt = _OneLineFormatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S")
         if sys.stderr is not None:  # в оконной сборке .exe (--noconsole) консоли нет
             console = logging.StreamHandler()
             console.setFormatter(fmt)

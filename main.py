@@ -242,12 +242,14 @@ def _phone_selftest_requested():
         return True
     if notify.is_android():
         import subprocess
+        def prop(name):
+            return subprocess.run(["getprop", name], capture_output=True, text=True, timeout=5).stdout.strip()
         try:
-            out = subprocess.run(["getprop", "debug.f1hub.radio_selftest"], capture_output=True, text=True,
-                                 timeout=5).stdout.strip()
+            # только на отладочной системе (эмулятор CI): на обычном телефоне свойство debug.* не включит
+            # скачивание чужой записи и моделей (аудит, SEC-7)
+            return prop("ro.debuggable") == "1" and prop("debug.f1hub.radio_selftest") == "1"
         except (OSError, subprocess.SubprocessError):
             return False
-        return out == "1"
     return False
 
 

@@ -15,6 +15,7 @@ API = "https://api.multiviewer.app/api/v1/circuits"
 MEETINGS = "https://api.openf1.org/v1/meetings"
 MEETING_DAYS = 5               # этап (практики) начинается за 2–3 дня до гонки
 TIMEOUT = (5, 20)
+POSITION_MAX = 4 * 1024 * 1024   # распакованный Position.z — десятки КБ; больше 4 МБ не разворачиваем
 MAX_POINTS = 320                 # контуру хватает — меньше данных в окно и быстрее рисование
 
 
@@ -90,7 +91,12 @@ def decode_positions(z):
     if not z:
         return {}
     try:
-        data = json.loads(zlib.decompress(base64.b64decode(z), -zlib.MAX_WBITS))
+        raw = base64.b64decode(z)
+        unpack = zlib.decompressobj(-zlib.MAX_WBITS)
+        text = unpack.decompress(raw, POSITION_MAX)
+        if unpack.unconsumed_tail:           # «zip-бомба»: 400 КБ разворачивались в 300 МБ (аудит, SEC-3)
+            return {}
+        data = json.loads(text)
     except (ValueError, zlib.error, TypeError):
         return {}
     frames = data.get("Position") or []

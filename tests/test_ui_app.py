@@ -103,6 +103,8 @@ class UiAppTest(UiTestCase):
     def test_problem_report(self):
         """Отчёт о проблеме: без имени пользователя и путей к его папкам, ссылка не длиннее, чем примет GitHub,
         кнопка в «Настройках» показывает подсказку, что делать дальше."""
+        import urllib.parse
+
         from services import report
         home = os.path.expanduser("~")
         with tempfile.TemporaryDirectory() as tmp:
@@ -116,7 +118,18 @@ class UiAppTest(UiTestCase):
         self.assertIn("Версия:", full)
         self.assertLessEqual(len(url), report.MAX_URL)
         self.assertTrue(url.startswith(report.ISSUES))
+        # другой регистр, / вместо \, экранирование JSON и %XX в адресе — тоже скрыты (аудит, SEC-4)
+        user = os.path.basename(home)
+        leaks = report.sanitize(" ".join([home.upper(), home.replace("\\", "/"), json.dumps(home),
+                                          urllib.parse.quote(home), f"Users\\{user.lower()}\\x"]))
+        self.assertNotIn(user.lower(), leaks.lower())
+        self.assertNotIn(urllib.parse.quote(user).lower(), leaks.lower())
         self.assertIn("(журнал отключён)", report.build(None))
+        with tempfile.TemporaryDirectory() as tmp:                         # ``` из журнала не закрывает блок
+            path = os.path.join(tmp, "f1_hub.log")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("ошибка ```\n# Подделка\n")
+            self.assertEqual(report.build(path).count("```"), 2)
         self.assertIn("(журнал не прочитан", report.log_tail(os.path.join(home, "нет-такого.log")))
         self.state.load()
         tree = app.SUBS["settings"](self.state)

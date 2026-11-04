@@ -119,6 +119,13 @@ class FakeResponse:
         self.payload = payload
         self.status_code = status
         self.content = content
+        self.headers = {}
+
+    def iter_content(self, size=1):                # потоковое чтение (services/net.get_limited)
+        return iter([self.content[i:i + size] for i in range(0, len(self.content), size)])
+
+    def close(self):
+        pass
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -725,7 +732,7 @@ class MediaTest(unittest.TestCase):
         """Wi-Fi с порталом авторизации отвечает HTML-страницей с кодом 200 на любой адрес: раньше она
         сохранялась вместо фото и картинка оставалась сломанной навсегда (файл есть — заново не скачивали)."""
         url = "https://media.formula1.com/x/leclerc.webp"
-        portal = mock.Mock(status_code=200, content=b"<html><form>Login to Free WiFi</form></html>")
+        portal = FakeResponse(None, content=b"<html><form>Login to Free WiFi</form></html>")
         png = (Path(__file__).resolve().parent.parent / "assets" / "icon.png").read_bytes()
         with mock.patch.object(media, "cache_dir", return_value=Path(self.tmp.name) / "img"), \
                 mock.patch.object(media, "bundled_dir", return_value=Path(self.tmp.name) / "none"):
@@ -736,7 +743,7 @@ class MediaTest(unittest.TestCase):
             media._cache_file(url).write_bytes(portal.content)       # кэш, испорченный старой версией
             self.assertEqual(media.source(url), url)
             self.assertFalse(media._cache_file(url).exists())        # выброшен — скачается заново
-            with mock.patch.object(media._session, "get", return_value=mock.Mock(status_code=200, content=png)):
+            with mock.patch.object(media._session, "get", return_value=FakeResponse(None, content=png)):
                 self.assertTrue(media._download((url, None)))
             self.assertEqual(media.source(url), png)
 
@@ -768,18 +775,18 @@ class MediaTest(unittest.TestCase):
 
     def test_cache_with_fallback(self):
         driver_row = {"code": "TSU", "team": "RB F1 Team", "season": "2026"}
-        refs = {"TSU": {"code": "TSU", "ref": "yuktsu01", "headshot": "https://m/fallback.png"}}
+        refs = {"TSU": {"code": "TSU", "ref": "yuktsu01", "headshot": "https://media.formula1.com/fallback.png"}}
         url = media.portrait_url("2026", "RB F1 Team", "yuktsu01")
         self.assertEqual(media.driver_photo(driver_row, refs), url)          # ещё не скачано -> URL
 
-        def fake_get(u, timeout=None):
+        def fake_get(u, timeout=None, stream=False):
             if u == url:
                 return FakeResponse(None, status=404)                      # портрета за сезон нет
             return FakeResponse(None, content=PNG_BYTES)
 
         with mock.patch.object(media._session, "get", fake_get):
             items = media.all_urls([driver_row], [], [], refs)
-            self.assertIn((url, "https://m/fallback.png"), items)
+            self.assertIn((url, "https://media.formula1.com/fallback.png"), items)
             media.prefetch(items).join(10)
         self.assertEqual(media.driver_photo(driver_row, refs), PNG_BYTES)   # запасное фото под основным адресом
         self.assertIsNone(media.driver_photo({"code": "XXX", "team": "", "season": "2026"}, refs))
@@ -793,7 +800,7 @@ class MediaTest(unittest.TestCase):
         self.assertEqual(media.flag("mc"), PNG_BYTES)
 
     def test_offline_prefetch_is_harmless(self):
-        def fail(u, timeout=None):
+        def fail(u, timeout=None, stream=False):
             raise requests.ConnectionError("offline")
 
         with mock.patch.object(media._session, "get", fail):
@@ -1165,7 +1172,7 @@ class RadioPhoneTest(unittest.TestCase):
         self.assertTrue(radio.models_ready())
         self.assertIn(("download_translation", {}), self.calls)                 # модели ML Kit, не Argos
         self.assertFalse(radio.argos_dir().exists())
-        resp = mock.Mock(content=b"ID3 mp3", raise_for_status=lambda: None)
+        resp = FakeResponse(None, content=b"ID3 mp3")
         with mock.patch.object(radio.requests, "get", return_value=resp):
             result = radio.process("https://r/1.mp3")
         method, kw = self.calls[-2]
@@ -1445,6 +1452,55 @@ class HomeWidgetTest(unittest.TestCase):
 def datetime_ts(text):
     from datetime import datetime, timezone
     return datetime.fromisoformat(text).replace(tzinfo=timezone.utc).timestamp()
+
+
+class LimitsTest(unittest.TestCase):
+    """Пределы на чужие данные (аудит, SEC-3 и SEC-6)."""
+
+    def test_download_stops_at_limit(self):
+        from services import net
+        big = FakeResponse(None, content=b"x" * 5000)
+        with self.assertRaises(net.TooLarge):
+            net.get_limited(lambda u, **kw: big, "https://media.formula1.com/a.png", 1000)
+        big.headers = {"Content-Length": "999999"}                  # заявленный размер — отказ сразу
+        with self.assertRaises(net.TooLarge):
+            net.get_limited(lambda u, **kw: big, "https://media.formula1.com/a.png", 1000)
+        self.assertEqual(net.get_limited(lambda u, **kw: FakeResponse(None, content=b"ok"), "u", 10), (200, b"ok"))
+
+    def test_only_https_from_known_hosts(self):
+        from services import net
+        hosts = ("formula1.com",)
+        self.assertTrue(net.allowed("https://media.formula1.com/x.png", hosts))
+        for url in ("http://media.formula1.com/x.png", "https://formula1.com.evil.io/x", "file:///etc/passwd",
+                    "https://evil.io/formula1.com", None, "https://[bad"):
+            with self.subTest(url=url):
+                self.assertFalse(net.allowed(url, hosts))
+        self.assertEqual(media._ref_row({"name_acronym": "XXX", "headshot_url": "http://evil.io/a.png"})["headshot"],
+                         "")
+
+    def test_position_bomb_is_rejected(self):
+        import base64
+
+        from services import track_map
+        pack = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+        bomb = pack.compress(b'{"Position": [' + b" " * (track_map.POSITION_MAX + 10) + b"]}") + pack.flush()
+        self.assertEqual(track_map.decode_positions(base64.b64encode(bomb).decode()), {})
+        pack = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+        ok = pack.compress(json.dumps({"Position": [{"Entries": {"1": {"X": 5, "Y": 6}}}]}).encode()) + pack.flush()
+        self.assertEqual(track_map.decode_positions(base64.b64encode(ok).decode())["1"]["x"], 5)
+
+
+class LogFormatTest(unittest.TestCase):
+    def test_newline_cannot_forge_log_line(self):
+        """Текст из сети с переводом строки не начинает поддельную запись журнала (аудит, SEC-5)."""
+        import logging
+
+        from services import log
+        rec = logging.LogRecord("f1hub.x", logging.INFO, __file__, 1, "имя: %s", ("a\n2026-01-01 ERROR f1hub: x",),
+                                None)
+        lines = log._OneLineFormatter("%(levelname)s %(message)s").format(rec).splitlines()
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(lines[1].startswith("    "))
 
 
 class BuildToolsTest(unittest.TestCase):

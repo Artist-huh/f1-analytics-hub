@@ -4,8 +4,10 @@
 на GitHub с уже заполненным текстом, а отправляет его сам пользователь (бесплатно, без внешних сервисов).
 """
 import getpass
+import json
 import os
 import platform
+import re
 import sys
 from urllib.parse import quote
 
@@ -26,18 +28,46 @@ def _platform():
     return f"{platform.system()} {platform.version()}"
 
 
+def _short_path(path):
+    """Короткое имя папки Windows (8.3, например A4F7~1): так записан TEMP, когда в имени кириллица."""
+    if os.name != "nt" or not path:
+        return ""
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(1024)
+        n = ctypes.windll.kernel32.GetShortPathNameW(str(path), buf, len(buf))
+        return buf.value if 0 < n < len(buf) else ""
+    except (OSError, AttributeError, ValueError):
+        return ""
+
+
+def _forms(value):
+    """Как значение встречается в журнале: с \\ и с /, экранированным в JSON и закодированным в адресе."""
+    out = set()
+    for v in {value, value.replace("\\", "/")}:
+        out |= {v, json.dumps(v, ensure_ascii=False)[1:-1], json.dumps(v)[1:-1], quote(v), quote(v, safe="")}
+    return [f for f in out if len(f) >= 3]
+
+
+def _mask(text, values, mask):
+    for value in sorted(set(values), key=len, reverse=True):     # сначала длинные: путь целиком, потом части
+        text = re.sub(re.escape(value), lambda m: mask, text, flags=re.IGNORECASE)
+    return text
+
+
 def sanitize(text):
-    """Убрать то, что выдаёт человека: путь к домашней папке и имя пользователя (в путях к базе и журналу)."""
+    """Убрать то, что выдаёт человека: путь к домашней папке и имя пользователя (в путях к базе и журналу).
+    Без учёта регистра (на Windows c:\\users и C:\\Users — одна папка), с коротким именем 8.3, с \\\\ из JSON
+    и %XX из адресов (аудит, SEC-4)."""
     home = os.path.expanduser("~")
-    for value, mask in ((home, "~"), (home.replace("\\", "/"), "~")):
-        if value and value != "~":
-            text = text.replace(value, mask)
+    if home and home != "~":
+        text = _mask(text, _forms(home) + _forms(_short_path(home)), "~")
     try:
         user = getpass.getuser()
     except (OSError, KeyError, ImportError):    # на Android и в песочнице имени может не быть
         user = ""
     if len(user) >= 3:                          # короткое имя («a») заменило бы полстроки
-        text = text.replace(user, "<пользователь>")
+        text = _mask(text, _forms(user), "<пользователь>")
     return text
 
 
@@ -67,7 +97,8 @@ def build(log_path, lines=LOG_LINES):
         f"- Python {platform.python_version()}, Flet {flet_version}",
     ]
     body = "\n".join(head) + "\n\n<details><summary>Журнал (последние строки)</summary>\n\n```\n"
-    return sanitize(body + log_tail(log_path, lines) + "\n```\n</details>\n")
+    tail = log_tail(log_path, lines).replace("```", "`​``")   # ``` в журнале не закрывает блок кода
+    return sanitize(body + tail + "\n```\n</details>\n")
 
 
 def issue_url(body, title="Проблема в приложении"):

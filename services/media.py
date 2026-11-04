@@ -21,13 +21,15 @@ import requests
 
 import design_system as ds
 
-from . import db, log
+from . import db, log, net
 
 OPENF1_DRIVERS = "https://api.openf1.org/v1/drivers"
 F1_MEDIA = "https://media.formula1.com/image/upload"
 FLAGS = "https://flagcdn.com"
 REFS_TTL = 24 * 3600     # состав пилотов меняется редко
 TIMEOUT = (3.05, 10)
+IMAGE_MAX = 10 * 1024 * 1024    # картинка больше 10 МБ — не картинка интерфейса, не дочитываем
+IMAGE_HOSTS = ("formula1.com", "flagcdn.com")     # фото из ответа OpenF1 — только с сайта F1
 
 # Размеры с запасом под экраны высокой плотности (×2)
 # Размер — под отображение на экранах высокой плотности; q_auto:eco вдвое легче q_auto без видимой
@@ -105,7 +107,7 @@ def _ref_from_headshot(url):
 def _ref_row(d):
     return {"code": d["name_acronym"], "ref": _ref_from_headshot(d.get("headshot_url")),
             "number": str(d.get("driver_number") or ""), "team": d.get("team_name") or "",
-            "headshot": d.get("headshot_url") or ""}
+            "headshot": d.get("headshot_url") if net.allowed(d.get("headshot_url"), IMAGE_HOSTS) else ""}
 
 
 def fetch_refs(codes=()):
@@ -235,14 +237,16 @@ def _download(item):
     for candidate in (url, fallback):
         if not candidate:
             continue
+        if not net.allowed(candidate, IMAGE_HOSTS):
+            continue
         try:
-            resp = _session.get(candidate, timeout=TIMEOUT)
+            status, content = net.get_limited(_session.get, candidate, IMAGE_MAX, timeout=TIMEOUT)
         except requests.RequestException:
             return False
-        if resp.status_code == 200 and is_image(resp.content):
+        if status == 200 and is_image(content):
             try:
                 tmp = path.with_suffix(path.suffix + ".part")
-                tmp.write_bytes(resp.content)
+                tmp.write_bytes(content)
                 tmp.replace(path)
                 return True
             except OSError:

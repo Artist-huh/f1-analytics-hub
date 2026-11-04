@@ -19,6 +19,7 @@ STATIC = f"{BASE}/static/"
 TOPICS = ["SessionInfo", "DriverList", "TimingData", "TimingAppData", "LapCount", "TrackStatus",
           "RaceControlMessages", "TeamRadio", "ExtrapolatedClock", "Position.z", "WeatherData"]
 TIMEOUT = 15
+MESSAGE_MAX = 32 * 1024 * 1024  # сообщение потока: первый снимок — единицы МБ; без предела — любой размер
 RS = "\x1e"                      # разделитель сообщений SignalR
 TYRES = {"SOFT": "S", "MEDIUM": "M", "HARD": "H", "INTERMEDIATE": "I", "WET": "W"}
 TRACK_STATUS = {"1": None, "2": "Жёлтый флаг", "4": "Сейфти-кар", "5": "Красный флаг",
@@ -42,7 +43,7 @@ async def _subscribe(topics):
     token = neg.json()["connectionToken"]
     cookie = "; ".join(f"{k}={v}" for k, v in s.cookies.items())
     url = f"wss://livetiming.formula1.com/signalrcore?id={token}"
-    async with websockets.connect(url, additional_headers={"Cookie": cookie}, max_size=None,
+    async with websockets.connect(url, additional_headers={"Cookie": cookie}, max_size=MESSAGE_MAX,
                                   open_timeout=TIMEOUT) as ws:
         await ws.send(json.dumps({"protocol": "json", "version": 1}) + RS)
         await asyncio.wait_for(ws.recv(), TIMEOUT)
