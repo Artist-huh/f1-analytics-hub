@@ -138,6 +138,25 @@ def data_dir() -> Path:
     return Path(base) if base else Path.home() / APP_DIR
 
 
+def cache_root() -> Path:
+    """Папка для того, что можно скачать заново (модели радио, картинки). На телефоне — FLET_APP_STORAGE_CACHE:
+    папка данных попадает в резервную копию, а модели — 250 МБ. На Android при данных больше 25 МБ резервная
+    копия не делается вовсе — пропали бы и избранное с прогнозами (аудит, XP-3). На компьютере — папка данных."""
+    cache = os.environ.get("FLET_APP_STORAGE_CACHE")
+    phone = os.environ.get("FLET_PLATFORM") in ("android", "ios") or "ANDROID_ARGUMENT" in os.environ
+    return Path(cache) if cache and phone else data_dir()
+
+
+def moved_to_cache(name) -> Path:
+    """cache_root()/name; уже скачанное в папке данных старой версией переносится туда один раз."""
+    new, old = cache_root() / name, data_dir() / name
+    if new != old and old.exists() and not new.exists():
+        with contextlib.suppress(OSError):
+            new.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(old), str(new))
+    return new
+
+
 def db_path() -> Path:
     """Где лежит БД. F1_HUB_DB — для тестов и особых случаев."""
     override = os.environ.get("F1_HUB_DB")

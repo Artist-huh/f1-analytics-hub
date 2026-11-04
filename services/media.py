@@ -11,6 +11,7 @@
 Изображения © Formula 1 / команды; приложение — некоммерческий фан-проект.
 """
 import hashlib
+import os
 import re
 import threading
 import time
@@ -173,7 +174,9 @@ def flag(iso):
 
 # ---------------------------------------------------------------- дисковый кэш
 def cache_dir():
-    return db.db_path().parent / "media"
+    if os.environ.get("F1_HUB_DB"):                # тесты и особые случаи: рядом с указанной базой
+        return db.db_path().parent / "media"
+    return db.moved_to_cache("media")
 
 
 def _cache_file(url):

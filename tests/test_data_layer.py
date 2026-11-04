@@ -1513,6 +1513,26 @@ class AudioLimitTest(unittest.TestCase):
                          radio.MAX_AUDIO_SECONDS * radio.AUDIO_RATE)
 
 
+class PhoneStorageTest(unittest.TestCase):
+    def test_models_and_images_move_to_cache_on_phone(self):
+        """Телефон: модели радио и картинки — в папке кэша (не в резервной копии), скачанное старой версией
+        переносится, а не скачивается заново (аудит, XP-3). Компьютер — без изменений."""
+        from services import radio
+        with tempfile.TemporaryDirectory() as tmp:
+            data, cache = Path(tmp) / "data", Path(tmp) / "cache"
+            (data / "models").mkdir(parents=True)
+            (data / "models" / "ggml-base.en-q5_1.bin").write_bytes(b"m")
+            env = {"FLET_APP_STORAGE_DATA": str(data), "FLET_APP_STORAGE_CACHE": str(cache), "FLET_PLATFORM": "android"}
+            with mock.patch.dict(os.environ, env):
+                os.environ.pop("F1_HUB_DB", None)
+                self.assertEqual(radio.models_dir(), cache / "models")
+                self.assertTrue((cache / "models" / "ggml-base.en-q5_1.bin").exists())
+                self.assertFalse((data / "models").exists())
+                self.assertEqual(media.cache_dir(), cache / "media")
+            with mock.patch.dict(os.environ, dict(env, FLET_PLATFORM="windows")):
+                self.assertEqual(radio.models_dir(), data / "models")
+
+
 class LogFormatTest(unittest.TestCase):
     def test_newline_cannot_forge_log_line(self):
         """Текст из сети с переводом строки не начинает поддельную запись журнала (аудит, SEC-5)."""

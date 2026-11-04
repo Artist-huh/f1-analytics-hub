@@ -81,7 +81,7 @@ def fetch_radio(year, race_date):
 
 # ---------------------------------------------------------------- модели
 def models_dir() -> Path:
-    return db.data_dir() / "models"
+    return db.moved_to_cache("models")
 
 
 def argos_dir() -> Path:
