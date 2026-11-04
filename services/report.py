@@ -59,6 +59,9 @@ def sanitize(text):
     """Убрать то, что выдаёт человека: путь к домашней папке и имя пользователя (в путях к базе и журналу).
     Без учёта регистра (на Windows c:\\users и C:\\Users — одна папка), с коротким именем 8.3, с \\\\ из JSON
     и %XX из адресов (аудит, SEC-4)."""
+    bundle = getattr(sys, "_MEIPASS", "")          # .exe: временная папка распаковки — внутри TEMP пользователя
+    if bundle:
+        text = _mask(text, _forms(bundle) + _forms(_short_path(bundle)), "<приложение>")   # SEC-9
     home = os.path.expanduser("~")
     if home and home != "~":
         text = _mask(text, _forms(home) + _forms(_short_path(home)), "~")

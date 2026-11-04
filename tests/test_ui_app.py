@@ -124,6 +124,8 @@ class UiAppTest(UiTestCase):
                                           urllib.parse.quote(home), f"Users\\{user.lower()}\\x"]))
         self.assertNotIn(user.lower(), leaks.lower())
         self.assertNotIn(urllib.parse.quote(user).lower(), leaks.lower())
+        with mock.patch.object(sys, "_MEIPASS", "D:\\Tmp\\_MEI12345", create=True):     # папка распаковки .exe
+            self.assertEqual(report.sanitize("D:\\Tmp\\_MEI12345\\flet\\x.py"), "<приложение>\\flet\\x.py")
         self.assertIn("(журнал отключён)", report.build(None))
         with tempfile.TemporaryDirectory() as tmp:                         # ``` из журнала не закрывает блок
             path = os.path.join(tmp, "f1_hub.log")
