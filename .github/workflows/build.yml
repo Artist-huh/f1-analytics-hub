@@ -254,10 +254,17 @@ jobs:
         pip install -r requirements.txt -c constraints.txt
 
     - name: Build for iOS Simulator (checked by test-ios)
-      run: flet build ios-simulator --yes --no-rich-output --skip-flutter-doctor
+      run: |
+        # шаблон Flet вшивает iOS 13.0, а радио (whisper.cpp, ML Kit) требует 15.5: первый запуск создаёт
+        # проект и падает на pod install, затем поднимаем версию и собираем снова
+        flet build ios-simulator --yes --no-rich-output --skip-flutter-doctor || true
+        python tools/ios_deployment_target.py 15.5
+        flet build ios-simulator --yes --no-rich-output --skip-flutter-doctor
 
     - name: Build unsigned IPA (Xcode archive -> Payload/Runner.app)
       run: |
+        flet build ipa --yes --no-rich-output --skip-flutter-doctor || true
+        python tools/ios_deployment_target.py 15.5
         flet build ipa --yes --no-rich-output --skip-flutter-doctor
         app=$(find build/ipa build/ios -path "*.xcarchive/Products/Applications/*.app" -maxdepth 6 | head -1)
         echo "app: $app"

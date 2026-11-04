@@ -34,6 +34,7 @@ def file_version(path):
 def main():
     if sys.platform != "win32":
         return 0
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # консоль Windows в CI — cp1252, без кириллицы
     bundled = os.path.join(sysconfig.get_paths()["purelib"], "winrt", "msvcp140.dll")
     system = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "System32", "msvcp140.dll")
     if not os.path.exists(bundled):
