@@ -240,6 +240,11 @@ def _phone_selftest_requested():
     эмулятору Android — системное свойство (adb shell setprop debug.f1hub.radio_selftest 1)."""
     if os.environ.get("F1_HUB_RADIO_SELFTEST"):
         return True
+    if notify.is_ios():
+        # симулятор: переменная SIMCTL_CHILD_ может не дойти до встроенного Python — tools/ios_smoke.py кладёт
+        # метку в папку данных приложения (на настоящем iPhone туда никто, кроме приложения, не пишет)
+        from services import db
+        return (db.data_dir() / "radio_selftest").exists()
     if notify.is_android():
         import subprocess
         def prop(name):
@@ -259,19 +264,26 @@ def _phone_radio_selftest():
     import requests
 
     from services import db, radio
+    started = time.monotonic()
+
+    def step(text):          # по шагам: если что-то зависнет, в журнале CI видно, на чём
+        logger.info("радио: шаг %s (%.0f с)", text, time.monotonic() - started)
     try:
-        started = time.monotonic()
         model = "base.en-q5_1"
         radio.models_dir().mkdir(parents=True, exist_ok=True)
         if not radio._whisper_file(model).exists():
+            step("скачиваем модель whisper.cpp")
             radio._download_whisper(model)
         db.set_setting("radio_model", model)
         if db.get_setting("radio_translation") != "1":
+            step("скачиваем перевод ML Kit")
             if not radio._phone["run"]("download_translation"):
                 raise RuntimeError("модель перевода ML Kit не скачалась")
             db.set_setting("radio_translation", "1")
+        step("скачиваем образец речи")
         resp = requests.get(SELFTEST_SPEECH, timeout=60)
         resp.raise_for_status()
+        step("расшифровка и перевод")
         en, ru = radio._process_on_phone(resp.content)
         logger.info("радио: самопроверка за %.1f с — %s | %s", time.monotonic() - started, en, ru)
     except Exception as exc:

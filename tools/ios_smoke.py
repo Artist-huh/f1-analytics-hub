@@ -58,6 +58,19 @@ def radio_selftest(container, started):
     return ""
 
 
+def log_lines(container):
+    out = []
+    for path in glob.glob(os.path.join(container, "**", "f1_hub.log"), recursive=True) if container else []:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            out += fh.readlines()
+    return out
+
+
+def selftest_started(container):
+    """Самопроверка пишет «радио: шаг …» с первых секунд — значит, запрос дошёл."""
+    return any("радио: шаг" in ln or "радио: самопроверка" in ln for ln in log_lines(container))
+
+
 def main():
     app, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
@@ -83,7 +96,18 @@ def main():
             break
 
     container = run("get_app_container", udid, bundle_id, "data", check=False).strip()
+    if container and not failures and not selftest_started(container):
+        # переменная окружения не дошла до Python: метка рядом с журналом и перезапуск приложения
+        for path in glob.glob(os.path.join(container, "**", "f1_hub.log"), recursive=True):
+            open(os.path.join(os.path.dirname(path), "radio_selftest"), "w").close()
+        print("самопроверка радио не запустилась по переменной — метка в папке данных, перезапуск")
+        run("terminate", udid, bundle_id, check=False)
+        started = time.time() - WAIT
+        subprocess.run(["xcrun", "simctl", "launch", udid, bundle_id], check=True, timeout=300)
     radio = radio_selftest(container, started) if container and not failures else ""
+    for line in log_lines(container):
+        if "радио:" in line:
+            print("  " + line.strip())
     logs = glob.glob(os.path.join(container, "**", "f1_hub.log"), recursive=True) if container else []
     text = ""
     for path in logs:
