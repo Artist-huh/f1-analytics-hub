@@ -48,6 +48,15 @@ jobs:
     - name: Launch check (exe starts, runs 60 s, log without errors, radio transcribed)
       run: python tools/desktop_smoke.py dist\F1AnalyticsHub.exe --radio
 
+    - name: Launch check with a Cyrillic user folder with a space (TEMP and database there too)
+      # у пользователей папка часто «C:\Users\Андрей»: .exe распаковывается в TEMP внутри неё
+      shell: pwsh
+      run: |
+        $d = Join-Path $env:RUNNER_TEMP "Тест Пользователь"
+        New-Item -ItemType Directory -Force (Join-Path $d "Temp") | Out-Null
+        $env:USERPROFILE = $d; $env:TEMP = Join-Path $d "Temp"; $env:TMP = $env:TEMP
+        python tools/desktop_smoke.py dist\F1AnalyticsHub.exe
+
     - name: Create release package
       run: |
         mkdir release
@@ -184,6 +193,12 @@ jobs:
 
     - name: List APKs
       run: ls -la build/apk
+
+    - name: 16 KB page alignment of native libraries (Android 15+)
+      # отчёт: библиотеки Python и плагинов собирают их авторы; невыровненная не загрузится на телефоне
+      # со страницами 16 КБ — список виден здесь, сборку это не останавливает
+      continue-on-error: true
+      run: python tools/check_16k.py build/apk/*arm64-v8a*.apk build/apk/*x86_64*.apk
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7

@@ -1579,6 +1579,37 @@ class LogFormatTest(unittest.TestCase):
         self.assertTrue(lines[1].startswith("    "))
 
 
+class Page16kTest(unittest.TestCase):
+    def test_elf_alignment_read_from_apk(self):
+        """tools/check_16k.py: выравнивание сегментов LOAD читается из ELF внутри APK (XP-8)."""
+        import struct
+        import zipfile
+        sys.path.insert(0, "tools")
+        try:
+            import check_16k
+        finally:
+            sys.path.remove("tools")
+
+        def elf(align):            # минимальный ELF64: заголовок и один PT_LOAD
+            head = bytearray(64)
+            head[:6] = b"\x7fELF\x02\x01"
+            struct.pack_into("<Q", head, 0x20, 64)
+            struct.pack_into("<HH", head, 0x36, 56, 1)
+            ph = bytearray(56)
+            struct.pack_into("<I", ph, 0, 1)
+            struct.pack_into("<Q", ph, 0x30, align)
+            return bytes(head + ph)
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = os.path.join(tmp, "a.apk")
+            with zipfile.ZipFile(apk, "w") as z:
+                z.writestr("lib/arm64-v8a/libok.so", elf(16384))
+                z.writestr("lib/arm64-v8a/libold.so", elf(4096))
+                z.writestr("lib/armeabi-v7a/libold.so", elf(4096))     # 32-бит — не проверяется
+            total, bad = check_16k.check(apk)
+        self.assertEqual(total, 2)
+        self.assertEqual(bad, ["lib/arm64-v8a/libold.so: 4096 байт"])
+
+
 class BuildToolsTest(unittest.TestCase):
     def test_ios_podfile_gets_mlkit_simulator_patch(self):
         """Сборка для симулятора iPhone: помощник google_mlkit_commons подключается в Podfile шаблона Flutter
