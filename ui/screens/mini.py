@@ -16,12 +16,13 @@ def build(state):
         items = [ft.Text("Данных пока нет", size=FONT_BODY_SMALL, color=TEXT_MUTED)]
     items.append(ft.Row([
         ft.IconButton(ft.Icons.SENSORS_ROUNDED, icon_color=DANGER if live_now else TEXT_SECONDARY, icon_size=20,
-                      tooltip="Live Timing (Ctrl+L)", on_click=lambda e: _expand_to(state, "live")),
+                      tooltip="Live Timing (Ctrl+L)", width=TOUCH, height=TOUCH,
+                      on_click=lambda e: _expand_to(state, "live")),
         ft.Container(expand=True),
         ft.IconButton(ft.Icons.MINIMIZE_ROUNDED, icon_color=TEXT_SECONDARY, icon_size=20,
-                      tooltip="Свернуть (Ctrl+H)", on_click=lambda e: state.minimize()),
+                      tooltip="Свернуть (Ctrl+H)", width=TOUCH, height=TOUCH, on_click=lambda e: state.minimize()),
         ft.IconButton(ft.Icons.OPEN_IN_FULL_ROUNDED, icon_color=TEXT_SECONDARY, icon_size=20,
-                      tooltip="Развернуть (Ctrl+M)", on_click=lambda e: state.toggle_mini()),
+                      tooltip="Развернуть (Ctrl+M)", width=TOUCH, height=TOUCH, on_click=lambda e: state.toggle_mini()),
     ], spacing=0))
     return ft.Column(items, spacing=SPACE_XS, tight=True)
 

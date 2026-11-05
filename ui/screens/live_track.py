@@ -34,7 +34,7 @@ class TrackMap:
         for number, x, y in outline.get("corners") or []:
             px, py = self.to_screen(x, y)
             shapes.append(cv.Text(px + 6, py - 6, str(number),
-                                  style=ft.TextStyle(size=9, color=TEXT_DIM, weight=ft.FontWeight.BOLD)))
+                                  style=ft.TextStyle(size=scaled(9), color=TEXT_DIM, weight=ft.FontWeight.BOLD)))
         self.dots = {}
         layers = [cv.Canvas(shapes=shapes, width=width, height=self.height)]
         for number, info in (data.get("drivers") or {}).items():
@@ -42,7 +42,8 @@ class TrackMap:
             dot = ft.Container(
                 ft.Row([ft.Container(width=DOT, height=DOT, border_radius=DOT / 2, bgcolor=color,
                                      border=ft.Border.all(2, TEXT_PRIMARY)),
-                        ft.Text(info.get("code") or number, size=9, color=TEXT_PRIMARY, font_family=FONT_ITALIC)],
+                        ft.Text(info.get("code") or number, size=scaled(9), color=TEXT_PRIMARY,
+                                font_family=FONT_ITALIC)],
                        spacing=2, tight=True),
                 left=0, top=0, visible=False, tooltip=info.get("code") or number,
                 animate_position=anim(ANIM_GLIDE, ft.AnimationCurve.LINEAR))

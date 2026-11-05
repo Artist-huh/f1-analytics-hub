@@ -93,7 +93,7 @@ class LiveTable:
             d = by_code.get(r["code"])
             color = r["colour"] or (get_team_color(d["team"]) if d else TEXT_DIM)
             bg, fg = _badge_colors(r["position"])
-            pos_text = ft.Text(str(r["position"]), size=14, color=fg, font_family=FONT_DISPLAY_ITALIC)
+            pos_text = ft.Text(str(r["position"]), size=scaled(14), color=fg, font_family=FONT_DISPLAY_ITALIC)
             badge = ft.Container(pos_text, width=28, height=28, bgcolor=bg, border_radius=RADIUS_SM,
                                  alignment=ft.Alignment.CENTER)
             gap_text = ft.Text("", size=FONT_BODY_SMALL, font_family=FONT_MONO, text_align=ft.TextAlign.RIGHT)

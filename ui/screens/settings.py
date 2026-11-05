@@ -59,7 +59,7 @@ def _theme_card(state):
         ft.Column([txt("Меньше движения", 14, bold=True),
                    txt("Без анимаций — для чувствительных к движению и слабых устройств. По умолчанию — как в системе.",
                        11, MUTED)], spacing=1, expand=True),
-        ft.Switch(value=ds.REDUCE_MOTION, active_color=ACCENT, tooltip="Меньше движения",
+        ft.Switch(value=ds.REDUCE_MOTION, active_color=ACCENT_FILL, tooltip="Меньше движения",
                   on_change=lambda e: state.set_reduce_motion(bool(e.control.value))),
     ], vertical_alignment=ft.CrossAxisAlignment.CENTER)]
     items += [txt("Размер текста", 14, bold=True),
@@ -72,7 +72,7 @@ def _notifications_card(state):
     def switch(kind, title, hint):
         return ft.Row([
             ft.Column([txt(title, 14, bold=True), txt(hint, 11, MUTED)], spacing=1, expand=True),
-            ft.Switch(value=state.notifications_on(kind), active_color=ACCENT, tooltip=title,
+            ft.Switch(value=state.notifications_on(kind), active_color=ACCENT_FILL, tooltip=title,
                       on_change=lambda e, k=kind: state.set_notifications(k, bool(e.control.value))),
         ], vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
@@ -92,7 +92,7 @@ def _notifications_card(state):
             ft.Column([txt("Вибрация", 14, bold=True),
                        txt("Сейфти-кар, красный флаг и обгоны избранных в Live Timing", 11, MUTED)],
                       spacing=1, expand=True),
-            ft.Switch(value=state.haptics_on(), active_color=ACCENT, tooltip="Вибрация",
+            ft.Switch(value=state.haptics_on(), active_color=ACCENT_FILL, tooltip="Вибрация",
                       on_change=lambda e: state.set_haptics(bool(e.control.value))),
         ], vertical_alignment=ft.CrossAxisAlignment.CENTER)] if notify.is_mobile() else []),
     ], spacing=10))

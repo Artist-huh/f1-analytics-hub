@@ -431,7 +431,7 @@ def line_chart(series, labels, width, height=200, y_suffix=""):
 
     shapes = []
     grid = ft.Paint(color=LINE, stroke_width=1, style=ft.PaintingStyle.STROKE)
-    label_style = ft.TextStyle(size=10, color=TEXT_DIM)
+    label_style = ft.TextStyle(size=scaled(10), color=TEXT_DIM)   # растёт с размером текста (UX-31)
     for k in range(5):
         value = step * k
         shapes.append(cv.Line(left, y(value), left + plot_w, y(value), paint=grid))
@@ -454,7 +454,7 @@ def line_chart(series, labels, width, height=200, y_suffix=""):
         shapes.append(cv.Path(elements, paint=paint))
         shapes.append(cv.Circle(x(len(values) - 1), y(values[-1]), 4, paint=ft.Paint(color=line)))
         shapes.append(cv.Text(x(len(values) - 1) + 7, y(values[-1]), f"{values[-1]:g}{y_suffix}",
-                              style=ft.TextStyle(size=11, color=label, weight=ft.FontWeight.BOLD),
+                              style=ft.TextStyle(size=scaled(11), color=label, weight=ft.FontWeight.BOLD),
                               alignment=ft.Alignment.CENTER_LEFT))
     summary = "; ".join(f"{name}: {values[-1]:g}{y_suffix}" for name, _, values in series if values)
     return _described(cv.Canvas(shapes=shapes, width=width, height=height), summary)
@@ -514,7 +514,7 @@ def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False
 
     shapes = []
     grid = ft.Paint(color=LINE, stroke_width=1, style=ft.PaintingStyle.STROKE)
-    label_style = ft.TextStyle(size=10, color=TEXT_DIM)
+    label_style = ft.TextStyle(size=scaled(10), color=TEXT_DIM)   # растёт с размером текста (UX-31)
     for k in range(ticks):
         v = lo + (hi - lo) * k / (ticks - 1)
         shapes.append(cv.Line(left, y(v), left + plot_w, y(v), paint=grid))
@@ -536,7 +536,7 @@ def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False
         if end_labels and line_w >= 2:
             ex, ey = pts[-1]
             shapes.append(cv.Circle(x(ex), y(ey), 3.5, paint=ft.Paint(color=line)))
-            end_style = ft.TextStyle(size=10, color=label, weight=ft.FontWeight.BOLD)
+            end_style = ft.TextStyle(size=scaled(10), color=label, weight=ft.FontWeight.BOLD)
             shapes.append(cv.Text(x(ex) + 6, y(ey), name, style=end_style,
                                   alignment=ft.Alignment.CENTER_LEFT))
     main = [s for s in series if s[3] >= 2] or series        # 20 пилотов вслух — много: только выделенные

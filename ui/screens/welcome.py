@@ -116,7 +116,7 @@ def _notify_step(state, w):
     return [ft.Text("Что сообщать?", size=FONT_BODY, color=TEXT_SECONDARY)] + [
         AnimatedCard(ft.Row([ft.Column([ft.Text(title, size=FONT_BODY, color=TEXT_PRIMARY),
                                         ft.Text(hint, size=FONT_CAPTION, color=TEXT_MUTED)], spacing=2, expand=True),
-                             ft.Switch(value=w[kind], active_color=F1_RED, on_change=switch(kind),
+                             ft.Switch(value=w[kind], active_color=ACCENT_FILL, on_change=switch(kind),
                                        label=None, tooltip=title)],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER))
         for kind, title, hint in rows]
