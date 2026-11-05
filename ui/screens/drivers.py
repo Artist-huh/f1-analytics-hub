@@ -60,7 +60,7 @@ def _build_search_and_filters(state, drivers, on_search):
         value=state.ui["drv_q"],
         hint_text="Имя, код или команда",
         prefix_icon=ft.Icons.SEARCH_ROUNDED,
-        border=field_border(LINE_STRONG, F1_RED),
+        border=field_border(TEXT_DIM, F1_RED),   # рамка поля — ≥ 3:1 к фону (WCAG 1.4.11, UX-8)
         bgcolor=SURFACE,
         color=TEXT_PRIMARY,
         cursor_color=F1_RED,

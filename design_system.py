@@ -38,7 +38,7 @@ INK = "#15151E"              # тёмный текст на светлых пл�
 
 SUCCESS = "#22C55E"
 WARNING = "#F5A524"
-DANGER = "#FF5A5C"
+DANGER = "#FF6B6D"
 INFO = "#3B82F6"
 GOLD = "#FFC93C"             # звёздочка избранного
 GOLD_ON_COLOR = "#FFC93C"    # золото на цветных фонах (карточки команд): светлое в любой теме, как ON_COLOR
@@ -309,7 +309,7 @@ _DARK = {
     "SURFACE_RAISED": "#272733", "SURFACE_ELEVATED": "#31313E",
     "LINE_SUBTLE": "#23232E", "LINE": "#2D2D3A", "LINE_STRONG": "#41414F",
     "TEXT_PRIMARY": "#FFFFFF", "TEXT_SECONDARY": "#D2D2DC", "TEXT_MUTED": "#ABABB8", "TEXT_DIM": "#8E8E9C",
-    "SUCCESS": "#22C55E", "WARNING": "#F5A524", "DANGER": "#FF5A5C", "GOLD": "#FFC93C",
+    "SUCCESS": "#22C55E", "WARNING": "#F5A524", "DANGER": "#FF6B6D", "GOLD": "#FFC93C",
     # секторы, как на графике F1: лучший в сессии / личный лучший / пройден
     "SECTOR_OVERALL": "#A855F7", "SECTOR_PERSONAL": "#22C55E", "SECTOR_NORMAL": "#F5C518",
 }
@@ -318,7 +318,7 @@ _LIGHT = {
     "SURFACE_RAISED": "#ECECF1", "SURFACE_ELEVATED": "#E1E1E8",
     "LINE_SUBTLE": "#ECECF1", "LINE": "#DCDCE3", "LINE_STRONG": "#C3C3CD",
     "TEXT_PRIMARY": "#15151E", "TEXT_SECONDARY": "#3A3A46", "TEXT_MUTED": "#4F4F5A", "TEXT_DIM": "#62626E",
-    "SUCCESS": "#0F7A35", "WARNING": "#9A4A00", "DANGER": "#C62828", "GOLD": "#8A5A00",
+    "SUCCESS": "#0F7A35", "WARNING": "#9A4A00", "DANGER": "#B71C1C", "GOLD": "#8A5A00",
     "SECTOR_OVERALL": "#7E22CE", "SECTOR_PERSONAL": "#15803D", "SECTOR_NORMAL": "#A16207",
 }
 # OLED: чистый чёрный фон (пиксели AMOLED-экрана гаснут — меньше расход батареи), карточки чуть светлее

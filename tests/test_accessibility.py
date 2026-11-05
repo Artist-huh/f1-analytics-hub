@@ -59,6 +59,18 @@ class ContrastTest(unittest.TestCase):
                     with self.subTest(theme=theme, team=key, bg=bg):
                         self.assertGreaterEqual(ds.contrast(ds.GOLD_ON_COLOR, ds._mix(bg, ds.INK, 0.35)), 3.0)
 
+    def test_elevated_chips_and_field_border(self):
+        """На SURFACE_ELEVATED — чипы календаря, тосты и подписи ошибок: DANGER, WARNING и основной текст 4.5:1
+        (UX-9). Рамка поля ввода — 3:1 к фону поля (WCAG 1.4.11, UX-8)."""
+        for theme in ("dark", "light", "oled"):
+            ds.apply_theme(theme)
+            for fg in ("DANGER", "WARNING", "TEXT_PRIMARY"):
+                with self.subTest(theme=theme, fg=fg):
+                    self.assertGreaterEqual(ds.contrast(getattr(ds, fg), ds.SURFACE_ELEVATED), AA)
+            for bg in (ds.SURFACE, ds.SURFACE_RAISED):
+                with self.subTest(theme=theme, border=bg):
+                    self.assertGreaterEqual(ds.contrast(ds.TEXT_DIM, bg), 3.0)
+
     def test_text_on_accent_fill_in_every_theme(self):
         """Кнопки, вкладки, индикатор навигации: белый на ACCENT_FILL и обоих концах GRADIENT_ACCENT — 4.5:1,
         в том числе в теме любой команды (яркий цвет Mercedes или Sauber под белым был 1.7–1.8:1)."""

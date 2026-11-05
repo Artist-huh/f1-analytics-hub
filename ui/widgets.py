@@ -103,7 +103,7 @@ def field_border(color, focused):
 
 def dropdown(**kw):
     """Выпадающий список на всю ширину (через Row + expand, без жёсткой ширины)."""
-    return ft.Row([ft.Dropdown(expand=True, bgcolor=RAISED, border=field_border(LINE, ACCENT), color=TEXT, **kw)])
+    return ft.Row([ft.Dropdown(expand=True, bgcolor=RAISED, border=field_border(DIM, ACCENT), color=TEXT, **kw)])
 
 
 def chip(label, bg=RAISED, fg=TEXT):
