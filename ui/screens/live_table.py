@@ -171,7 +171,7 @@ class LiveTable:
             row["badge"].bgcolor, row["pos"].color, row["pos"].value = bg, fg, str(r["position"])
             gap = r["gap"] if self.mode == "leader" else r["interval"]
             row["gap"].value = gap or leader_text(r, data)
-            row["gap"].color = TEXT_PRIMARY if gap else ACCENT_TEXT
+            row["gap"].color = TEXT_PRIMARY if gap else GOLD     # «лидер» — золото (UX-22)
             seconds = gap_seconds(gap) if gap or r["position"] == 1 else None
             color = flash_color(self.prev.get(r["code"]), seconds) if flash else None
             row["gap_box"].bgcolor = ft.Colors.with_opacity(0.28, color) if color else None

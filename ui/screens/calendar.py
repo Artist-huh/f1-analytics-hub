@@ -184,8 +184,8 @@ def session_list(race, highlight="Race"):
                     weight=ft.FontWeight.BOLD if main else None, expand=True),
             ft.Text(fmt_day(s["ts"]), size=FONT_BODY_SMALL, color=TEXT_MUTED),
             ft.Container(
-                ft.Text(fmt_clock(s["ts"]), size=FONT_BODY, color=ACCENT_TEXT if main else TEXT_PRIMARY,
-                        font_family=FONT_HEADING),
+                ft.Text(fmt_clock(s["ts"]), size=FONT_BODY, color=TEXT_PRIMARY,
+                        font_family=FONT_HEADING if main else FONT_HEADING_SEMI),   # главная — жирнее, не красным
                 width=scaled(48), alignment=ft.Alignment.CENTER_RIGHT,
             ),
         ], spacing=SPACE_XS))
@@ -250,7 +250,7 @@ def _strategy_button(state, race):
         state.open_race_strategy(race)
 
     return ft.Container(
-        ft.Row([ft.Icon(ft.Icons.TIRE_REPAIR_ROUNDED, color=ACCENT_TEXT, size=18),
+        ft.Row([ft.Icon(ft.Icons.TIRE_REPAIR_ROUNDED, color=TEXT_SECONDARY, size=18),
                 ft.Text("Разбор гонки: шины, позиции, темп", size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                         weight=ft.FontWeight.W_600),
                 ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM, size=18)], spacing=SPACE_XS, tight=True),
@@ -266,7 +266,7 @@ def _circuit_button(state, race, close_dialog=False):
         state.open_circuit(race)
 
     return ft.Container(
-        ft.Row([ft.Icon(ft.Icons.ROUTE_ROUNDED, color=ACCENT_TEXT, size=18),
+        ft.Row([ft.Icon(ft.Icons.ROUTE_ROUNDED, color=TEXT_SECONDARY, size=18),
                 ft.Text("Трасса и история", size=FONT_BODY_SMALL, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600),
                 ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=TEXT_DIM, size=18)], spacing=SPACE_XS, tight=True),
         height=TOUCH, padding=ft.Padding.symmetric(horizontal=SPACE_SM), border_radius=RADIUS_MD,
@@ -284,7 +284,7 @@ def _chip(label, bg, fg):
 
 def _spec(label, value, icon):
     return ft.Column([
-        ft.Icon(icon, color=ACCENT_TEXT, size=18),
+        ft.Icon(icon, color=TEXT_SECONDARY, size=18),
         ft.Text(value, size=FONT_BODY, color=TEXT_PRIMARY, font_family=FONT_HEADING),
         ft.Text(label, size=FONT_CAPTION, color=TEXT_MUTED),
     ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0)

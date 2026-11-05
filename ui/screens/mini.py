@@ -60,10 +60,10 @@ def _live(state, live_now):
         items.append(ft.Row([
             ft.Text(str(r["position"]), size=FONT_BODY_SMALL, color=TEXT_SECONDARY, font_family=FONT_ITALIC,
                     width=scaled(18)),
-            ft.Container(width=3, height=16, bgcolor=r["colour"] or TEXT_DIM, border_radius=2),
+            ft.Container(width=3, height=16, bgcolor=api_color(r["colour"]), border_radius=2),
             ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY, font_family=FONT_ITALIC, expand=True),
             ft.Text(gap or _leader_text(r, data), size=FONT_CAPTION, font_family=FONT_MONO,
-                    color=ACCENT_TEXT if r["position"] == 1 else TEXT_SECONDARY),
+                    color=GOLD if r["position"] == 1 else TEXT_SECONDARY),
             ft.Text(r["tyre"] or "", size=FONT_CAPTION, color=TEXT_MUTED, width=scaled(12)),
         ], spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER))
     return items

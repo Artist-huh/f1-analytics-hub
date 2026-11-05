@@ -63,7 +63,7 @@ def _build_driver_standings(state, standings, leader_points, favs_view=False):
             ft.Column([
                 ft.Text(d["points"], size=FONT_H4, color=TEXT_PRIMARY, font_family=FONT_DISPLAY_ITALIC),
                 ft.Text("лидер" if gap <= 0 else f"−{gap:g}", size=FONT_CAPTION,
-                        color=ACCENT_TEXT if gap <= 0 else TEXT_DIM),
+                        color=GOLD if gap <= 0 else TEXT_DIM),   # лидер — золото, не красный (UX-22)
             ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.END, width=52),
         ], spacing=0, tight=True, vertical_alignment=ft.CrossAxisAlignment.CENTER)
         rows.append(driver_row(state, d, trailing=trailing, flat=True))

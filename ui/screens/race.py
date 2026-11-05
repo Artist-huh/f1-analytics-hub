@@ -167,7 +167,7 @@ def pace_section(state, race):
                                color=TEXT_MUTED)], spacing=0, expand=True),
             ft.Text("быстрее всех" if gap == 0 else (f"+{gap:.3f}" if gap is not None else "—"),
                     size=FONT_BODY_SMALL, font_family=FONT_MONO,
-                    color=ACCENT_TEXT if gap == 0 else TEXT_SECONDARY),
+                    color=GOLD if gap == 0 else TEXT_SECONDARY),
         ], spacing=SPACE_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER))
     return [
         ft.Row(chips, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO),
