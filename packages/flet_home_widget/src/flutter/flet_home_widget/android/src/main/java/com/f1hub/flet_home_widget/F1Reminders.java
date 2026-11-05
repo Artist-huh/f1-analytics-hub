@@ -131,7 +131,8 @@ public class F1Reminders extends BroadcastReceiver {
         builder.setSmallIcon(R.drawable.f1hw_notify)
                 .setContentTitle(title)
                 .setContentText(text)
-                .setAutoCancel(true);
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true);     // то же событие уже пришло из приложения — без второго звука (S-3)
         if (launch != null) {
             builder.setContentIntent(PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_IMMUTABLE));
         }

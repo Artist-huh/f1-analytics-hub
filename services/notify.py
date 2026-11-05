@@ -145,10 +145,15 @@ def _android_send(title, text, nid):
     else:
         builder = Builder(activity)
     intent = activity.getPackageManager().getLaunchIntentForPackage(activity.getPackageName())
-    builder.setSmallIcon(activity.getApplicationInfo().icon)
+    # монохромный значок из расширения виджета (как у будильников), без него — иконка приложения (XP-2)
+    icon = activity.getResources().getIdentifier("f1hw_notify", "drawable", activity.getPackageName())
+    builder.setSmallIcon(icon or activity.getApplicationInfo().icon)
     builder.setContentTitle(title)
     builder.setContentText(text)
     builder.setAutoCancel(True)
+    # будильник Android и приложение могут прислать одно событие (тот же id): второе заменяет первое
+    # молча, без второго звука (аудит, S-3)
+    builder.setOnlyAlertOnce(True)
     builder.setContentIntent(PendingIntent.getActivity(activity, 0, intent, PendingIntent.FLAG_IMMUTABLE))
     manager.notify(notification_id(nid), builder.build())
 
