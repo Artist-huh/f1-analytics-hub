@@ -13,6 +13,7 @@ from services import f1_api as api
 from services import live, log, media, notify, stats
 
 logger = log.get("ui")
+NOTIFIED_MAX = 2000             # сколько отправленных уведомлений помнить
 
 MAX_COMPARE = 4
 
@@ -379,7 +380,8 @@ class AppState:
             return []
 
     def _mark_sent(self, nids):
-        api.set_setting("notified", json.dumps((self._sent() + list(nids))[-300:]))
+        # сезон даёт ~260 id; 2000 — запас на несколько сезонов (около 40 КБ) (аудит, S-1)
+        api.set_setting("notified", json.dumps((self._sent() + list(nids))[-NOTIFIED_MAX:]))
 
     def _standings_memory(self, rnd):
         """Места и лидер чемпионата до последнего этапа (для «поднялся на 3-е место» и «новый лидер»).

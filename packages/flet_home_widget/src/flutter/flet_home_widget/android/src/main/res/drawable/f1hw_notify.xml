@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Значок уведомления в строке состояния: силуэт клетчатого флага, одним цветом (Android сам красит его) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5,2h2v20H5z M8,3h3v3H8z M14,3h3v3h-3z M11,6h3v3h-3z M17,6h3v3h-3z M8,9h3v3H8z M14,9h3v3h-3z M11,12h3v3h-3z M17,12h3v3h-3z" />
+</vector>

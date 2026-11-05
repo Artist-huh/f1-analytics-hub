@@ -56,17 +56,28 @@ public class F1Reminders extends BroadcastReceiver {
                 continue;
             }
             PendingIntent pi = pending(context, item, PendingIntent.FLAG_UPDATE_CURRENT);
-            // без точного будильника: точный на Android 12+ требует отдельного разрешения пользователя,
-            // а для напоминания «за час» несколько минут погрешности в режиме сна не важны
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-            } else {
-                alarms.set(AlarmManager.RTC_WAKEUP, at, pi);
-            }
+            setAlarm(alarms, at, pi);
             count++;
         }
         Log.i(TAG, "запланировано уведомлений: " + count);
         return count;
+    }
+
+    /** Точный будильник там, где система разрешает его без отдельного разрешения (до Android 12 или если
+     *  пользователь его дал), иначе — неточный: в режиме сна он может сдвинуться на несколько минут (аудит, XP-9). */
+    static void setAlarm(AlarmManager alarms, long at, PendingIntent pi) {
+        boolean exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (exact) {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+            } else {
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            alarms.setExact(AlarmManager.RTC_WAKEUP, at, pi);
+        } else {
+            alarms.set(AlarmManager.RTC_WAKEUP, at, pi);
+        }
     }
 
     private static void cancelAll(Context context, JSONArray items) {
@@ -116,7 +127,8 @@ public class F1Reminders extends BroadcastReceiver {
             builder = new Notification.Builder(context);
         }
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-        builder.setSmallIcon(context.getApplicationInfo().icon)
+        // монохромная иконка: значок в строке состояния — только силуэт, цветная иконка там серый квадрат (XP-2)
+        builder.setSmallIcon(R.drawable.f1hw_notify)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setAutoCancel(true);

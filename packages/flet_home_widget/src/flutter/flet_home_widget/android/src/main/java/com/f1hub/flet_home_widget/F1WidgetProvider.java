@@ -1,6 +1,8 @@
 package com.f1hub.flet_home_widget;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
@@ -49,8 +51,25 @@ public class F1WidgetProvider extends AppWidgetProvider {
             }
             manager.updateAppWidget(id, v);
         }
+        if (!live && left > 0 && ids.length > 0) {
+            refreshAt(context, p.getLong("start_ms", 0L));
+        }
         if (ids.length > 0) {
             Log.i(FletHomeWidgetPlugin.TAG, "виджет перерисован: " + ids.length);
         }
+    }
+
+    /** В момент старта перерисовать виджет: Chronometer в режиме отсчёта сам не останавливается на нуле и
+     *  уходил в минус («-00:05»), пока приложение не обновит данные (аудит, XP-10). */
+    static void refreshAt(Context context, long atMs) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        int[] ids = manager.getAppWidgetIds(new ComponentName(context, F1WidgetProvider.class));
+        Intent update = new Intent(context, F1WidgetProvider.class)
+                .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        PendingIntent pi = PendingIntent.getBroadcast(context, 1, update,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        F1Reminders.setAlarm(alarms, atMs + 1000, pi);
     }
 }
