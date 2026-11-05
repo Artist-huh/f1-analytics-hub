@@ -12,6 +12,7 @@ import glob
 import json
 import os
 import plistlib
+import shutil
 import subprocess
 import sys
 import time
@@ -120,7 +121,12 @@ def main():
     bad = [ln for ln in text.splitlines() if any(m in ln for m in FAIL_MARKERS)]
     if bad:
         failures.append(f"в журнале ошибки: {bad[:3]}")
-    crashes = glob.glob(os.path.expanduser("~/Library/Logs/DiagnosticReports/Runner*"))
+    # отчёты о падении за время прогона — любые (имя процесса не обязательно Runner), копией в артефакт
+    reports = os.path.expanduser("~/Library/Logs/DiagnosticReports")
+    crashes = [c for c in glob.glob(os.path.join(reports, "**", "*"), recursive=True)
+               if os.path.isfile(c) and os.path.getmtime(c) >= started - WAIT - 60]
+    for c in crashes:
+        shutil.copy(c, out)
     if crashes:
         failures.append(f"отчёты о падении: {[os.path.basename(c) for c in crashes]}")
     heard = next((ln.split("радио: расшифровка", 1)[-1].strip() for ln in log_lines(container)
