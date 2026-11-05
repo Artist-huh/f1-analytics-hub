@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flet/flet.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
@@ -47,7 +49,7 @@ class RadioEngineService extends FletService {
   Future<String> _transcribe(String modelPath, String audioPath, String prompt, int threads) async {
     if (_engine == null || _modelPath != modelPath) {
       _engine?.dispose();
-      _engine = await WhisperEngine.load(modelPath);
+      _engine = await WhisperEngine.load(modelPath, config: _whisperConfig());
       _modelPath = modelPath;
     }
     final pcm = await decodeAudioFile(audioPath);
@@ -65,6 +67,17 @@ class RadioEngineService extends FletService {
     final result = await task.result;
     debugPrint("RadioEngine: ${pcm.length / 16000} с звука за ${DateTime.now().difference(started).inMilliseconds} мс");
     return result.text.trim();
+  }
+
+  /// Симулятор iPhone: Metal там неполный, и whisper.cpp падал (SIGTRAP) в начале расшифровки —
+  /// считаем на процессоре и без Core ML. На телефонах — автоматический выбор: Metal, иначе процессор.
+  static WhisperConfig _whisperConfig() {
+    final simulator = Platform.isIOS && Platform.environment.containsKey('SIMULATOR_DEVICE_NAME');
+    if (simulator) {
+      debugPrint("RadioEngine: симулятор iPhone — whisper.cpp на процессоре");
+      return const WhisperConfig(backend: WhisperBackend.cpu, coreMlMode: WhisperCoreMlMode.disabled);
+    }
+    return const WhisperConfig();
   }
 
   Future<String> _translate(String text) async {
