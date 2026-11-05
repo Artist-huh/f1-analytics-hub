@@ -56,10 +56,14 @@ def build(state):
         tabs.append(pill("Трасса", view == "track", lambda e: show("track")))
     if radio_items:
         tabs.append(pill(f"Радио ({len(radio_items)})", view == "radio", lambda e: show("radio")))
-    if data["racing"] and view == "table":
-        tabs += [pill("До лидера", mode == "leader", lambda e: switch("leader")),
-                 pill("Интервал", mode == "interval", lambda e: switch("interval"))]
     body.append(ft.Row(tabs, spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO))
+    if data["racing"] and view == "table":
+        # отдельной строкой с подписью: в одном ряду с вкладками были выбраны сразу две «таблетки» (UX-14)
+        body.append(ft.Row([ft.Text("Отрыв:", size=FONT_CAPTION, color=TEXT_MUTED),
+                            pill("До лидера", mode == "leader", lambda e: switch("leader")),
+                            pill("Интервал", mode == "interval", lambda e: switch("interval"))],
+                           spacing=SPACE_XS, scroll=ft.ScrollMode.AUTO,
+                           vertical_alignment=ft.CrossAxisAlignment.CENTER))
     state.ui["live_shown"] = _structure(data)
     if view == "radio" and radio_items:
         state.ui.pop("live_table", None)
@@ -153,7 +157,7 @@ def _table(state, data, mode):
     avatars = not tight and not (large_text() and is_narrow(state))   # крупный текст на телефоне: место — под код
     table = LiveTable(state, data, mode, avatars, tyre_badge, tight=tight)
     state.ui["live_table"] = table
-    head = ft.Row([ft.Text("Поз.", size=FONT_TINY, color=TEXT_DIM, width=70 if avatars else 30),
+    head = ft.Row([ft.Text("Поз.", size=FONT_TINY, color=TEXT_DIM, width=LiveTable.lead_width(avatars)),
                    ft.Text("Пилот", size=FONT_TINY, color=TEXT_DIM, expand=True, no_wrap=True),
                    ft.Text("Отрыв" if mode == "leader" else "Интервал", size=FONT_TINY, color=TEXT_DIM,
                            width=scaled(70 if tight else 78), no_wrap=True,

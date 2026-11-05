@@ -18,6 +18,8 @@ from ui.fmt import plural
 
 FLASH_SECONDS = 1.2    # подсветка изменившегося отрыва
 ROW_GAP = 4
+BADGE = 28             # бейдж места в строке
+AVATAR = 32            # фото пилота в строке
 
 
 def row_height():
@@ -77,6 +79,12 @@ def _badge_colors(pos):
 
 
 class LiveTable:
+    @staticmethod
+    def lead_width(avatars):
+        """Ширина того, что в строке левее имени пилота (бейдж, полоса, аватар и отступы между ними) —
+        по ней заголовок «Поз.» стоит ровно над колонкой (аудит, UX-21)."""
+        return BADGE + SPACE_XS + 3 + (SPACE_XS + AVATAR if avatars else 0)
+
     def __init__(self, state, data, mode, avatars, tyre_badge, tight=False):
         """tight — узкий экран при крупном тексте: без колонки пит-стопов, секторы во второй строке."""
         self.state, self.mode, self.avatars, self.tight = state, mode, avatars, tight
@@ -94,7 +102,7 @@ class LiveTable:
             color = r["colour"] or (get_team_color(d["team"]) if d else TEXT_DIM)
             bg, fg = _badge_colors(r["position"])
             pos_text = ft.Text(str(r["position"]), size=scaled(14), color=fg, font_family=FONT_DISPLAY_ITALIC)
-            badge = ft.Container(pos_text, width=28, height=28, bgcolor=bg, border_radius=RADIUS_SM,
+            badge = ft.Container(pos_text, width=BADGE, height=BADGE, bgcolor=bg, border_radius=RADIUS_SM,
                                  alignment=ft.Alignment.CENTER)
             gap_text = ft.Text("", size=FONT_BODY_SMALL, font_family=FONT_MONO, text_align=ft.TextAlign.RIGHT)
             gap_box = ft.Container(gap_text, width=scaled(70 if tight else 78), alignment=ft.Alignment.CENTER_RIGHT,
@@ -111,7 +119,8 @@ class LiveTable:
             row_content = ft.Row([
                 badge,
                 ft.Container(width=3, height=30, bgcolor=color, border_radius=2),
-                *([DriverAvatar(r["code"], d["team"] if d else r["team"], size=32, src=state.photo(d) if d else None)]
+                *([DriverAvatar(r["code"], d["team"] if d else r["team"], size=AVATAR,
+                                src=state.photo(d) if d else None)]
                   if avatars else []),
                 ft.Column([ft.Text(r["code"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                                    font_family=FONT_ITALIC, no_wrap=True), bars], spacing=4, expand=True)
