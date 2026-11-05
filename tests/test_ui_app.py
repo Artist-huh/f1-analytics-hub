@@ -78,6 +78,28 @@ class UiAppTest(UiTestCase):
         planned = [i["id"] for i in self.state.planned_notifications(now=quali["ts"] - 86400)]
         self.assertNotIn("2027:4:predict", planned)          # будильник Android — тоже по сезону календаря
 
+    def test_phone_radio_off_when_extension_silent(self):
+        """Телефон: расширение flet_radio есть, но нативная часть не отвечает — радио отключается (XP-5)."""
+        from concurrent.futures import Future
+
+        from services import radio
+
+        def run_task(fn, **kw):
+            f = Future()
+            f.set_exception(RuntimeError("нет нативной библиотеки"))
+            return f
+        page = mock.Mock(run_task=run_task)
+        engine = types.SimpleNamespace(info=lambda **kw: None)
+        fake = types.SimpleNamespace(RadioEngine=lambda: engine)
+        self.addCleanup(radio.attach_phone_engine, None)
+        with mock.patch.dict(sys.modules, {"flet_radio": fake}), \
+                mock.patch.object(app, "_phone_selftest_requested", return_value=False):
+            app._attach_phone_radio(page)
+            for t in threading.enumerate():
+                if t.name == "f1-radio-verify":
+                    t.join(5)
+        self.assertFalse(radio.on_phone())
+
     def test_settings_clear_requires_confirmation(self):
         fill_db()
         self.state.load()

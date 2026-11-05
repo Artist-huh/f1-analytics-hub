@@ -228,6 +228,17 @@ def _attach_phone_radio(page):
 
     radio.attach_phone_engine(run)
     logger.info("радио: расшифровка на телефоне через whisper.cpp и ML Kit")
+
+    def verify():
+        """Расширение есть, но нативная часть может не загрузиться: проверяем ответом info(), иначе экран
+        радио обещал бы расшифровку, которая не заработает (аудит, XP-5)."""
+        try:
+            info = run("info", timeout=60)
+            logger.info("радио: whisper.cpp %s", info.get("whisper") if isinstance(info, dict) else info)
+        except Exception as exc:
+            radio.attach_phone_engine(None)
+            logger.warning("радио: расширение не отвечает — расшифровка отключена: %r", exc)
+    threading.Thread(target=verify, name="f1-radio-verify", daemon=True).start()
     if _phone_selftest_requested():
         threading.Thread(target=_phone_radio_selftest, name="f1-radio-selftest", daemon=True).start()
 

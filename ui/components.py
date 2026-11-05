@@ -181,6 +181,9 @@ class DriverAvatar(ft.Container):
         top, bottom = get_team_gradient(team_name)
         fallback = ft.Container(initials(driver_code, size), alignment=ft.Alignment.CENTER,
                                 width=size, height=size)
+        if on_click:          # нажимаемый — с откликом и подсказкой, куда ведёт (аудит, UX-25)
+            kwargs.setdefault("ink", True)
+            kwargs.setdefault("tooltip", f"Страница пилота {driver_code}")
         super().__init__(
             content=image(src, size, size, fit=ft.BoxFit.COVER, fallback=fallback,
                           label=f"Фото пилота {driver_code}") if src else fallback,
