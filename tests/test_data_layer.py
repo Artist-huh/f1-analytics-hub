@@ -1487,6 +1487,25 @@ def datetime_ts(text):
     return datetime.fromisoformat(text).replace(tzinfo=timezone.utc).timestamp()
 
 
+class RadioQueueTest(unittest.TestCase):
+    def test_request_after_worker_decided_to_exit(self):
+        """Обработчик, решивший выйти, сбрасывает себя под замком: запись, поставленная следом, не застревает
+        «в очереди» навсегда (аудит, S-2). Упавший on_done очередь не останавливает."""
+        from services import radio
+        done = threading.Event()
+
+        def broken():
+            raise RuntimeError("перерисовка")
+        with mock.patch.object(radio, "process", return_value={}):
+            radio._worker[0] = threading.current_thread()      # «живой» поток, который сейчас выйдет
+            radio._work()                                       # очередь пуста — выход
+            self.assertIsNone(radio._worker[0])
+            radio.request("https://r/a.mp3", on_done=broken)
+            radio.request("https://r/b.mp3", on_done=done.set)
+            self.assertTrue(done.wait(5))
+        self.assertIsNone(radio.status("https://r/b.mp3"))
+
+
 class LimitsTest(unittest.TestCase):
     """Пределы на чужие данные (аудит, SEC-3 и SEC-6)."""
 

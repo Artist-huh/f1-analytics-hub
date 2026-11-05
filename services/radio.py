@@ -420,7 +420,7 @@ def request(url, on_done=None):
             return
         _jobs[url] = "pending"
         _queue.append((url, on_done))
-        if _worker[0] and _worker[0].is_alive():
+        if _worker[0] is not None:          # обработчик работает и сам заберёт запись
             return
         _worker[0] = threading.Thread(target=_work, name="f1-radio-tx", daemon=True)
         _worker[0].start()
@@ -430,6 +430,9 @@ def _work():
     while True:
         with _lock:
             if not _queue:
+                # отмечаем выход под тем же замком: раньше поток решал выйти, но ещё был «жив», и запись,
+                # поставленная в этот миг, оставалась «в очереди» навсегда (аудит, S-2)
+                _worker[0] = None
                 return
             url, on_done = _queue.pop(0)
         try:
@@ -439,4 +442,7 @@ def _work():
             logger.warning("радио %s не расшифровано: %s", url, exc)
             _jobs[url] = f"не получилось: {exc}"[:200]
         if on_done:
-            on_done()
+            try:
+                on_done()
+            except Exception:      # перерисовка упала — очередь не должна вставать
+                logger.exception("радио: обработчик после расшифровки")
