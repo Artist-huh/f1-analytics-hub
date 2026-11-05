@@ -184,6 +184,24 @@ class DataLayerTest(unittest.TestCase):
         os.environ.pop("F1_HUB_DB", None)
         self.tmp.cleanup()
 
+    def test_results_checked_often_after_qualifying(self):
+        """Поул: квалификация не меняет этап зачёта, и результаты ждали до 6 ч. В течение 12 ч после
+        квалификации, спринта или гонки — повтор раз в 30 минут (аудит, S-4)."""
+        now = time.time()
+        race = {"round": "5", "race_name": "X GP", "circuit": "c", "locality": "l", "country": "Italy",
+                "date": "2026-01-01", "start_ts": now + 86400,
+                "sessions": [{"key": "Qualifying", "ts": now - 3600}, {"key": "Race", "ts": now + 86400}]}
+        db.save_schedule("2026", [race])
+        self.assertTrue(f1_api._weekend_session_recent(now))
+        self.assertFalse(f1_api._weekend_session_recent(now + 2 * 86400))
+        db.set_meta("standings_round", "4")
+        db.set_meta("results_round", "4")
+        db.set_meta("results_for_round", "4")
+        db.set_meta("results_fetched_at", now - 3600)            # час назад: в обычные дни — ещё рано
+        with mock.patch.object(f1_api, "_refresh", return_value=True) as refresh:
+            f1_api.refresh_season_results()
+        refresh.assert_called_once()                              # после квалификации — уже пора
+
     def test_season_rollover_keeps_one_season(self):
         """Январь: Jolpica «current» — уже новый сезон, а зачёт ещё прошлогодний. Первая квалификация нового
         года не должна заменять поулы старого, пока у старого остаются результаты гонок (аудит, BUG-2)."""

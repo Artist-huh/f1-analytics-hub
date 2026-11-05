@@ -69,6 +69,16 @@ def refresh_constructors(force=False):
     return _refresh(job, force)
 
 
+WEEKEND_WINDOW = 12 * 3600   # после квалификации или спринта результаты ждём чаще — раз в RESULTS_RETRY
+
+
+def _weekend_session_recent(now=None):
+    """Квалификация, спринт или гонка начались за последние 12 часов."""
+    now = time.time() if now is None else now
+    return any(0 <= now - s["ts"] <= WEEKEND_WINDOW for r in db.load_schedule() for s in r["sessions"]
+               if s["key"] in ("Qualifying", "Sprint", "Race"))
+
+
 def refresh_season_results(force=False, ignore_ttl=False):
     """Результаты гонок, квалификации и спринты всех пилотов (~10 запросов).
     Один раз на каждый новый этап зачёта; если результаты отстают от зачёта (их ещё
@@ -77,8 +87,9 @@ def refresh_season_results(force=False, ignore_ttl=False):
     ts = db.fetched_at("results_fetched_at")
     age = time.time() - ts if ts is not None else float("inf")
     complete = db.get_meta("results_round") == standings_round
-    if (not ignore_ttl and db.get_meta("results_for_round") == standings_round
-            and age < (RESULTS_TTL if complete else RESULTS_RETRY)):
+    # квалификация и спринт не меняют этап зачёта: без этого поул приходил с опозданием до 6 ч (аудит, S-4)
+    ttl = RESULTS_TTL if complete and not _weekend_session_recent() else RESULTS_RETRY
+    if not ignore_ttl and db.get_meta("results_for_round") == standings_round and age < ttl:
         return True
 
     def job():
