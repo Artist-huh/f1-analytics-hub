@@ -3,7 +3,7 @@ import flet as ft
 
 from design_system import *
 from ui.components import *
-from ui.fmt import plural, to_int
+from ui.fmt import plural, short_name, to_int
 from ui.rows import driver_row
 from ui.widgets import screen
 
@@ -61,11 +61,24 @@ def _build_quick_stats(state, drivers):
     ], spacing=SPACE_XS)
 
 
+def _remove(state, driver_id, name):
+    """Убрать из избранного с возможностью вернуть: строка исчезает сразу, а пилота «нет в текущем зачёте»
+    диалог добавления больше не покажет (аудит, UX-23)."""
+    state.toggle_favorite(driver_id)
+
+    def undo(e):
+        if driver_id not in state.favorites:
+            state.toggle_favorite(driver_id)
+    state.page.show_dialog(ft.SnackBar(ft.Text(f"{name} — убран из избранного", color=TEXT_PRIMARY),
+                                       bgcolor=SURFACE_ELEVATED, action="Вернуть", on_action=undo))
+
+
 def _build_favorites_list(state, drivers, missing):
     """Список избранных пилотов"""
     cards = []
     for d in drivers:
-        trailing = star_button(True, lambda e, i=d["driver_id"]: state.toggle_favorite(i))
+        name = short_name(d["name"])
+        trailing = star_button(True, lambda e, i=d["driver_id"], n=name: _remove(state, i, n))
         points = float(d["points"])
         cards.append(driver_row(state, d, trailing=trailing,
                                 subtitle=f"{points:g} {plural(points, 'очко', 'очка', 'очков')}, {d['team']}"))
@@ -76,7 +89,7 @@ def _build_favorites_list(state, drivers, missing):
                 ft.Text(f"{driver_id.replace('_', ' ').title()}: нет в текущем зачёте", size=FONT_BODY_SMALL,
                         color=TEXT_MUTED, expand=True),
                 ft.IconButton(icon=ft.Icons.DELETE_ROUNDED, icon_color=TEXT_DIM, tooltip="Убрать",
-                              on_click=lambda e, i=driver_id: state.toggle_favorite(i)),
+                              on_click=lambda e, i=driver_id: _remove(state, i, i.replace('_', ' ').title())),
             ]),
             bgcolor=SURFACE, border_radius=RADIUS_MD, padding=ft.Padding.only(left=SPACE_MD),
         ))

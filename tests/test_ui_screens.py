@@ -40,6 +40,20 @@ class UiScreensTest(UiTestCase):
                     self.assertTrue(t)
                     self.assertFalse(any("Не удалось" in x for x in t))
 
+    def test_favorite_removal_can_be_undone(self):
+        """«Избранное»: звезда убирает пилота сразу, но сообщение даёт «Вернуть» (аудит, UX-23)."""
+        fill_db()
+        self.state.load()
+        self.state.toggle_favorite("leclerc")
+        self.state.sub = "favorites"
+        star = next(n for n in walk(self.build("favorites")) if getattr(n, "tooltip", "") == "Убрать из избранного")
+        star.on_click(Ctl())
+        self.assertNotIn("leclerc", self.state.favorites)
+        snack = self.page.dialogs[-1]
+        self.assertEqual(snack.action, "Вернуть")
+        snack.on_action(Ctl())
+        self.assertIn("leclerc", self.state.favorites)
+
     def test_screen_reader_labels(self):
         """Экранный диктор: у картинок — подпись (или пометка «декоративная»), у кнопок-иконок и
         нажимаемых плашек без текста — подсказка, которую диктор и читает."""
