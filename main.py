@@ -284,7 +284,14 @@ def _phone_radio_selftest():
         step("скачиваем образец речи")
         resp = requests.get(SELFTEST_SPEECH, timeout=60)
         resp.raise_for_status()
-        step("расшифровка")
+        # по частям, каждая — своей строкой: если приложение закроется, по последней строке видно, на чём
+        sample = radio.models_dir() / "selftest.wav"
+        sample.write_bytes(resp.content)
+        step("декодер записи")
+        frames = radio._phone["run"]("decode_frames", audio_path=str(sample), timeout=120)
+        step(f"декодер: {frames} отсчётов; библиотека whisper.cpp")
+        info = radio._phone["run"]("info", timeout=60)
+        step(f"whisper.cpp {info.get('whisper') if isinstance(info, dict) else info}; расшифровка")
         en = radio._transcribe_on_phone(resp.content)
         # расшифровка — отдельной строкой: на симуляторе iPhone скачивание перевода ML Kit может не ответить,
         # и без неё было бы не видно, что whisper.cpp работает

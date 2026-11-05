@@ -46,8 +46,9 @@ def shot(udid, out, name):
     run("io", udid, "screenshot", os.path.join(out, f"{name}.png"), check=False)
 
 
-def radio_selftest(container, started):
-    """Ждать итог самопроверки радио в журнале приложения: «радио: самопроверка за N с — en | ru»."""
+def radio_selftest(container, started, udid=None, bundle_id=None):
+    """Ждать итог самопроверки радио в журнале приложения: «радио: самопроверка за N с — en | ru».
+    Приложение закрылось — ждать дальше нечего."""
     deadline = started + WAIT + RADIO_WAIT
     while time.time() < deadline:
         for path in glob.glob(os.path.join(container, "**", "f1_hub.log"), recursive=True):
@@ -55,8 +56,24 @@ def radio_selftest(container, started):
                 line = next((ln for ln in fh if "радио: самопроверка" in ln), "")
             if line:
                 return line.split("радио: самопроверка", 1)[-1].strip()
+        if udid and not alive(udid, bundle_id):
+            return "приложение закрылось во время самопроверки"
         time.sleep(10)
     return ""
+
+
+SYSTEM_LOG_MARKS = ("crash", "terminat", "signal", "exc_", "exception", "abort", "jetsam", "memory",
+                    "radioengine", "whisper", "flet_radio", "dyld", "killed")
+
+
+def system_log(udid, out, process):
+    """Системный журнал симулятора за прогон: причина закрытия приложения и вывод Dart (debugPrint)."""
+    res = subprocess.run(["xcrun", "simctl", "spawn", udid, "log", "show", "--style", "compact", "--last", "20m",
+                          "--predicate", f'process == "{process}" OR eventMessage CONTAINS[c] "{process}"'],
+                         capture_output=True, text=True, timeout=300)
+    with open(os.path.join(out, "system_log.txt"), "w", encoding="utf-8") as fh:
+        fh.write(res.stdout)
+    return [ln for ln in res.stdout.splitlines() if any(m in ln.lower() for m in SYSTEM_LOG_MARKS)][-40:]
 
 
 def log_lines(container):
@@ -76,7 +93,8 @@ def main():
     app, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(app, "Info.plist"), "rb") as fh:
-        bundle_id = plistlib.load(fh)["CFBundleIdentifier"]
+        info = plistlib.load(fh)
+    bundle_id, process = info["CFBundleIdentifier"], info.get("CFBundleExecutable", "Runner")
     device = pick_iphone()
     udid = device["udid"]
     print(f"симулятор: {device['name']} ({udid}), приложение {bundle_id}")
@@ -105,7 +123,7 @@ def main():
         run("terminate", udid, bundle_id, check=False)
         started = time.time() - WAIT
         subprocess.run(["xcrun", "simctl", "launch", udid, bundle_id], check=True, timeout=300)
-    radio = radio_selftest(container, started) if container and not failures else ""
+    radio = radio_selftest(container, started, udid, bundle_id) if container and not failures else ""
     for line in log_lines(container):
         if "радио:" in line:
             print("  " + line.strip())
@@ -143,6 +161,11 @@ def main():
     run("terminate", udid, bundle_id, check=False)
 
     if failures:
+        try:
+            for line in system_log(udid, out, process):
+                print("  журнал симулятора: " + line)
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"  журнал симулятора не прочитан: {exc}")
         print("ПРОБЛЕМЫ:\n  " + "\n  ".join(failures))
         sys.exit(1)
     print(f"iPhone: приложение запущено и работает {WAIT} с, журнал без ошибок ({len(text.splitlines())} строк)")
