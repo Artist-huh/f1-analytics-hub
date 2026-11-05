@@ -380,6 +380,15 @@ def readable_text(color, target=4.5, background=None):
     return TEXT_PRIMARY
 
 
+def api_color(code, fallback=None):
+    """Цвет команды из ответа источника («3671C6») -> цвет интерфейса: формат проверяется (иначе Flet получил
+    бы мусор), а цвет доводится до 3:1 к фону, как линии графиков (аудит, UX-30)."""
+    code = str(code or "").lstrip("#")
+    if len(code) != 6 or any(c not in "0123456789abcdefABCDEF" for c in code):
+        return fallback or TEXT_DIM
+    return readable_text("#" + code, 3.0)
+
+
 def _darken_for(fg, color, deep, target=4.5):
     """Фон цвета color, на котором текст fg набирает target: смешивается с deep, затем с чёрным."""
     for end in (deep, "#000000"):

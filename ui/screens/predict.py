@@ -47,7 +47,7 @@ def build(state):
                                          color=TEXT_SECONDARY)))
     past = [r for r in reversed(state.schedule) if r["round"] in picks and (not race or r["round"] != race["round"])]
     if past:
-        body.append(ft.Text("Мои прогнозы", size=FONT_H3, color=TEXT_PRIMARY, weight=ft.FontWeight.W_600))
+        body.append(SectionHeader("Мои прогнозы"))     # как остальные заголовки разделов (UX-32)
         body += [_past(state, r, picks[r["round"]], poles.get(r["round"]), podiums.get(r["round"])) for r in past]
     body.append(ft.Text(f"Очки: поул — {pr.POLE_POINTS}, пилот на своём месте подиума — {pr.EXACT_POINTS}, "
                         f"на подиуме, но на другом месте — {pr.PODIUM_POINTS}, весь подиум по порядку — ещё "

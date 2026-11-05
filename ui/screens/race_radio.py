@@ -112,7 +112,7 @@ def _translate_card(state):
 # ---------------------------------------------------------------- одна запись
 def _message(state, m, info, start):
     url = m["url"]
-    color = f"#{info['colour']}" if info.get("colour") else TEXT_DIM
+    color = api_color(info.get("colour"))
     at = m["ts"] - start if start else None
     stamp = f"{int(at // 60)}:{int(at % 60):02d}" if at is not None and at >= 0 else ""
     playing = state.ui.get("radio_playing") == url

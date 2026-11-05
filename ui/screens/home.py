@@ -164,8 +164,8 @@ def _build_next_race_hero(race, state, is_mobile):
         ft.Row([ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, color=F1_RED, size=18),
                 ft.Text("Расписание", color=INK, weight=ft.FontWeight.W_700)], spacing=SPACE_XS, tight=True),
         bgcolor=ON_COLOR, border_radius=RADIUS_FULL, height=TOUCH, alignment=ft.Alignment.CENTER,
-        padding=ft.Padding.symmetric(horizontal=SPACE_LG), ink=True,
-        on_click=lambda e: state.open_tab(2),
+        padding=ft.Padding.symmetric(horizontal=SPACE_LG),
+        # нажимается вся карточка: вложенная вторая кнопка с тем же действием — лишняя остановка фокуса (UX-34)
     )
     head = [
         ft.Row([flag(flag_src, 18, iso), ft.Text(stage, size=FONT_BODY_SMALL, color=soft)],
@@ -211,6 +211,7 @@ def _build_next_race_hero(race, state, is_mobile):
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         on_click=lambda e: state.open_tab(2),
         ink=True,
+        tooltip="Расписание этапа",
     )
 
 

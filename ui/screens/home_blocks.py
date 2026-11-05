@@ -101,7 +101,7 @@ def radio_block(state):
         info = drivers.get(m["driver"], {})
         text = radio.cached(m["url"]) if radio.supported() else None
         lines.append(ft.Row([
-            ft.Container(width=3, height=18, bgcolor=f"#{info['colour']}" if info.get("colour") else TEXT_DIM,
+            ft.Container(width=3, height=18, bgcolor=api_color(info.get("colour")),
                          border_radius=2),
             ft.Text(info.get("code") or m["driver"], size=FONT_BODY_SMALL, color=TEXT_PRIMARY,
                     font_family=FONT_ITALIC, width=40),

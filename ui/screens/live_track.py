@@ -38,7 +38,7 @@ class TrackMap:
         self.dots = {}
         layers = [cv.Canvas(shapes=shapes, width=width, height=self.height)]
         for number, info in (data.get("drivers") or {}).items():
-            color = f"#{info['colour']}" if info.get("colour") else TEXT_DIM
+            color = api_color(info.get("colour"))
             dot = ft.Container(
                 ft.Row([ft.Container(width=DOT, height=DOT, border_radius=DOT / 2, bgcolor=color,
                                      border=ft.Border.all(2, TEXT_PRIMARY)),

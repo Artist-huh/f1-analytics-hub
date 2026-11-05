@@ -59,6 +59,14 @@ class ContrastTest(unittest.TestCase):
                     with self.subTest(theme=theme, team=key, bg=bg):
                         self.assertGreaterEqual(ds.contrast(ds.GOLD_ON_COLOR, ds._mix(bg, ds.INK, 0.35)), 3.0)
 
+    def test_api_colors_checked(self):
+        """Цвет из ответа источника: мусор — запасной цвет, тёмный синий на тёмном фоне — светлее до 3:1 (UX-30)."""
+        for theme in ("dark", "light"):
+            ds.apply_theme(theme)
+            self.assertEqual(ds.api_color("zzz"), ds.TEXT_DIM)
+            self.assertEqual(ds.api_color(None), ds.TEXT_DIM)
+            self.assertGreaterEqual(ds.contrast(ds.api_color("00005A"), ds.SURFACE), 3.0)
+
     def test_elevated_chips_and_field_border(self):
         """На SURFACE_ELEVATED — чипы календаря, тосты и подписи ошибок: DANGER, WARNING и основной текст 4.5:1
         (UX-9). Рамка поля ввода — 3:1 к фону поля (WCAG 1.4.11, UX-8)."""
