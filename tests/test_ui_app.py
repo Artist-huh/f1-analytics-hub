@@ -251,7 +251,8 @@ class UiAppTest(UiTestCase):
 
     def test_line_chart(self):
         chart = components.line_chart([("A", "#f00", [0, 25, 43]), ("B", "#f00", [0, 18, 30])], [1, 2, 3], 300)
-        paths = [s for s in chart.shapes if type(s).__name__ == "Path"]
+        self.assertEqual(chart.label, "График. A: 43; B: 30")                # диктор слышит итог линий (UX-10)
+        paths = [s for s in chart.content.shapes if type(s).__name__ == "Path"]
         self.assertEqual(len(paths), 2)
         self.assertIsNone(paths[0].paint.stroke_dash_pattern)
         self.assertEqual(paths[1].paint.stroke_dash_pattern, [6, 4])     # напарник того же цвета — пунктир

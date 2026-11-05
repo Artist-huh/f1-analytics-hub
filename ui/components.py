@@ -453,7 +453,14 @@ def line_chart(series, labels, width, height=200, y_suffix=""):
         shapes.append(cv.Text(x(len(values) - 1) + 7, y(values[-1]), f"{values[-1]:g}{y_suffix}",
                               style=ft.TextStyle(size=11, color=label, weight=ft.FontWeight.BOLD),
                               alignment=ft.Alignment.CENTER_LEFT))
-    return cv.Canvas(shapes=shapes, width=width, height=height)
+    summary = "; ".join(f"{name}: {values[-1]:g}{y_suffix}" for name, _, values in series if values)
+    return _described(cv.Canvas(shapes=shapes, width=width, height=height), summary)
+
+
+def _described(canvas, summary):
+    """Рисунок на canvas диктор не читает: описание графика словами — итог каждой линии (аудит, UX-10)."""
+    return ft.Semantics(content=canvas, label=f"График. {summary}" if summary else "График",
+                        container=True, exclude_semantics=True)
 
 
 def _nice_step(raw):
@@ -529,7 +536,10 @@ def series_chart(series, width, height=240, y_min=None, y_max=None, invert=False
             end_style = ft.TextStyle(size=10, color=label, weight=ft.FontWeight.BOLD)
             shapes.append(cv.Text(x(ex) + 6, y(ey), name, style=end_style,
                                   alignment=ft.Alignment.CENTER_LEFT))
-    return cv.Canvas(shapes=shapes, width=width, height=height)
+    main = [s for s in series if s[3] >= 2] or series        # 20 пилотов вслух — много: только выделенные
+    summary = "; ".join(f"{name}: от {fmt(pts[0][1])} до {fmt(pts[-1][1])}" for name, _, pts, _w in main
+                        if pts and name)
+    return _described(cv.Canvas(shapes=shapes, width=width, height=height), summary)
 
 
 def fmt_lap(seconds):
