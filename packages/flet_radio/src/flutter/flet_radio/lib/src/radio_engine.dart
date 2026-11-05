@@ -50,9 +50,11 @@ class RadioEngineService extends FletService {
     if (_engine == null || _modelPath != modelPath) {
       _engine?.dispose();
       _engine = await WhisperEngine.load(modelPath, config: _whisperConfig());
+      print("RadioEngine: модель загружена");
       _modelPath = modelPath;
     }
     final pcm = await decodeAudioFile(audioPath);
+    print("RadioEngine: расшифровка ${pcm.length} отсчётов");
     final started = DateTime.now();
     // настройки — как в services/radio.py на компьютере: подсказка о жаргоне F1, каждая запись отдельно,
     // без пометок «[Music]» на шуме мотора
@@ -72,10 +74,13 @@ class RadioEngineService extends FletService {
   /// Симулятор iPhone: Metal там неполный, и whisper.cpp падал (SIGTRAP) в начале расшифровки —
   /// считаем на процессоре и без Core ML. На телефонах — автоматический выбор: Metal, иначе процессор.
   static WhisperConfig _whisperConfig() {
-    final simulator = Platform.isIOS && Platform.environment.containsKey('SIMULATOR_DEVICE_NAME');
+    final env = Platform.environment;
+    final simulator = Platform.isIOS && (env.containsKey('SIMULATOR_DEVICE_NAME') || env.containsKey('SIMULATOR_UDID'));
+    // print, а не debugPrint: debugPrint пишет с задержкой, и при падении строка терялась
+    print("RadioEngine: загрузка модели, ${simulator ? 'симулятор — процессор, без Core ML' : 'автоматический выбор'}");
     if (simulator) {
-      debugPrint("RadioEngine: симулятор iPhone — whisper.cpp на процессоре");
-      return const WhisperConfig(backend: WhisperBackend.cpu, coreMlMode: WhisperCoreMlMode.disabled);
+      return const WhisperConfig(backend: WhisperBackend.cpu, coreMlMode: WhisperCoreMlMode.disabled,
+          useFlashAttention: false);
     }
     return const WhisperConfig();
   }

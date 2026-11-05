@@ -63,13 +63,15 @@ def radio_selftest(container, started, udid=None, bundle_id=None):
 
 
 SYSTEM_LOG_MARKS = ("crash", "terminat", "signal", "exc_", "exception", "abort", "jetsam", "memory",
-                    "radioengine", "whisper", "flet_radio", "dyld", "killed")
+                    "radioengine", "whisper", "flet_radio", "dyld", "killed", "ggml", "assert", "fatal",
+                    "reportcrash", "backtrace", "thread 0")
 
 
 def system_log(udid, out, process):
     """Системный журнал симулятора за прогон: причина закрытия приложения и вывод Dart (debugPrint)."""
     res = subprocess.run(["xcrun", "simctl", "spawn", udid, "log", "show", "--style", "compact", "--last", "20m",
-                          "--predicate", f'process == "{process}" OR eventMessage CONTAINS[c] "{process}"'],
+                          "--predicate", f'process == "{process}" OR eventMessage CONTAINS[c] "{process}" '
+                          'OR process == "ReportCrash" OR process == "osanalyticshelper"'],
                          capture_output=True, text=True, timeout=300)
     with open(os.path.join(out, "system_log.txt"), "w", encoding="utf-8") as fh:
         fh.write(res.stdout)
@@ -140,11 +142,16 @@ def main():
     if bad:
         failures.append(f"в журнале ошибки: {bad[:3]}")
     # отчёты о падении за время прогона — любые (имя процесса не обязательно Runner), копией в артефакт
-    reports = os.path.expanduser("~/Library/Logs/DiagnosticReports")
-    crashes = [c for c in glob.glob(os.path.join(reports, "**", "*"), recursive=True)
-               if os.path.isfile(c) and os.path.getmtime(c) >= started - WAIT - 60]
+    # отчёты — на машине и внутри самого симулятора
+    reports = [os.path.expanduser("~/Library/Logs/DiagnosticReports"),
+               os.path.expanduser(f"~/Library/Developer/CoreSimulator/Devices/{udid}/data/Library/Logs")]
+    crashes = [c for root in reports for c in glob.glob(os.path.join(root, "**", "*"), recursive=True)
+               if os.path.isfile(c) and os.path.getmtime(c) >= started - WAIT - 60
+               and c.endswith((".ips", ".crash", ".log"))]
     for c in crashes:
         shutil.copy(c, out)
+        with open(c, encoding="utf-8", errors="replace") as fh:      # начало отчёта — в журнал задания CI
+            print(f"== {os.path.basename(c)}\n" + "".join(fh.readlines()[:80]))
     if crashes:
         failures.append(f"отчёты о падении: {[os.path.basename(c) for c in crashes]}")
     heard = next((ln.split("радио: расшифровка", 1)[-1].strip() for ln in log_lines(container)
