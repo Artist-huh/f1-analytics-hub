@@ -48,7 +48,8 @@ def build(state):
         sections.append(skeleton("Загружаем результаты гонок…", "rows", 5))
     else:
         sections.append(empty_block(ft.Icons.FLAG_ROUNDED, "Результатов пока нет",
-                                    "Появятся после первой гонки пилота или после обновления данных.", art="flag"))
+                                    "Появятся после первой гонки пилота или после обновления данных.",
+                                    ("Обновить", lambda e: state.refresh_now()), art="flag"))   # следующий шаг (UX-26)
 
     return screen(state, short_name(driver["name"]), sections, subtitle=f"Сезон {driver['season']}", back=True)
 

@@ -55,9 +55,10 @@ def build_calendar(state):
     if not shown:
         body.append(empty_block(ft.Icons.HISTORY_EDU_ROUNDED,
                                 "Сезон завершён" if view == "upcoming" else "Здесь пока пусто",
-                                "Итоги сезона — в «Истории сезонов»." if view == "upcoming" else None,
+                                "Итоги сезона — в «Истории сезонов»." if view == "upcoming" else
+                                "Прошедшие гонки появятся здесь после первого этапа сезона.",   # UX-26
                                 ("История сезонов", lambda e: state.open_sub("history")) if view == "upcoming"
-                                else None, art="track"))
+                                else ("Прошлые сезоны", lambda e: state.open_sub("history")), art="track"))
 
     for i, race in enumerate(shown):
         if view == "upcoming" and i == 0:
