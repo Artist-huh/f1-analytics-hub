@@ -497,7 +497,7 @@ class UiSeasonTest(UiTestCase):
             self.assertIn(expected, t)
         self.assertEqual(race_strategy.finishing_order(self.state, race), ["ANT", "LEC", "LAW"])
         self.state.ui["strat_race"] = self.state.schedule[1]                  # нет данных -> повтор загрузки
-        self.assertIn("Стратегия не загружена", texts(self.build("race_strategy")))
+        self.assertIn("Шины и пит-стопы не загружены", texts(self.build("race_strategy")))
 
     def test_home_blocks_customizable(self):
         from services import radio

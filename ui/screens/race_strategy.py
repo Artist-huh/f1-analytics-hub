@@ -36,7 +36,7 @@ def tyres_section(state, race):
         hint = (live.LOCKED_TEXT if err == live.LOCKED_TEXT else
                 "OpenF1 не отдал данные этой гонки — возможно, они ещё не опубликованы." if err else
                 "Нужен интернет: данные загружаются один раз и дальше доступны без сети.")
-        return [retry_block("Стратегия не загружена", hint,
+        return [retry_block("Шины и пит-стопы не загружены", hint,
                             lambda e: (archive.get(key, fetch, None, state.render, force=True), state.render()))]
 
     rows = live.strategy_rows(data, finishing_order(state, race))

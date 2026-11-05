@@ -114,7 +114,8 @@ def _contenders(state, race, view, total):
     top = max((c[2] for c in race["contenders"]), default=1) or 1
     for row, pts, best, gap in race["contenders"]:
         name, team, color, _ = _who(state, row, view)
-        hint = "лидер" if gap <= 0 else f"отставание {gap:g}, нужно отыграть {gap:g} из {race['available']}"
+        # без повтора «отставание 12, нужно отыграть 12» (аудит, UX-29)
+        hint = "лидер" if gap <= 0 else f"отстаёт на {gap:g}, разыгрывается ещё {race['available']}"
         rows.append(AnimatedCard(ft.Column([
             ft.Row([
                 PositionBadge(row["position"]),

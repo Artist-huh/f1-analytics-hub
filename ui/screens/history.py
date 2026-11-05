@@ -56,7 +56,8 @@ def _season_view(state):
     def arrow(icon, target, tip):
         enabled = target in years
         return ft.IconButton(icon=icon, icon_color=TEXT_PRIMARY if enabled else TEXT_DIM, tooltip=tip,
-                             width=TOUCH, height=TOUCH, on_click=(lambda e: choose(target)) if enabled else None)
+                             width=TOUCH, height=TOUCH, disabled=not enabled,     # неактивная — не в фокусе (UX-27)
+                             on_click=(lambda e: choose(target)) if enabled else None)
 
     picker = ft.Row([
         arrow(ft.Icons.CHEVRON_LEFT_ROUNDED, year - 1, "Предыдущий сезон"),

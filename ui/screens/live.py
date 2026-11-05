@@ -29,7 +29,7 @@ def build(state):
             elif error == live.LOCKED_TEXT:
                 title, hint = "Доступ к данным закрыт до конца сессии", live.LOCKED_TEXT
             else:
-                title, hint = "Нет данных о сессии", "OpenF1 не ответил. Проверь интернет и повтори."
+                title, hint = "Нет данных о сессии", "Ни поток F1, ни OpenF1 не ответили. Проверь интернет и повтори."
             body = [retry_block(title, hint, lambda e: (live.refresh(on_done=state.render), state.render()))]
         return screen(state, "Live Timing", body, back=True)
 

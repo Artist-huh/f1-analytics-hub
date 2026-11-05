@@ -38,7 +38,10 @@ def _guess_track(race):
 
 
 def build(state):
-    chosen = state.ui.get("track") or _guess_track(state.next_race()) or "Monaco"
+    guessed = _guess_track(state.next_race())
+    chosen = state.ui.get("track") or guessed or "Monaco"
+    # трассы ближайшей гонки нет среди готовых планов — не подменять её Монако молча (аудит, UX-13)
+    fallback = not state.ui.get("track") and not guessed and state.next_race() is not None
 
     def on_select(e):
         if e.control.value:
@@ -68,4 +71,7 @@ def build(state):
         ], spacing=3), size="l"),
         txt("Это базовые прикидки приложения, а не официальные планы команд.", 11, DIM),
     ]
+    if fallback:
+        body.insert(1, txt(f"Для трассы ближайшей гонки ({state.next_race()['race_name']}) готового плана нет — "
+                           "показан Монако. Выбери трассу в списке.", 12, MUTED))
     return screen(state, "Стратегия", body, subtitle="План пит-стопов по трассам", back=True)

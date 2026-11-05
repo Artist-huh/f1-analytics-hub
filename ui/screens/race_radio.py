@@ -2,7 +2,7 @@
 import flet as ft
 
 from design_system import *
-from services import archive, live, log, radio
+from services import archive, live, log, notify, radio
 from ui.components import *
 from ui.fmt import plural
 from ui.widgets import button, pill, retry_block
@@ -67,7 +67,8 @@ def radio_section(state, race):
                vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ft.Column(feed, spacing=SPACE_XS),
         ft.Text("Записи — OpenF1 (публикуются не все переговоры). Расшифровка и перевод — на этом устройстве, "
-                "моделями Whisper и Argos Translate; возможны неточности.", size=FONT_CAPTION, color=TEXT_DIM),
+                f"моделями whisper.cpp и {'Google ML Kit' if notify.is_mobile() else 'Argos Translate'}; "
+                "возможны неточности.", size=FONT_CAPTION, color=TEXT_DIM),
     ]
 
 
@@ -96,7 +97,9 @@ def _translate_card(state):
                         "точная лучше разбирает шумное радио, лёгкая занимает меньше места.",
                         size=FONT_BODY_SMALL, color=TEXT_SECONDARY)]
         if dl["state"] == "error":
-            body.append(ft.Text(f"Не получилось: {dl['error']}", size=FONT_CAPTION, color=DANGER))
+            # технический текст ошибки — в журнале; пользователю — что делать (аудит, UX-28)
+            body.append(ft.Text("Не получилось скачать модели. Проверь интернет и свободное место и попробуй ещё раз.",
+                                size=FONT_CAPTION, color=DANGER))
         body.append(ft.Row([
             button(f"{label} (~{radio.download_mb(model)} МБ)",
                    lambda e, m=model: (radio.download_models(state.render, m), state.render()),

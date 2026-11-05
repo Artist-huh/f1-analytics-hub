@@ -72,7 +72,7 @@ def _notifications_card(state):
     def switch(kind, title, hint):
         return ft.Row([
             ft.Column([txt(title, 14, bold=True), txt(hint, 11, MUTED)], spacing=1, expand=True),
-            ft.Switch(value=state.notifications_on(kind), active_color=ACCENT,
+            ft.Switch(value=state.notifications_on(kind), active_color=ACCENT, tooltip=title,
                       on_change=lambda e, k=kind: state.set_notifications(k, bool(e.control.value))),
         ], vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
@@ -92,7 +92,7 @@ def _notifications_card(state):
             ft.Column([txt("Вибрация", 14, bold=True),
                        txt("Сейфти-кар, красный флаг и обгоны избранных в Live Timing", 11, MUTED)],
                       spacing=1, expand=True),
-            ft.Switch(value=state.haptics_on(), active_color=ACCENT,
+            ft.Switch(value=state.haptics_on(), active_color=ACCENT, tooltip="Вибрация",
                       on_change=lambda e: state.set_haptics(bool(e.control.value))),
         ], vertical_alignment=ft.CrossAxisAlignment.CENTER)] if notify.is_mobile() else []),
     ], spacing=10))
@@ -166,14 +166,21 @@ def _report_problem(state):
     async def send():
         try:
             await clipboard.set(full)
+        except Exception:      # буфер занят: отчёт не критичен, но причину — в журнал
+            log.get("settings").exception("отчёт о проблеме не скопирован")
+            page.show_dialog(ft.SnackBar(ft.Text("Не получилось скопировать отчёт. Открываем страницу обращения…")))
+        else:                  # о копировании — только после него, а не заранее (аудит, UX-28)
+            page.show_dialog(ft.SnackBar(ft.Text("Отчёт скопирован. Открываем страницу обращения на GitHub…")))
+        try:
             await launcher.launch_url(url)
-        except Exception:      # нет браузера, буфер занят: отчёт не критичен, но причину — в журнал
-            log.get("settings").exception("отчёт о проблеме не открыт")
+        except Exception:      # нет браузера
+            log.get("settings").exception("страница обращения не открыта")
 
     run_task = getattr(page, "run_task", None)
     if run_task:
         run_task(send)
-    page.show_dialog(ft.SnackBar(ft.Text("Отчёт скопирован. Открываем страницу обращения на GitHub…")))
+    else:
+        page.show_dialog(ft.SnackBar(ft.Text("Не получилось подготовить отчёт")))
 
 
 def _confirm_clear(state):
