@@ -17,3 +17,6 @@
 | `04fb640` | XP-3 | На телефоне модели и картинки — в `FLET_APP_STORAGE_CACHE`, скачанное переносится | `PhoneStorageTest` |
 | `70e2d48` | UX-5, UX-6, UX-7, UX-11, UX-12, UX-15, UX-19 | Тексты и кнопки повтора; индикатор первой загрузки; «назад» в знакомстве | `test_every_screen_renders_with_empty_db`, `test_first_run_onboarding` |
 | `9d3606b` | BUG-6, BUG-7 | Виджет без данных; дробные очки; W/D; максимум прогноза; «досрочно» | `test_widget_data`, `test_small_texts`, `test_predictions` |
+| `e19eeb8` | SEC-9 | Путь `_MEIPASS` в отчёте заменяется на `<приложение>` | `test_problem_report` |
+| `dd55ad3` | XP-15, XP-16 | QUICKSTART: закреплённые версии, Linux не обещан, как открыть приложение на macOS | — (документация) |
+| `80dcd35`, `5252ce1`, `ef18b08` | Самопроверка радио в CI | Журнал по шагам; на Android — признаки эмулятора вместо одного `ro.debuggable`; на iPhone — расшифровка отдельно от перевода, сбор отчётов о падении | прогон CI `41981171788`: Android — Passed |
