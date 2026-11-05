@@ -366,18 +366,27 @@ def transcribe_audio(data):
     return " ".join(s.text.strip() for s in segments).strip()
 
 
-def _process_on_phone(data):
-    """Телефон: запись — во временный файл, расшифровка и перевод — в расширении flet_radio."""
+def _transcribe_on_phone(data):
+    """Телефон: запись — во временный файл, расшифровка — whisper.cpp в расширении flet_radio."""
     tmp = models_dir() / f"radio-{threading.get_ident()}.mp3"
     tmp.write_bytes(data)
     try:
-        en = _phone["run"]("transcribe", model_path=str(_whisper_file(whisper_model())), audio_path=str(tmp),
-                           prompt=F1_PROMPT, threads=min(os.cpu_count() or 4, 4))
+        return _phone["run"]("transcribe", model_path=str(_whisper_file(whisper_model())), audio_path=str(tmp),
+                             prompt=F1_PROMPT, threads=min(os.cpu_count() or 4, 4))
     finally:
         tmp.unlink(missing_ok=True)
+
+
+def _translate_on_phone(en):
     ru = _phone["run"]("translate", text=_plain_english(en)) if en else ""
     # ML Kit переводит текст целиком — правим термины по предложениям, как на компьютере
-    return en, " ".join(_fix_russian(s) for s in split_sentences(ru))
+    return " ".join(_fix_russian(s) for s in split_sentences(ru))
+
+
+def _process_on_phone(data):
+    """Телефон: расшифровка и перевод в расширении flet_radio."""
+    en = _transcribe_on_phone(data)
+    return en, _translate_on_phone(en)
 
 
 def process(url):

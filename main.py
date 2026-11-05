@@ -223,8 +223,8 @@ def _attach_phone_radio(page):
         return
     engine = RadioEngine()                       # сервис регистрируется на текущей странице
 
-    def run(method, **kwargs):
-        return page.run_task(getattr(engine, method), **kwargs).result(timeout=900)
+    def run(method, timeout=900, **kwargs):
+        return page.run_task(getattr(engine, method), **kwargs).result(timeout=timeout)
 
     radio.attach_phone_engine(run)
     logger.info("радио: расшифровка на телефоне через whisper.cpp и ML Kit")
@@ -250,9 +250,15 @@ def _phone_selftest_requested():
         def prop(name):
             return subprocess.run(["getprop", name], capture_output=True, text=True, timeout=5).stdout.strip()
         try:
-            # только на отладочной системе (эмулятор CI): на обычном телефоне свойство debug.* не включит
+            if prop("debug.f1hub.radio_selftest") != "1":
+                return False
+            # только на эмуляторе или отладочной системе: на обычном телефоне свойство debug.* не включит
             # скачивание чужой записи и моделей (аудит, SEC-7)
-            return prop("ro.debuggable") == "1" and prop("debug.f1hub.radio_selftest") == "1"
+            marks = {name: prop(name) for name in ("ro.kernel.qemu", "ro.boot.qemu", "ro.debuggable")}
+            if "1" in marks.values():
+                return True
+            logger.warning("радио: самопроверка запрошена, но система не отладочная — %s", marks)
+            return False
         except (OSError, subprocess.SubprocessError):
             return False
     return False
@@ -275,16 +281,21 @@ def _phone_radio_selftest():
             step("скачиваем модель whisper.cpp")
             radio._download_whisper(model)
         db.set_setting("radio_model", model)
-        if db.get_setting("radio_translation") != "1":
-            step("скачиваем перевод ML Kit")
-            if not radio._phone["run"]("download_translation"):
-                raise RuntimeError("модель перевода ML Kit не скачалась")
-            db.set_setting("radio_translation", "1")
         step("скачиваем образец речи")
         resp = requests.get(SELFTEST_SPEECH, timeout=60)
         resp.raise_for_status()
-        step("расшифровка и перевод")
-        en, ru = radio._process_on_phone(resp.content)
+        step("расшифровка")
+        en = radio._transcribe_on_phone(resp.content)
+        # расшифровка — отдельной строкой: на симуляторе iPhone скачивание перевода ML Kit может не ответить,
+        # и без неё было бы не видно, что whisper.cpp работает
+        logger.info("радио: расшифровка за %.1f с — %s", time.monotonic() - started, en)
+        if db.get_setting("radio_translation") != "1":
+            step("скачиваем перевод ML Kit")
+            if not radio._phone["run"]("download_translation", timeout=300):
+                raise RuntimeError("модель перевода ML Kit не скачалась")
+            db.set_setting("radio_translation", "1")
+        step("перевод")
+        ru = radio._translate_on_phone(en)
         logger.info("радио: самопроверка за %.1f с — %s | %s", time.monotonic() - started, en, ru)
     except Exception as exc:
         logger.error("радио: самопроверка не прошла — %r", exc)
