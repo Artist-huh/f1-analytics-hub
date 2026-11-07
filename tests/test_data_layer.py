@@ -1330,6 +1330,20 @@ class F1LiveTest(unittest.TestCase):
         finished = dict(self.STATE, SessionInfo=dict(self.STATE["SessionInfo"], SessionStatus="Finalised"))
         self.assertFalse(f1live.snapshot(finished, now)["live"])
 
+    def test_qualifying_gaps_from_best_laps(self):
+        """После квалификации поток не даёт TimeDiffToFastest — отрыв считается из лучших кругов
+        (найдено на живой квалификации Бразилии 2026: колонка была пустой у всех, кроме первого)."""
+        import copy
+
+        from services import f1live
+        state = copy.deepcopy(self.STATE)
+        state["SessionInfo"].update(Name="Qualifying", Type="Qualifying")
+        lines = state["TimingData"]["Lines"]
+        lines["16"]["BestLapTime"] = {"Value": "1:29.285"}
+        lines["1"].update(BestLapTime={"Value": "1:29.795"}, GapToLeader="", IntervalToPositionAhead={"Value": ""})
+        rows = f1live.snapshot(state, datetime_ts("2026-10-25T20:45:00"))["rows"]
+        self.assertEqual((rows[0]["gap"], rows[1]["gap"], rows[1]["interval"]), ("", "+0.510", "+0.510"))
+
     def test_live_falls_back_to_openf1(self):
         from services import f1live, live
         with mock.patch.object(f1live, "fetch", side_effect=f1live.F1LiveError("negotiate: HTTP 503")), \

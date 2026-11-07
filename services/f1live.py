@@ -156,6 +156,20 @@ def _row(number, t, d, app_line, racing):
     }
 
 
+def _gaps_from_best(rows):
+    """Практика и квалификация: после сессии поток не даёт TimeDiffToFastest, и колонка «Отрыв» была пустой
+    у всех, кроме первого (проверено на квалификации в Бразилии 2026). Отрыв — разница лучших кругов."""
+    from .jolpica import lap_seconds
+    best = [lap_seconds(r["best"]) for r in rows]
+    top = best[0] if best else None
+    for i, r in enumerate(rows):
+        if r["gap"] or best[i] is None or top is None or i == 0:
+            continue
+        r["gap"] = f"+{best[i] - top:.3f}"
+        if not r["interval"] and best[i - 1] is not None:
+            r["interval"] = f"+{best[i] - best[i - 1]:.3f}"
+
+
 def snapshot(state, now=None):
     """Сырые данные F1 -> снимок в формате экрана Live (как services.live.fetch) + радио."""
     now = time.time() if now is None else now
@@ -181,6 +195,8 @@ def snapshot(state, now=None):
             # одна испорченная строка не должна оставить без таблицы всех (OpenF1 в эфире закрыт)
             logger.warning("поток F1: строка пилота %s пропущена: %r", number, exc)
     rows.sort(key=lambda r: r["position"])
+    if not racing:
+        _gaps_from_best(rows)
     lap = state.get("LapCount") or {}
     messages = _items((state.get("RaceControlMessages") or {}).get("Messages"))
     path = info.get("Path") or ""

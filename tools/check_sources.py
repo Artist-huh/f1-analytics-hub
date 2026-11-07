@@ -74,10 +74,16 @@ def check_openf1():
 def check_track_maps():
     year = datetime.now(timezone.utc).year
     try:
-        meetings = track_map.fetch_meetings(year)
+        key = track_map.fetch_meetings(year)[0][1]
     except track_map.TrackMapError:
-        meetings = track_map.fetch_meetings(year - 1)      # в январе календаря нового года может ещё не быть
-    outline = track_map.fetch_outline(meetings[0][1], year)
+        # OpenF1 на время сессии закрыт (401) и в январе может не знать нового года: ключ трассы — из потока F1,
+        # как в самом Live; иначе — прошлый год. Проверяем MultiViewer, а не OpenF1
+        try:
+            key = f1live.fetch().get("circuit_key")
+        except f1live.F1LiveError:
+            key = None
+        key = key or track_map.fetch_meetings(year - 1)[0][1]
+    outline = track_map.fetch_outline(key, year)
     return f"{outline['name'] or 'трасса'}: точек контура: {len(outline['x'])}"
 
 
