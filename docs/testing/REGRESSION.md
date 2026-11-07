@@ -15,7 +15,7 @@
 | Прогон | Тестов | Результат |
 |---|---|---|
 | До аудита (`f36da05`) | 173 | OK |
-| После последнего исправления (`e19eeb8`) | 186 | OK, ~36 с |
+| После последнего исправления (`1988be0`) | 193 | OK, 35–100 с (зависит от загрузки машины) |
 | `ruff check .` | — | чисто |
 
 Ни один тест не удалён и не отключён. Изменены ожидания в трёх местах, и каждое изменение отражает исправленное
@@ -47,3 +47,10 @@
 | `test_every_screen_renders_with_empty_db` (расширен) | UX-7 |
 | `test_first_run_onboarding` (расширен) | UX-19 |
 | `test_small_texts`, `test_widget_data`, `test_predictions` (расширены) | BUG-6, BUG-7 |
+| `test_line_chart` (расширен) | UX-10 |
+| `test_elevated_chips_and_field_border`, `test_api_colors_checked` | UX-8, UX-9, UX-30 |
+| `test_phone_radio_off_when_extension_silent` | XP-5 |
+| `test_results_checked_often_after_qualifying` | S-4 |
+| `test_favorite_removal_can_be_undone` | UX-23 |
+| `test_elf_alignment_read_from_apk` | XP-8 |
+| `test_request_after_worker_decided_to_exit` | S-2 |
