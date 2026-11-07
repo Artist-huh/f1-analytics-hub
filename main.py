@@ -232,15 +232,17 @@ def _attach_phone_radio(page):
     def verify():
         """Расширение есть, но нативная часть может не загрузиться: проверяем ответом info(), иначе экран
         радио обещал бы расшифровку, которая не заработает (аудит, XP-5)."""
+        # первый info() инициализирует whisper.cpp (на симуляторе — сборка шейдеров Metal, ~40 с): ждём с запасом
         try:
-            info = run("info", timeout=60)
+            info = run("info", timeout=300)
             logger.info("радио: whisper.cpp %s", info.get("whisper") if isinstance(info, dict) else info)
         except Exception as exc:
             radio.attach_phone_engine(None)
             logger.warning("радио: расширение не отвечает — расшифровка отключена: %r", exc)
+            return
+        if _phone_selftest_requested():       # самопроверка — после проверки, а не наперегонки с ней
+            _phone_radio_selftest()
     threading.Thread(target=verify, name="f1-radio-verify", daemon=True).start()
-    if _phone_selftest_requested():
-        threading.Thread(target=_phone_radio_selftest, name="f1-radio-selftest", daemon=True).start()
 
 
 SELFTEST_SPEECH = "https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/samples/jfk.wav"
