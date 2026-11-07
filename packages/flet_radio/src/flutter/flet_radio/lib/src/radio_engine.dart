@@ -74,8 +74,13 @@ class RadioEngineService extends FletService {
   /// Симулятор iPhone: Metal там неполный, и whisper.cpp падал (SIGTRAP) в начале расшифровки —
   /// считаем на процессоре и без Core ML. На телефонах — автоматический выбор: Metal, иначе процессор.
   static WhisperConfig _whisperConfig() {
+    // переменных SIMULATOR_* у приложения нет (проверено в CI) — узнаём симулятор по пути к нему:
+    // приложение лежит в ~/Library/Developer/CoreSimulator/Devices/... на Mac
     final env = Platform.environment;
-    final simulator = Platform.isIOS && (env.containsKey('SIMULATOR_DEVICE_NAME') || env.containsKey('SIMULATOR_UDID'));
+    final simulator = Platform.isIOS &&
+        (env.containsKey('SIMULATOR_DEVICE_NAME') ||
+            Platform.resolvedExecutable.contains('/CoreSimulator/') ||
+            (env['HOME'] ?? '').contains('/CoreSimulator/'));
     // print, а не debugPrint: debugPrint пишет с задержкой, и при падении строка терялась
     print("RadioEngine: загрузка модели, ${simulator ? 'симулятор — процессор, без Core ML' : 'автоматический выбор'}");
     if (simulator) {
