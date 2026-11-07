@@ -147,7 +147,7 @@ def main():
                os.path.expanduser(f"~/Library/Developer/CoreSimulator/Devices/{udid}/data/Library/Logs")]
     crashes = [c for root in reports for c in glob.glob(os.path.join(root, "**", "*"), recursive=True)
                if os.path.isfile(c) and os.path.getmtime(c) >= started - WAIT - 60
-               and c.endswith((".ips", ".crash", ".log"))]
+               and c.endswith((".ips", ".crash"))]      # .log симулятора (system.log и др.) — не отчёты о падении
     for c in crashes:
         shutil.copy(c, out)
         with open(c, encoding="utf-8", errors="replace") as fh:      # начало отчёта — в журнал задания CI
