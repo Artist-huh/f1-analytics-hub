@@ -189,7 +189,12 @@ jobs:
         cat ~/.gradle/init.d/whisper-x86_64.gradle
 
     - name: Build APKs per ABI (flet build installs Flutter itself; Android SDK is on the runner)
-      run: flet build apk --split-per-abi --yes --no-rich-output --skip-flutter-doctor
+      # повтор один раз: раннер дважды скачивал битый архив (NDK, serious_python) — «Archive is not a ZIP»
+      run: |
+        flet build apk --split-per-abi --yes --no-rich-output --skip-flutter-doctor || {
+          echo "сборка не удалась — повтор через 30 с (сбой скачивания?)"; sleep 30
+          rm -rf ~/.gradle/caches/*/transforms "$ANDROID_HOME/ndk/28.2.13676358" 2>/dev/null || true
+          flet build apk --split-per-abi --yes --no-rich-output --skip-flutter-doctor; }
 
     - name: List APKs
       run: ls -la build/apk
